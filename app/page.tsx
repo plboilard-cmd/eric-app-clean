@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const allowedUsers = [
   { username: "pierre-luc", code: "0580", name: "Pierre-Luc" },
@@ -12,6 +12,17 @@ export default function Home() {
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [loggedInUser, setLoggedInUser] = useState<string | null>(null);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  useEffect(() => {
+    const savedUser = localStorage.getItem("eric-user");
+
+    if (savedUser) {
+      setLoggedInUser(savedUser);
+    }
+
+    setIsLoaded(true);
+  }, []);
 
   const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -30,7 +41,20 @@ export default function Home() {
 
     setError("");
     setLoggedInUser(match.name);
+    localStorage.setItem("eric-user", match.name);
   };
+
+  const handleLogout = () => {
+    localStorage.removeItem("eric-user");
+    setLoggedInUser(null);
+    setUsername("");
+    setCode("");
+    setError("");
+  };
+
+  if (!isLoaded) {
+    return null;
+  }
 
   if (loggedInUser) {
     return (
@@ -65,12 +89,7 @@ export default function Home() {
             </div>
 
             <button
-              onClick={() => {
-                setLoggedInUser(null);
-                setUsername("");
-                setCode("");
-                setError("");
-              }}
+              onClick={handleLogout}
               className="mt-6 text-sm text-zinc-400 hover:text-white transition"
             >
               Se déconnecter
