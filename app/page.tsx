@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 
 const allowedUsers = [
   { username: "pierre-luc", code: "0580", name: "Pierre-Luc" },
@@ -12,18 +12,57 @@ type StatusType =
   | "Soumission envoyée"
   | "Exécution"
   | "Perdu"
-  | "Terminé";
+  | "Terminé"
+  | "Non utilisé";
 
 type Project = {
   id: number;
+  numeroProjet: string;
   client: string;
-  description: string;
+  contact: string;
   statut: StatusType;
   charge: string;
+  ville: string;
+  endroit: string;
+  description: string;
+  poNumber: string;
+  pdfName: string;
 };
 
 type ActiveSection = "projets" | "plans" | "clients" | "facturation";
 type ViewMode = "list" | "project";
+
+const ALL_STATUSES: StatusType[] = [
+  "À soumissionner",
+  "Soumission envoyée",
+  "Exécution",
+  "Perdu",
+  "Terminé",
+  "Non utilisé",
+];
+
+function getStatusBadgeClasses(status: StatusType) {
+  switch (status) {
+    case "À soumissionner":
+      return "bg-zinc-300 text-black";
+    case "Soumission envoyée":
+      return "bg-yellow-400 text-black";
+    case "Exécution":
+      return "bg-green-600 text-white";
+    case "Perdu":
+      return "bg-red-600 text-white";
+    case "Terminé":
+      return "bg-blue-600 text-white";
+    case "Non utilisé":
+      return "bg-zinc-600 text-white";
+    default:
+      return "bg-zinc-300 text-black";
+  }
+}
+
+function generateProjectNumber(nextNumber: number) {
+  return `ERIC-${String(nextNumber).padStart(4, "0")}`;
+}
 
 export default function Home() {
   const [username, setUsername] = useState("");
@@ -31,24 +70,29 @@ export default function Home() {
   const [error, setError] = useState("");
   const [loggedInUser, setLoggedInUser] = useState<string | null>(null);
   const [isLoaded, setIsLoaded] = useState(false);
+
   const [activeSection, setActiveSection] =
     useState<ActiveSection>("projets");
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [showModal, setShowModal] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [selectedProjectId, setSelectedProjectId] = useState<number | null>(
+    null
+  );
 
   const [newProject, setNewProject] = useState({
     client: "",
     description: "",
-    charge: "",
   });
 
-  const [projectForm, setProjectForm] = useState({
+  const [projectForm, setProjectForm] = useState<Project>({
+    id: 0,
     numeroProjet: "",
     client: "",
     contact: "",
-    statut: "À soumissionner" as StatusType,
+    statut: "À soumissionner",
+    charge: "",
     ville: "",
     endroit: "",
     description: "",
@@ -56,12 +100,21 @@ export default function Home() {
     pdfName: "",
   });
 
+  const [searchNumero, setSearchNumero] = useState("");
+  const [searchClient, setSearchClient] = useState("");
+  const [chargeFilter, setChargeFilter] = useState<"tous" | "mes-projets">(
+    "tous"
+  );
+  const [statusFilters, setStatusFilters] =
+    useState<StatusType[]>(ALL_STATUSES);
+
   useEffect(() => {
     const savedUser = localStorage.getItem("eric-user");
     const savedProjects = localStorage.getItem("eric-projects");
     const savedSection = localStorage.getItem("eric-section") as
       | ActiveSection
       | null;
+    const savedNextNumber = localStorage.getItem("eric-next-project-number");
 
     if (savedUser) {
       setLoggedInUser(savedUser);
@@ -80,8 +133,17 @@ export default function Home() {
       setActiveSection(savedSection);
     }
 
+    if (!savedNextNumber) {
+      localStorage.setItem("eric-next-project-number", "1");
+    }
+
     setIsLoaded(true);
   }, []);
+
+  const persistProjects = (updatedProjects: Project[]) => {
+    setProjects(updatedProjects);
+    localStorage.setItem("eric-projects", JSON.stringify(updatedProjects));
+  };
 
   const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -106,65 +168,107 @@ export default function Home() {
 
   const handleLogout = () => {
     localStorage.removeItem("eric-user");
-    localStorage.removeItem("eric-projects");
     localStorage.removeItem("eric-section");
     setLoggedInUser(null);
     setUsername("");
     setCode("");
     setError("");
-    setProjects([]);
     setActiveSection("projets");
     setViewMode("list");
+    setSelectedProjectId(null);
   };
 
   const changeSection = (section: ActiveSection) => {
     setActiveSection(section);
     localStorage.setItem("eric-section", section);
+    setViewMode("list");
+  };
+
+  const toggleStatusFilter = (status: StatusType) => {
+    setStatusFilters((prev) =>
+      prev.includes(status)
+        ? prev.filter((s) => s !== status)
+        : [...prev, status]
+    );
   };
 
   const addProject = () => {
-    if (
-      !newProject.client.trim() ||
-      !newProject.description.trim() ||
-      !newProject.charge.trim()
-    ) {
+    if (!loggedInUser) return;
+
+    if (!newProject.client.trim() || !newProject.description.trim()) {
       return;
     }
 
+    const nextNumber = Number(
+      localStorage.getItem("eric-next-project-number") || "1"
+    );
+
     const newEntry: Project = {
       id: Date.now(),
+      numeroProjet: generateProjectNumber(nextNumber),
       client: newProject.client.trim(),
-      description: newProject.description.trim(),
+      contact: "",
       statut: "À soumissionner",
-      charge: newProject.charge.trim(),
+      charge: loggedInUser,
+      ville: "",
+      endroit: "",
+      description: newProject.description.trim(),
+      poNumber: "",
+      pdfName: "",
     };
 
     const updated = [...projects, newEntry];
-    setProjects(updated);
-    localStorage.setItem("eric-projects", JSON.stringify(updated));
+    persistProjects(updated);
+
+    localStorage.setItem(
+      "eric-next-project-number",
+      String(nextNumber + 1)
+    );
 
     setShowModal(false);
     setNewProject({
       client: "",
       description: "",
-      charge: "",
     });
   };
 
-  const openProject = (project?: Project) => {
-    setProjectForm({
-      numeroProjet: "",
-      client: project?.client ?? "",
-      contact: "",
-      statut: project?.statut ?? "À soumissionner",
-      ville: "",
-      endroit: "",
-      description: project?.description ?? "",
-      poNumber: "",
-      pdfName: "",
-    });
+  const openProject = (project: Project) => {
+    setSelectedProjectId(project.id);
+    setProjectForm(project);
     setViewMode("project");
   };
+
+  const saveProject = () => {
+    if (selectedProjectId === null) return;
+
+    const updatedProjects = projects.map((p) =>
+      p.id === selectedProjectId ? projectForm : p
+    );
+
+    persistProjects(updatedProjects);
+    setViewMode("list");
+  };
+
+  const filteredProjects = useMemo(() => {
+    return projects.filter((project) => {
+      const numeroOk = project.numeroProjet
+        .toLowerCase()
+        .includes(searchNumero.toLowerCase().trim());
+
+      const clientOk = project.client
+        .toLowerCase()
+        .includes(searchClient.toLowerCase().trim());
+
+      const chargeOk =
+        chargeFilter === "tous"
+          ? true
+          : project.charge === loggedInUser;
+
+      const statusOk = statusFilters.includes(project.statut);
+
+      return numeroOk && clientOk && chargeOk && statusOk;
+    });
+  }, [projects, searchNumero, searchClient, chargeFilter, statusFilters, loggedInUser]);
 
   if (!isLoaded) {
     return null;
@@ -254,12 +358,20 @@ export default function Home() {
               </div>
             </div>
 
-            <button
-              onClick={() => setViewMode("list")}
-              className="rounded border border-black px-4 py-2 text-sm text-black"
-            >
-              Retour à la liste
-            </button>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setViewMode("list")}
+                className="rounded border border-black px-4 py-2 text-sm text-black"
+              >
+                Retour à la liste
+              </button>
+              <button
+                onClick={saveProject}
+                className="rounded bg-[#f58426] px-4 py-2 text-sm text-white"
+              >
+                Sauvegarder
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
@@ -270,13 +382,7 @@ export default function Home() {
                 </label>
                 <input
                   value={projectForm.numeroProjet}
-                  onChange={(e) =>
-                    setProjectForm({
-                      ...projectForm,
-                      numeroProjet: e.target.value,
-                    })
-                  }
-                  placeholder="Généré plus tard"
+                  readOnly
                   className="w-full border-b-2 border-[#f58426] bg-transparent px-2 py-2 text-black outline-none"
                 />
               </div>
@@ -293,11 +399,11 @@ export default function Home() {
                   }
                   className="w-full border-b-2 border-[#f58426] bg-transparent px-2 py-2 text-black outline-none"
                 >
-                  <option value="À soumissionner">À soumissionner</option>
-                  <option value="Soumission envoyée">Soumission envoyée</option>
-                  <option value="Exécution">Exécution</option>
-                  <option value="Perdu">Perdu</option>
-                  <option value="Terminé">Terminé</option>
+                  {ALL_STATUSES.map((status) => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ))}
                 </select>
               </div>
 
@@ -363,6 +469,15 @@ export default function Home() {
                   onChange={(e) =>
                     setProjectForm({ ...projectForm, contact: e.target.value })
                   }
+                  className="w-full border-b-2 border-[#f58426] bg-transparent px-2 py-2 text-black outline-none"
+                />
+              </div>
+
+              <div className="mb-6">
+                <label className="mb-2 block text-2xl">Chargé de projets</label>
+                <input
+                  value={projectForm.charge}
+                  readOnly
                   className="w-full border-b-2 border-[#f58426] bg-transparent px-2 py-2 text-black outline-none"
                 />
               </div>
@@ -479,10 +594,84 @@ export default function Home() {
 
           {activeSection === "projets" && (
             <>
+              <div className="mb-5 grid gap-4 rounded-xl border border-white/10 bg-black/30 p-4 backdrop-blur-sm lg:grid-cols-4">
+                <div>
+                  <label className="mb-2 block text-sm text-zinc-200">
+                    Recherche numéro
+                  </label>
+                  <input
+                    value={searchNumero}
+                    onChange={(e) => setSearchNumero(e.target.value)}
+                    placeholder="Ex. ERIC-0001"
+                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm text-zinc-200">
+                    Recherche client
+                  </label>
+                  <input
+                    value={searchClient}
+                    onChange={(e) => setSearchClient(e.target.value)}
+                    placeholder="Nom du client"
+                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm text-zinc-200">
+                    Chargé de projets
+                  </label>
+                  <select
+                    value={chargeFilter}
+                    onChange={(e) =>
+                      setChargeFilter(
+                        e.target.value as "tous" | "mes-projets"
+                      )
+                    }
+                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none"
+                  >
+                    <option value="tous" className="text-black">
+                      Tous les projets
+                    </option>
+                    <option value="mes-projets" className="text-black">
+                      Mes projets
+                    </option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm text-zinc-200">
+                    Statuts affichés
+                  </label>
+                  <div className="rounded-lg border border-white/10 bg-white/10 p-3">
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      {ALL_STATUSES.map((status) => (
+                        <label
+                          key={status}
+                          className="flex items-center gap-2 text-zinc-200"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={statusFilters.includes(status)}
+                            onChange={() => toggleStatusFilter(status)}
+                          />
+                          {status}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <div className="overflow-hidden rounded-lg border border-white/10 bg-black/35 shadow-2xl backdrop-blur-sm">
                 <table className="w-full text-sm">
                   <thead className="bg-orange-500 text-black">
                     <tr>
+                      <th className="p-3 text-left font-semibold">
+                        Numéro projet
+                      </th>
                       <th className="p-3 text-left font-semibold">Client</th>
                       <th className="p-3 text-left font-semibold">
                         Description
@@ -496,38 +685,31 @@ export default function Home() {
                   </thead>
 
                   <tbody>
-                    {projects.length === 0 ? (
+                    {filteredProjects.length === 0 ? (
                       <tr className="border-t border-white/10">
                         <td
-                          colSpan={5}
+                          colSpan={6}
                           className="p-6 text-center text-zinc-300"
                         >
                           Aucun projet pour le moment.
                         </td>
                       </tr>
                     ) : (
-                      projects.map((p) => (
+                      filteredProjects.map((p) => (
                         <tr
                           key={p.id}
                           className="border-t border-white/10 bg-black/15"
                         >
+                          <td className="p-3 text-white">{p.numeroProjet}</td>
                           <td className="p-3 text-white">{p.client}</td>
                           <td className="p-3 text-zinc-200">
                             {p.description}
                           </td>
                           <td className="p-3">
                             <span
-                              className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${
-                                p.statut === "Perdu"
-                                  ? "bg-red-600 text-white"
-                                  : p.statut === "Terminé"
-                                  ? "bg-blue-600 text-white"
-                                  : p.statut === "Soumission envoyée"
-                                  ? "bg-yellow-500 text-black"
-                                  : p.statut === "À soumissionner"
-                                  ? "bg-zinc-300 text-black"
-                                  : "bg-green-600 text-white"
-                              }`}
+                              className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${getStatusBadgeClasses(
+                                p.statut
+                              )}`}
                             >
                               {p.statut}
                             </span>
@@ -615,20 +797,6 @@ export default function Home() {
                       ...newProject,
                       description: e.target.value,
                     })
-                  }
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm text-zinc-200">
-                  Chargé de projets
-                </label>
-                <input
-                  placeholder="Nom du chargé"
-                  className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/30"
-                  value={newProject.charge}
-                  onChange={(e) =>
-                    setNewProject({ ...newProject, charge: e.target.value })
                   }
                 />
               </div>
