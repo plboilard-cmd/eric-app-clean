@@ -1,30 +1,39 @@
 export default function Home() {
   return (
-    <main className="min-h-screen bg-black text-white flex items-center justify-center px-6">
-      <div className="w-full max-w-3xl text-center">
-        <p className="text-sm uppercase tracking-[0.3em] text-zinc-400 mb-4">
-          ERIC
-        </p>
+    <main className="relative min-h-screen text-white">
 
-        <h1 className="text-4xl md:text-6xl font-bold mb-6">
-          Estimation · Réglementation · Inventaire · Client
-        </h1>
+      {/* Background image */}
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: "url('/eric-login-bg.png')" }}
+      />
 
-        <p className="text-zinc-300 text-lg md:text-xl mb-10">
-          La base de travail pour gérer tes projets, tes clients et ton suivi
-          signalisation au même endroit.
-        </p>
+      {/* Dark overlay */}
+      <div className="absolute inset-0 bg-black/70" />
 
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <button className="px-6 py-3 rounded-xl bg-white text-black font-semibold hover:bg-zinc-200 transition">
-            Entrer dans ERIC
+      {/* Content */}
+      <div className="relative z-10 flex items-center justify-center min-h-screen px-4">
+        
+        <div className="bg-black/60 backdrop-blur-md border border-white/10 rounded-2xl p-10 w-full max-w-md text-center shadow-2xl">
+
+          <h1 className="text-3xl font-bold mb-4">Connexion à ERIC</h1>
+
+          <p className="text-zinc-300 mb-8">
+            Accédez à votre environnement Estimation, Réglementation, Inventaire et Client.
+          </p>
+
+          <button className="w-full bg-white text-black py-3 rounded-xl font-semibold hover:bg-zinc-200 transition">
+            Continuer avec Google
           </button>
 
-          <button className="px-6 py-3 rounded-xl border border-zinc-700 text-white font-semibold hover:bg-zinc-900 transition">
-            Voir les projets
-          </button>
+          <p className="text-xs text-zinc-500 mt-6">
+            Accès réservé aux utilisateurs autorisés
+          </p>
+
         </div>
+
       </div>
+
     </main>
   );
 }
