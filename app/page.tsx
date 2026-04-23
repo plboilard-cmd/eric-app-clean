@@ -7,15 +7,23 @@ const allowedUsers = [
   { username: "veronique", code: "5926", name: "Véronique" },
 ];
 
+type StatusType =
+  | "À soumissionner"
+  | "Soumission envoyée"
+  | "Exécution"
+  | "Perdu"
+  | "Terminé";
+
 type Project = {
   id: number;
   client: string;
   description: string;
-  statut: string;
+  statut: StatusType;
   charge: string;
 };
 
 type ActiveSection = "projets" | "plans" | "clients" | "facturation";
+type ViewMode = "list" | "project";
 
 export default function Home() {
   const [username, setUsername] = useState("");
@@ -28,12 +36,24 @@ export default function Home() {
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [showModal, setShowModal] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>("list");
 
   const [newProject, setNewProject] = useState({
     client: "",
     description: "",
-    statut: "Exécution",
     charge: "",
+  });
+
+  const [projectForm, setProjectForm] = useState({
+    numeroProjet: "",
+    client: "",
+    contact: "",
+    statut: "À soumissionner" as StatusType,
+    ville: "",
+    endroit: "",
+    description: "",
+    poNumber: "",
+    pdfName: "",
   });
 
   useEffect(() => {
@@ -94,6 +114,7 @@ export default function Home() {
     setError("");
     setProjects([]);
     setActiveSection("projets");
+    setViewMode("list");
   };
 
   const changeSection = (section: ActiveSection) => {
@@ -114,7 +135,7 @@ export default function Home() {
       id: Date.now(),
       client: newProject.client.trim(),
       description: newProject.description.trim(),
-      statut: newProject.statut,
+      statut: "À soumissionner",
       charge: newProject.charge.trim(),
     };
 
@@ -126,9 +147,23 @@ export default function Home() {
     setNewProject({
       client: "",
       description: "",
-      statut: "Exécution",
       charge: "",
     });
+  };
+
+  const openProject = (project?: Project) => {
+    setProjectForm({
+      numeroProjet: "",
+      client: project?.client ?? "",
+      contact: "",
+      statut: project?.statut ?? "À soumissionner",
+      ville: "",
+      endroit: "",
+      description: project?.description ?? "",
+      poNumber: "",
+      pdfName: "",
+    });
+    setViewMode("project");
   };
 
   if (!isLoaded) {
@@ -194,6 +229,174 @@ export default function Home() {
               Accès réservé aux utilisateurs autorisés
             </p>
           </form>
+        </div>
+      </main>
+    );
+  }
+
+  if (viewMode === "project") {
+    return (
+      <main className="min-h-screen bg-[#e8e8e8] px-8 py-6 text-[#f58426]">
+        <div className="mx-auto max-w-[1600px]">
+          <div className="mb-6 flex items-start justify-between">
+            <div className="flex items-start gap-5">
+              <div className="pt-1">
+                <div className="text-5xl font-bold">D</div>
+              </div>
+
+              <div>
+                <div className="text-2xl font-bold uppercase tracking-wide text-black">
+                  Dynamique
+                </div>
+                <div className="text-lg uppercase tracking-wide text-black">
+                  Expert-Conseil
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setViewMode("list")}
+              className="rounded border border-black px-4 py-2 text-sm text-black"
+            >
+              Retour à la liste
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+            <div>
+              <div className="mb-6">
+                <label className="mb-2 block text-2xl">
+                  Numéro de projet
+                </label>
+                <input
+                  value={projectForm.numeroProjet}
+                  onChange={(e) =>
+                    setProjectForm({
+                      ...projectForm,
+                      numeroProjet: e.target.value,
+                    })
+                  }
+                  placeholder="Généré plus tard"
+                  className="w-full border-b-2 border-[#f58426] bg-transparent px-2 py-2 text-black outline-none"
+                />
+              </div>
+
+              <div className="mb-6">
+                <label className="mb-2 block text-2xl">Statut</label>
+                <select
+                  value={projectForm.statut}
+                  onChange={(e) =>
+                    setProjectForm({
+                      ...projectForm,
+                      statut: e.target.value as StatusType,
+                    })
+                  }
+                  className="w-full border-b-2 border-[#f58426] bg-transparent px-2 py-2 text-black outline-none"
+                >
+                  <option value="À soumissionner">À soumissionner</option>
+                  <option value="Soumission envoyée">Soumission envoyée</option>
+                  <option value="Exécution">Exécution</option>
+                  <option value="Perdu">Perdu</option>
+                  <option value="Terminé">Terminé</option>
+                </select>
+              </div>
+
+              <div className="mb-6">
+                <label className="mb-2 block text-2xl">Ville</label>
+                <input
+                  value={projectForm.ville}
+                  onChange={(e) =>
+                    setProjectForm({ ...projectForm, ville: e.target.value })
+                  }
+                  className="w-full border-b-2 border-[#f58426] bg-transparent px-2 py-2 text-black outline-none"
+                />
+              </div>
+
+              <div className="mb-6">
+                <label className="mb-2 block text-2xl">Endroit</label>
+                <input
+                  value={projectForm.endroit}
+                  onChange={(e) =>
+                    setProjectForm({ ...projectForm, endroit: e.target.value })
+                  }
+                  className="w-full border-b-2 border-[#f58426] bg-transparent px-2 py-2 text-black outline-none"
+                />
+              </div>
+
+              <div className="mb-6">
+                <label className="mb-2 block text-2xl">Description</label>
+                <textarea
+                  value={projectForm.description}
+                  onChange={(e) =>
+                    setProjectForm({
+                      ...projectForm,
+                      description: e.target.value,
+                    })
+                  }
+                  rows={3}
+                  className="w-full border-b-2 border-[#f58426] bg-transparent px-2 py-2 text-black outline-none"
+                />
+              </div>
+            </div>
+
+            <div>
+              <div className="mb-6">
+                <label className="mb-2 block text-2xl">Client</label>
+                <div className="flex gap-3">
+                  <input
+                    value={projectForm.client}
+                    onChange={(e) =>
+                      setProjectForm({ ...projectForm, client: e.target.value })
+                    }
+                    className="w-full border-b-2 border-[#f58426] bg-transparent px-2 py-2 text-black outline-none"
+                  />
+                  <button className="rounded border border-[#f58426] px-3 py-2">
+                    +
+                  </button>
+                </div>
+              </div>
+
+              <div className="mb-6">
+                <label className="mb-2 block text-2xl">Contact</label>
+                <input
+                  value={projectForm.contact}
+                  onChange={(e) =>
+                    setProjectForm({ ...projectForm, contact: e.target.value })
+                  }
+                  className="w-full border-b-2 border-[#f58426] bg-transparent px-2 py-2 text-black outline-none"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-3">
+            <button className="min-h-[130px] border-4 border-[#f58426] bg-transparent text-4xl font-semibold text-[#f58426] transition hover:bg-[#f58426]/10">
+              Estimation
+            </button>
+
+            <button className="min-h-[130px] border-4 border-[#f58426] bg-transparent text-3xl font-semibold text-[#f58426] transition hover:bg-[#f58426]/10">
+              Bordereau de facturation
+            </button>
+
+            <button className="min-h-[130px] border-4 border-[#f58426] bg-transparent text-4xl font-semibold text-[#f58426] transition hover:bg-[#f58426]/10">
+              Plan
+            </button>
+          </div>
+
+          <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-2">
+            <div>
+              <p className="mb-3 text-2xl">PDF / No de PO</p>
+              <div className="rounded border-2 border-dashed border-[#f58426] p-6 text-black">
+                Zone pour ajouter un PDF et inscrire un numéro de PO
+              </div>
+            </div>
+
+            <div className="flex items-end justify-start lg:justify-end">
+              <p className="text-2xl text-black">
+                Fait par : {loggedInUser}
+              </p>
+            </div>
+          </div>
         </div>
       </main>
     );
@@ -319,6 +522,10 @@ export default function Home() {
                                   ? "bg-red-600 text-white"
                                   : p.statut === "Terminé"
                                   ? "bg-blue-600 text-white"
+                                  : p.statut === "Soumission envoyée"
+                                  ? "bg-yellow-500 text-black"
+                                  : p.statut === "À soumissionner"
+                                  ? "bg-zinc-300 text-black"
                                   : "bg-green-600 text-white"
                               }`}
                             >
@@ -327,7 +534,10 @@ export default function Home() {
                           </td>
                           <td className="p-3 text-zinc-200">{p.charge}</td>
                           <td className="p-3">
-                            <button className="rounded-md border border-white/15 bg-white/10 px-3 py-1.5 text-sm text-white transition hover:bg-white/20">
+                            <button
+                              onClick={() => openProject(p)}
+                              className="rounded-md border border-white/15 bg-white/10 px-3 py-1.5 text-sm text-white transition hover:bg-white/20"
+                            >
                               Ouvrir ↗
                             </button>
                           </td>
@@ -352,27 +562,21 @@ export default function Home() {
           {activeSection === "plans" && (
             <div className="rounded-lg border border-white/10 bg-black/35 p-8 backdrop-blur-sm">
               <h2 className="text-xl font-semibold">Liste de plan</h2>
-              <p className="mt-2 text-zinc-300">
-                Section en construction.
-              </p>
+              <p className="mt-2 text-zinc-300">Section en construction.</p>
             </div>
           )}
 
           {activeSection === "clients" && (
             <div className="rounded-lg border border-white/10 bg-black/35 p-8 backdrop-blur-sm">
               <h2 className="text-xl font-semibold">Client</h2>
-              <p className="mt-2 text-zinc-300">
-                Section en construction.
-              </p>
+              <p className="mt-2 text-zinc-300">Section en construction.</p>
             </div>
           )}
 
           {activeSection === "facturation" && (
             <div className="rounded-lg border border-white/10 bg-black/35 p-8 backdrop-blur-sm">
               <h2 className="text-xl font-semibold">Facturation</h2>
-              <p className="mt-2 text-zinc-300">
-                Section en construction.
-              </p>
+              <p className="mt-2 text-zinc-300">Section en construction.</p>
             </div>
           )}
         </div>
@@ -413,29 +617,6 @@ export default function Home() {
                     })
                   }
                 />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm text-zinc-200">
-                  Statut
-                </label>
-                <select
-                  className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/30"
-                  value={newProject.statut}
-                  onChange={(e) =>
-                    setNewProject({ ...newProject, statut: e.target.value })
-                  }
-                >
-                  <option value="Exécution" className="text-black">
-                    Exécution
-                  </option>
-                  <option value="Terminé" className="text-black">
-                    Terminé
-                  </option>
-                  <option value="Perdu" className="text-black">
-                    Perdu
-                  </option>
-                </select>
               </div>
 
               <div>
