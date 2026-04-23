@@ -1,39 +1,39 @@
 export default function Home() {
   return (
-    <main className="relative min-h-screen text-white">
-
+    <main className="relative w-full h-screen overflow-hidden">
+      
       {/* Background image */}
       <div
-        className="absolute inset-0 bg-cover bg-center"
+        className="absolute inset-0 bg-cover bg-[20%_top]"
         style={{ backgroundImage: "url('/eric-login-bg.png')" }}
       />
 
       {/* Dark overlay */}
-      <div className="absolute inset-0 bg-black/70" />
+      <div className="absolute inset-0 bg-black/60" />
 
-      {/* Content */}
-      <div className="relative z-10 flex items-center justify-center min-h-screen px-4">
-        
-        <div className="bg-black/60 backdrop-blur-md border border-white/10 rounded-2xl p-10 w-full max-w-md text-center shadow-2xl">
+      {/* Center login box */}
+      <div className="relative z-10 flex items-center justify-center h-full">
+        <div className="bg-black/80 backdrop-blur-md rounded-2xl p-8 w-[90%] max-w-md text-center border border-white/10 shadow-2xl">
 
-          <h1 className="text-3xl font-bold mb-4">Connexion à ERIC</h1>
+          <h1 className="text-2xl font-semibold text-white mb-4">
+            Connexion à ERIC
+          </h1>
 
-          <p className="text-zinc-300 mb-8">
-            Accédez à votre environnement Estimation, Réglementation, Inventaire et Client.
+          <p className="text-zinc-300 text-sm mb-6">
+            Accédez à votre environnement Estimation, Réglementation,
+            Inventaire et Client.
           </p>
 
-          <button className="w-full bg-white text-black py-3 rounded-xl font-semibold hover:bg-zinc-200 transition">
+          <button className="w-full bg-white text-black py-3 rounded-lg font-medium hover:bg-zinc-200 transition">
             Continuer avec Google
           </button>
 
-          <p className="text-xs text-zinc-500 mt-6">
+          <p className="text-xs text-zinc-500 mt-4">
             Accès réservé aux utilisateurs autorisés
           </p>
 
         </div>
-
       </div>
-
     </main>
   );
 }
