@@ -7,24 +7,43 @@ const allowedUsers = [
   { username: "veronique", code: "5926", name: "Véronique" },
 ];
 
+type Project = {
+  id: number;
+  client: string;
+  description: string;
+  statut: string;
+  charge: string;
+};
+
+type ActiveSection = "projets" | "plans" | "clients" | "facturation";
+
 export default function Home() {
   const [username, setUsername] = useState("");
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
   const [loggedInUser, setLoggedInUser] = useState<string | null>(null);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [activeSection, setActiveSection] =
+    useState<ActiveSection>("projets");
+
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [showModal, setShowModal] = useState(false);
+
+  const [newProject, setNewProject] = useState({
+    client: "",
+    description: "",
+    statut: "Exécution",
+    charge: "",
+  });
 
   useEffect(() => {
     const savedUser = localStorage.getItem("eric-user");
+    const savedProjects = localStorage.getItem("eric-projects");
 
-    if (savedUser) {
-      setLoggedInUser(savedUser);
-    }
-
-    setIsLoaded(true);
+    if (savedUser) setLoggedInUser(savedUser);
+    if (savedProjects) setProjects(JSON.parse(savedProjects));
   }, []);
 
-  const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleLogin = (e: any) => {
     e.preventDefault();
 
     const match = allowedUsers.find(
@@ -34,12 +53,10 @@ export default function Home() {
     );
 
     if (!match) {
-      setError("Identifiant ou code d’accès invalide.");
-      setLoggedInUser(null);
+      setError("Identifiant invalide");
       return;
     }
 
-    setError("");
     setLoggedInUser(match.name);
     localStorage.setItem("eric-user", match.name);
   };
@@ -47,121 +64,193 @@ export default function Home() {
   const handleLogout = () => {
     localStorage.removeItem("eric-user");
     setLoggedInUser(null);
-    setUsername("");
-    setCode("");
-    setError("");
   };
 
-  if (!isLoaded) {
-    return null;
-  }
+  const addProject = () => {
+    const newEntry: Project = {
+      id: Date.now(),
+      ...newProject,
+    };
 
-  if (loggedInUser) {
+    const updated = [...projects, newEntry];
+    setProjects(updated);
+    localStorage.setItem("eric-projects", JSON.stringify(updated));
+
+    setShowModal(false);
+    setNewProject({
+      client: "",
+      description: "",
+      statut: "Exécution",
+      charge: "",
+    });
+  };
+
+  // ================= LOGIN =================
+  if (!loggedInUser) {
     return (
-      <main className="relative w-full h-screen overflow-hidden">
+      <main className="relative h-screen flex items-center justify-center">
         <div
           className="absolute inset-0 bg-cover bg-[20%_top]"
           style={{ backgroundImage: "url('/eric-login-bg.png')" }}
         />
         <div className="absolute inset-0 bg-black/70" />
 
-        <div className="relative z-10 flex items-center justify-center h-full px-4">
-          <div className="bg-black/80 backdrop-blur-md rounded-2xl p-8 w-full max-w-xl text-center border border-white/10 shadow-2xl">
-            <p className="text-sm uppercase tracking-[0.25em] text-zinc-400 mb-3">
-              ERIC
-            </p>
+        <form
+          onSubmit={handleLogin}
+          className="relative z-10 bg-black/80 p-8 rounded-xl w-96 text-white"
+        >
+          <h1 className="text-xl mb-6">Connexion ERIC</h1>
 
-            <h1 className="text-3xl font-semibold text-white mb-4">
-              Bienvenue {loggedInUser}
-            </h1>
+          <input
+            placeholder="Utilisateur"
+            className="w-full mb-3 p-2 bg-black border"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
 
-            <p className="text-zinc-300 mb-8">
-              Vous êtes maintenant connecté à ERIC.
-            </p>
+          <input
+            placeholder="Code"
+            type="password"
+            className="w-full mb-3 p-2 bg-black border"
+            value={code}
+            onChange={(e) => setCode(e.target.value)}
+          />
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <button className="rounded-xl bg-white text-black py-3 px-4 font-medium hover:bg-zinc-200 transition">
-                Projets
-              </button>
-              <button className="rounded-xl border border-white/10 bg-white/5 text-white py-3 px-4 font-medium hover:bg-white/10 transition">
-                Clients
-              </button>
-            </div>
+          {error && <p className="text-red-400">{error}</p>}
 
-            <button
-              onClick={handleLogout}
-              className="mt-6 text-sm text-zinc-400 hover:text-white transition"
-            >
-              Se déconnecter
-            </button>
-          </div>
-        </div>
+          <button className="w-full mt-3 bg-white text-black p-2">
+            Se connecter
+          </button>
+        </form>
       </main>
     );
   }
 
+  // ================= DASHBOARD =================
   return (
-    <main className="relative w-full h-screen overflow-hidden">
+    <main className="relative min-h-screen text-white">
       <div
         className="absolute inset-0 bg-cover bg-[20%_top]"
         style={{ backgroundImage: "url('/eric-login-bg.png')" }}
       />
+      <div className="absolute inset-0 bg-black/80" />
 
-      <div className="absolute inset-0 bg-black/60" />
-
-      <div className="relative z-10 flex items-center justify-center h-full px-4">
-        <div className="bg-black/80 backdrop-blur-md rounded-2xl p-8 w-full max-w-md text-center border border-white/10 shadow-2xl">
-          <h1 className="text-2xl font-semibold text-white mb-2">
-            Connexion à ERIC
-          </h1>
-
-          <p className="text-zinc-300 text-sm mb-6">
-            Entrez votre identifiant et votre code d’accès pour continuer.
-          </p>
-
-          <form className="space-y-4" onSubmit={handleLogin}>
-            <div className="text-left">
-              <label className="block text-sm text-zinc-200 mb-2">
-                Identifiant
-              </label>
-              <input
-                type="text"
-                placeholder="Ex. user"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white placeholder:text-zinc-400 outline-none focus:border-white/30"
-              />
-            </div>
-
-            <div className="text-left">
-              <label className="block text-sm text-zinc-200 mb-2">
-                Code d’accès
-              </label>
-              <input
-                type="password"
-                placeholder="Entrez votre code"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white placeholder:text-zinc-400 outline-none focus:border-white/30"
-              />
-            </div>
-
-            {error && (
-              <p className="text-sm text-red-400 text-left">{error}</p>
-            )}
-
-            <button
-              type="submit"
-              className="w-full bg-white text-black py-3 rounded-lg font-medium hover:bg-zinc-200 transition"
-            >
-              Se connecter
-            </button>
-          </form>
-
-          <p className="text-xs text-zinc-500 mt-5">
-            Accès réservé aux utilisateurs autorisés
-          </p>
+      <div className="relative z-10 p-6 max-w-7xl mx-auto">
+        {/* HEADER */}
+        <div className="flex justify-between mb-6">
+          <h1>ERIC - {loggedInUser}</h1>
+          <button onClick={handleLogout}>Déconnexion</button>
         </div>
+
+        {/* MENU */}
+        <div className="flex gap-4 mb-6">
+          {["projets", "plans", "clients", "facturation"].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveSection(tab as ActiveSection)}
+              className={`px-4 py-2 border ${
+                activeSection === tab ? "bg-white text-black" : ""
+              }`}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+
+        {/* TABLE */}
+        {activeSection === "projets" && (
+          <>
+            <div className="bg-white text-black">
+              <table className="w-full">
+                <thead className="bg-orange-400">
+                  <tr>
+                    <th>Client</th>
+                    <th>Description</th>
+                    <th>Statut</th>
+                    <th>Chargé</th>
+                    <th>Lien</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {projects.map((p) => (
+                    <tr key={p.id}>
+                      <td>{p.client}</td>
+                      <td>{p.description}</td>
+                      <td>{p.statut}</td>
+                      <td>{p.charge}</td>
+                      <td>
+                        <button>Ouvrir</button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* BOUTON NOUVEAU */}
+            <div className="mt-6">
+              <button
+                onClick={() => setShowModal(true)}
+                className="bg-white text-black px-4 py-2"
+              >
+                + Nouveau projet
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* MODAL */}
+        {showModal && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center">
+            <div className="bg-black p-6 w-96 border">
+              <h2 className="mb-4">Nouveau projet</h2>
+
+              <input
+                placeholder="Client"
+                className="w-full mb-2 p-2 bg-black border"
+                value={newProject.client}
+                onChange={(e) =>
+                  setNewProject({ ...newProject, client: e.target.value })
+                }
+              />
+
+              <input
+                placeholder="Description"
+                className="w-full mb-2 p-2 bg-black border"
+                value={newProject.description}
+                onChange={(e) =>
+                  setNewProject({
+                    ...newProject,
+                    description: e.target.value,
+                  })
+                }
+              />
+
+              <input
+                placeholder="Chargé de projet"
+                className="w-full mb-2 p-2 bg-black border"
+                value={newProject.charge}
+                onChange={(e) =>
+                  setNewProject({
+                    ...newProject,
+                    charge: e.target.value,
+                  })
+                }
+              />
+
+              <div className="flex gap-2 mt-4">
+                <button onClick={addProject} className="bg-white text-black px-3 py-2">
+                  Ajouter
+                </button>
+
+                <button onClick={() => setShowModal(false)}>
+                  Annuler
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );
