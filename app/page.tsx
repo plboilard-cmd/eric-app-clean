@@ -1,11 +1,14 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 
 const allowedUsers = [
   { username: "pierre-luc", code: "0580", name: "Pierre-Luc" },
   { username: "veronique", code: "5926", name: "Véronique" },
 ];
+
+const YEAR_PREFIX = "26";
+const NEXT_PROJECT_KEY = "eric-next-project-number-26";
 
 type StatusType =
   | "À soumissionner"
@@ -27,6 +30,8 @@ type Project = {
   description: string;
   poNumber: string;
   pdfName: string;
+  pdfDataUrl: string;
+  createdAt: string;
 };
 
 type ActiveSection = "projets" | "plans" | "clients" | "facturation";
@@ -40,6 +45,22 @@ const ALL_STATUSES: StatusType[] = [
   "Terminé",
   "Non utilisé",
 ];
+
+const EMPTY_PROJECT: Project = {
+  id: 0,
+  numeroProjet: "",
+  client: "",
+  contact: "",
+  statut: "À soumissionner",
+  charge: "",
+  ville: "",
+  endroit: "",
+  description: "",
+  poNumber: "",
+  pdfName: "",
+  pdfDataUrl: "",
+  createdAt: "",
+};
 
 function getStatusBadgeClasses(status: StatusType) {
   switch (status) {
@@ -60,8 +81,35 @@ function getStatusBadgeClasses(status: StatusType) {
   }
 }
 
-function generateProjectNumber(nextNumber: number) {
-  return `ERIC-${String(nextNumber).padStart(4, "0")}`;
+function makeProjectNumber(nextNumber: number) {
+  return `${YEAR_PREFIX}-${String(nextNumber).padStart(4, "0")}`;
+}
+
+function formatDisplayDate(dateString: string) {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  if (Number.isNaN(date.getTime())) return dateString;
+  return date.toLocaleDateString("fr-CA");
+}
+
+function normalizeProject(raw: Partial<Project>, index: number): Project {
+  const fallbackNumber = makeProjectNumber(index + 1);
+
+  return {
+    id: raw.id ?? Date.now() + index,
+    numeroProjet: raw.numeroProjet ?? fallbackNumber,
+    client: raw.client ?? "",
+    contact: raw.contact ?? "",
+    statut: raw.statut ?? "À soumissionner",
+    charge: raw.charge ?? "",
+    ville: raw.ville ?? "",
+    endroit: raw.endroit ?? "",
+    description: raw.description ?? "",
+    poNumber: raw.poNumber ?? "",
+    pdfName: raw.pdfName ?? "",
+    pdfDataUrl: raw.pdfDataUrl ?? "",
+    createdAt: raw.createdAt ?? new Date().toISOString(),
+  };
 }
 
 export default function Home() {
@@ -83,25 +131,15 @@ export default function Home() {
 
   const [newProject, setNewProject] = useState({
     client: "",
+    ville: "",
     description: "",
   });
 
-  const [projectForm, setProjectForm] = useState<Project>({
-    id: 0,
-    numeroProjet: "",
-    client: "",
-    contact: "",
-    statut: "À soumissionner",
-    charge: "",
-    ville: "",
-    endroit: "",
-    description: "",
-    poNumber: "",
-    pdfName: "",
-  });
+  const [projectForm, setProjectForm] = useState<Project>(EMPTY_PROJECT);
 
   const [searchNumero, setSearchNumero] = useState("");
   const [searchClient, setSearchClient] = useState("");
+  const [searchVille, setSearchVille] = useState("");
   const [chargeFilter, setChargeFilter] = useState<"tous" | "mes-projets">(
     "tous"
   );
@@ -114,14 +152,24 @@ export default function Home() {
     const savedSection = localStorage.getItem("eric-section") as
       | ActiveSection
       | null;
-    const savedNextNumber = localStorage.getItem("eric-next-project-number");
 
     if (savedUser) {
       setLoggedInUser(savedUser);
     }
 
+    let normalizedProjects: Project[] = [];
+
     if (savedProjects) {
-      setProjects(JSON.parse(savedProjects));
+      try {
+        const parsed = JSON.parse(savedProjects) as Partial<Project>[];
+        normalizedProjects = parsed.map((project, index) =>
+          normalizeProject(project, index)
+        );
+        setProjects(normalizedProjects);
+        localStorage.setItem("eric-projects", JSON.stringify(normalizedProjects));
+      } catch {
+        setProjects([]);
+      }
     }
 
     if (
@@ -133,8 +181,19 @@ export default function Home() {
       setActiveSection(savedSection);
     }
 
+    const savedNextNumber = localStorage.getItem(NEXT_PROJECT_KEY);
+
     if (!savedNextNumber) {
-      localStorage.setItem("eric-next-project-number", "1");
+      const maxExisting = normalizedProjects.reduce((max, project) => {
+        const parts = project.numeroProjet.split("-");
+        const numericPart = Number(parts[1] || "0");
+        return Number.isFinite(numericPart) ? Math.max(max, numericPart) : max;
+      }, 0);
+
+      localStorage.setItem(
+        NEXT_PROJECT_KEY,
+        String(maxExisting > 0 ? maxExisting + 1 : 1)
+      );
     }
 
     setIsLoaded(true);
@@ -145,7 +204,7 @@ export default function Home() {
     localStorage.setItem("eric-projects", JSON.stringify(updatedProjects));
   };
 
-  const handleLogin = (e: React.FormEvent<HTMLFormElement>) => {
+  const handleLogin = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
     const match = allowedUsers.find(
@@ -195,39 +254,41 @@ export default function Home() {
   const addProject = () => {
     if (!loggedInUser) return;
 
-    if (!newProject.client.trim() || !newProject.description.trim()) {
+    if (
+      !newProject.client.trim() ||
+      !newProject.description.trim() ||
+      !newProject.ville.trim()
+    ) {
       return;
     }
 
-    const nextNumber = Number(
-      localStorage.getItem("eric-next-project-number") || "1"
-    );
+    const nextNumber = Number(localStorage.getItem(NEXT_PROJECT_KEY) || "1");
 
     const newEntry: Project = {
       id: Date.now(),
-      numeroProjet: generateProjectNumber(nextNumber),
+      numeroProjet: makeProjectNumber(nextNumber),
       client: newProject.client.trim(),
       contact: "",
       statut: "À soumissionner",
       charge: loggedInUser,
-      ville: "",
+      ville: newProject.ville.trim(),
       endroit: "",
       description: newProject.description.trim(),
       poNumber: "",
       pdfName: "",
+      pdfDataUrl: "",
+      createdAt: new Date().toISOString(),
     };
 
     const updated = [...projects, newEntry];
     persistProjects(updated);
 
-    localStorage.setItem(
-      "eric-next-project-number",
-      String(nextNumber + 1)
-    );
+    localStorage.setItem(NEXT_PROJECT_KEY, String(nextNumber + 1));
 
     setShowModal(false);
     setNewProject({
       client: "",
+      ville: "",
       description: "",
     });
   };
@@ -241,12 +302,36 @@ export default function Home() {
   const saveProject = () => {
     if (selectedProjectId === null) return;
 
-    const updatedProjects = projects.map((p) =>
-      p.id === selectedProjectId ? projectForm : p
+    const updatedProjects = projects.map((project) =>
+      project.id === selectedProjectId ? projectForm : project
     );
 
     persistProjects(updatedProjects);
     setViewMode("list");
+  };
+
+  const handlePdfUpload = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.type !== "application/pdf") {
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      const result = reader.result;
+      if (typeof result === "string") {
+        setProjectForm((prev) => ({
+          ...prev,
+          pdfName: file.name,
+          pdfDataUrl: result,
+        }));
+      }
+    };
+
+    reader.readAsDataURL(file);
   };
 
   const filteredProjects = useMemo(() => {
@@ -259,6 +344,10 @@ export default function Home() {
         .toLowerCase()
         .includes(searchClient.toLowerCase().trim());
 
+      const villeOk = project.ville
+        .toLowerCase()
+        .includes(searchVille.toLowerCase().trim());
+
       const chargeOk =
         chargeFilter === "tous"
           ? true
@@ -266,9 +355,17 @@ export default function Home() {
 
       const statusOk = statusFilters.includes(project.statut);
 
-      return numeroOk && clientOk && chargeOk && statusOk;
+      return numeroOk && clientOk && villeOk && chargeOk && statusOk;
     });
-  }, [projects, searchNumero, searchClient, chargeFilter, statusFilters, loggedInUser]);
+  }, [
+    projects,
+    searchNumero,
+    searchClient,
+    searchVille,
+    chargeFilter,
+    statusFilters,
+    loggedInUser,
+  ]);
 
   if (!isLoaded) {
     return null;
@@ -340,176 +437,240 @@ export default function Home() {
 
   if (viewMode === "project") {
     return (
-      <main className="min-h-screen bg-[#e8e8e8] px-8 py-6 text-[#f58426]">
-        <div className="mx-auto max-w-[1600px]">
-          <div className="mb-6 flex items-start justify-between">
-            <div className="flex items-start gap-5">
-              <div className="pt-1">
-                <div className="text-5xl font-bold">D</div>
-              </div>
+      <main className="relative min-h-screen overflow-hidden text-white">
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: "url('/eric-dashboard-bg.png')" }}
+        />
+        <div className="absolute inset-0 bg-black/68" />
 
+        <div className="relative z-10 px-6 py-5 md:px-8 xl:px-10">
+          <div className="mx-auto max-w-[1700px]">
+            <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
-                <div className="text-2xl font-bold uppercase tracking-wide text-black">
-                  Dynamique
-                </div>
-                <div className="text-lg uppercase tracking-wide text-black">
-                  Expert-Conseil
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <button
-                onClick={() => setViewMode("list")}
-                className="rounded border border-black px-4 py-2 text-sm text-black"
-              >
-                Retour à la liste
-              </button>
-              <button
-                onClick={saveProject}
-                className="rounded bg-[#f58426] px-4 py-2 text-sm text-white"
-              >
-                Sauvegarder
-              </button>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-            <div>
-              <div className="mb-6">
-                <label className="mb-2 block text-2xl">
-                  Numéro de projet
-                </label>
-                <input
-                  value={projectForm.numeroProjet}
-                  readOnly
-                  className="w-full border-b-2 border-[#f58426] bg-transparent px-2 py-2 text-black outline-none"
-                />
+                <p className="text-sm uppercase tracking-[0.25em] text-zinc-300">
+                  ERIC
+                </p>
+                <h1 className="mt-1 text-2xl font-semibold">Fiche projet</h1>
               </div>
 
-              <div className="mb-6">
-                <label className="mb-2 block text-2xl">Statut</label>
-                <select
-                  value={projectForm.statut}
-                  onChange={(e) =>
-                    setProjectForm({
-                      ...projectForm,
-                      statut: e.target.value as StatusType,
-                    })
-                  }
-                  className="w-full border-b-2 border-[#f58426] bg-transparent px-2 py-2 text-black outline-none"
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setViewMode("list")}
+                  className="rounded-lg border border-white/15 bg-black/30 px-4 py-2 text-sm text-white transition hover:bg-white/10"
                 >
-                  {ALL_STATUSES.map((status) => (
-                    <option key={status} value={status}>
-                      {status}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="mb-6">
-                <label className="mb-2 block text-2xl">Ville</label>
-                <input
-                  value={projectForm.ville}
-                  onChange={(e) =>
-                    setProjectForm({ ...projectForm, ville: e.target.value })
-                  }
-                  className="w-full border-b-2 border-[#f58426] bg-transparent px-2 py-2 text-black outline-none"
-                />
-              </div>
-
-              <div className="mb-6">
-                <label className="mb-2 block text-2xl">Endroit</label>
-                <input
-                  value={projectForm.endroit}
-                  onChange={(e) =>
-                    setProjectForm({ ...projectForm, endroit: e.target.value })
-                  }
-                  className="w-full border-b-2 border-[#f58426] bg-transparent px-2 py-2 text-black outline-none"
-                />
-              </div>
-
-              <div className="mb-6">
-                <label className="mb-2 block text-2xl">Description</label>
-                <textarea
-                  value={projectForm.description}
-                  onChange={(e) =>
-                    setProjectForm({
-                      ...projectForm,
-                      description: e.target.value,
-                    })
-                  }
-                  rows={3}
-                  className="w-full border-b-2 border-[#f58426] bg-transparent px-2 py-2 text-black outline-none"
-                />
+                  Retour à la liste
+                </button>
+                <button
+                  onClick={saveProject}
+                  className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-orange-400"
+                >
+                  Sauvegarder
+                </button>
               </div>
             </div>
 
-            <div>
-              <div className="mb-6">
-                <label className="mb-2 block text-2xl">Client</label>
-                <div className="flex gap-3">
-                  <input
-                    value={projectForm.client}
-                    onChange={(e) =>
-                      setProjectForm({ ...projectForm, client: e.target.value })
-                    }
-                    className="w-full border-b-2 border-[#f58426] bg-transparent px-2 py-2 text-black outline-none"
-                  />
-                  <button className="rounded border border-[#f58426] px-3 py-2">
-                    +
-                  </button>
+            <div className="rounded-2xl border border-white/10 bg-black/35 p-6 shadow-2xl backdrop-blur-sm">
+              <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+                <div>
+                  <div className="mb-6">
+                    <label className="mb-2 block text-xl text-orange-400">
+                      Numéro de projet
+                    </label>
+                    <input
+                      value={projectForm.numeroProjet}
+                      readOnly
+                      className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
+                    />
+                  </div>
+
+                  <div className="mb-6">
+                    <label className="mb-2 block text-xl text-orange-400">
+                      Statut
+                    </label>
+                    <select
+                      value={projectForm.statut}
+                      onChange={(e) =>
+                        setProjectForm({
+                          ...projectForm,
+                          statut: e.target.value as StatusType,
+                        })
+                      }
+                      className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
+                    >
+                      {ALL_STATUSES.map((status) => (
+                        <option key={status} value={status} className="text-black">
+                          {status}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="mb-6">
+                    <label className="mb-2 block text-xl text-orange-400">
+                      Ville
+                    </label>
+                    <input
+                      value={projectForm.ville}
+                      onChange={(e) =>
+                        setProjectForm({ ...projectForm, ville: e.target.value })
+                      }
+                      className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
+                    />
+                  </div>
+
+                  <div className="mb-6">
+                    <label className="mb-2 block text-xl text-orange-400">
+                      Endroit
+                    </label>
+                    <input
+                      value={projectForm.endroit}
+                      onChange={(e) =>
+                        setProjectForm({ ...projectForm, endroit: e.target.value })
+                      }
+                      className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
+                    />
+                  </div>
+
+                  <div className="mb-6">
+                    <label className="mb-2 block text-xl text-orange-400">
+                      Description
+                    </label>
+                    <textarea
+                      value={projectForm.description}
+                      onChange={(e) =>
+                        setProjectForm({
+                          ...projectForm,
+                          description: e.target.value,
+                        })
+                      }
+                      rows={3}
+                      className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <div className="mb-6">
+                    <label className="mb-2 block text-xl text-orange-400">
+                      Client
+                    </label>
+                    <div className="flex gap-3">
+                      <input
+                        value={projectForm.client}
+                        onChange={(e) =>
+                          setProjectForm({ ...projectForm, client: e.target.value })
+                        }
+                        className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
+                      />
+                      <button className="rounded border border-orange-400 px-3 py-2 text-orange-400">
+                        +
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="mb-6">
+                    <label className="mb-2 block text-xl text-orange-400">
+                      Contact
+                    </label>
+                    <input
+                      value={projectForm.contact}
+                      onChange={(e) =>
+                        setProjectForm({ ...projectForm, contact: e.target.value })
+                      }
+                      className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
+                    />
+                  </div>
+
+                  <div className="mb-6">
+                    <label className="mb-2 block text-xl text-orange-400">
+                      Date de création
+                    </label>
+                    <input
+                      value={formatDisplayDate(projectForm.createdAt)}
+                      readOnly
+                      className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="mb-6">
-                <label className="mb-2 block text-2xl">Contact</label>
-                <input
-                  value={projectForm.contact}
-                  onChange={(e) =>
-                    setProjectForm({ ...projectForm, contact: e.target.value })
-                  }
-                  className="w-full border-b-2 border-[#f58426] bg-transparent px-2 py-2 text-black outline-none"
-                />
+              <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-3">
+                <button className="min-h-[120px] rounded-xl border-2 border-orange-400 bg-transparent text-4xl font-semibold text-orange-400 transition hover:bg-orange-400/10">
+                  Estimation
+                </button>
+
+                <button className="min-h-[120px] rounded-xl border-2 border-orange-400 bg-transparent px-4 text-3xl font-semibold text-orange-400 transition hover:bg-orange-400/10">
+                  Bordereau de facturation
+                </button>
+
+                <button className="min-h-[120px] rounded-xl border-2 border-orange-400 bg-transparent text-4xl font-semibold text-orange-400 transition hover:bg-orange-400/10">
+                  Plan
+                </button>
               </div>
 
-              <div className="mb-6">
-                <label className="mb-2 block text-2xl">Chargé de projets</label>
-                <input
-                  value={projectForm.charge}
-                  readOnly
-                  className="w-full border-b-2 border-[#f58426] bg-transparent px-2 py-2 text-black outline-none"
-                />
+              <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-[1.2fr_0.8fr]">
+                <div className="rounded-xl border border-orange-400/40 bg-black/20 p-5">
+                  <p className="mb-4 text-xl text-orange-400">PO / PDF</p>
+
+                  <div className="mb-4">
+                    <label className="mb-2 block text-sm text-zinc-200">
+                      Numéro de PO
+                    </label>
+                    <input
+                      value={projectForm.poNumber}
+                      onChange={(e) =>
+                        setProjectForm({
+                          ...projectForm,
+                          poNumber: e.target.value,
+                        })
+                      }
+                      placeholder="Inscrire le numéro de PO"
+                      className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                    />
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <label className="cursor-pointer rounded-lg border border-orange-400 bg-orange-400/10 px-4 py-3 text-sm font-medium text-orange-300 transition hover:bg-orange-400/20">
+                      Importer un PDF
+                      <input
+                        type="file"
+                        accept="application/pdf"
+                        onChange={handlePdfUpload}
+                        className="hidden"
+                      />
+                    </label>
+
+                    {projectForm.pdfName && (
+                      <>
+                        <span className="text-sm text-zinc-200">
+                          {projectForm.pdfName}
+                        </span>
+
+                        <a
+                          href={projectForm.pdfDataUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="rounded-lg border border-white/15 bg-white/10 px-4 py-3 text-sm text-white transition hover:bg-white/20"
+                        >
+                          Ouvrir le PDF
+                        </a>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex items-end justify-start lg:justify-end">
+                  <div className="text-right">
+                    <p className="text-lg text-zinc-200">
+                      Fait par : {loggedInUser}
+                    </p>
+                    <p className="mt-2 text-lg text-zinc-200">
+                      Date : {formatDisplayDate(projectForm.createdAt)}
+                    </p>
+                  </div>
+                </div>
               </div>
-            </div>
-          </div>
-
-          <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-3">
-            <button className="min-h-[130px] border-4 border-[#f58426] bg-transparent text-4xl font-semibold text-[#f58426] transition hover:bg-[#f58426]/10">
-              Estimation
-            </button>
-
-            <button className="min-h-[130px] border-4 border-[#f58426] bg-transparent text-3xl font-semibold text-[#f58426] transition hover:bg-[#f58426]/10">
-              Bordereau de facturation
-            </button>
-
-            <button className="min-h-[130px] border-4 border-[#f58426] bg-transparent text-4xl font-semibold text-[#f58426] transition hover:bg-[#f58426]/10">
-              Plan
-            </button>
-          </div>
-
-          <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-2">
-            <div>
-              <p className="mb-3 text-2xl">PDF / No de PO</p>
-              <div className="rounded border-2 border-dashed border-[#f58426] p-6 text-black">
-                Zone pour ajouter un PDF et inscrire un numéro de PO
-              </div>
-            </div>
-
-            <div className="flex items-end justify-start lg:justify-end">
-              <p className="text-2xl text-black">
-                Fait par : {loggedInUser}
-              </p>
             </div>
           </div>
         </div>
@@ -594,7 +755,7 @@ export default function Home() {
 
           {activeSection === "projets" && (
             <>
-              <div className="mb-5 grid gap-4 rounded-xl border border-white/10 bg-black/30 p-4 backdrop-blur-sm lg:grid-cols-4">
+              <div className="mb-5 grid gap-4 rounded-xl border border-white/10 bg-black/30 p-4 backdrop-blur-sm lg:grid-cols-[0.7fr_1fr_1fr_1fr_1.2fr]">
                 <div>
                   <label className="mb-2 block text-sm text-zinc-200">
                     Recherche numéro
@@ -602,7 +763,7 @@ export default function Home() {
                   <input
                     value={searchNumero}
                     onChange={(e) => setSearchNumero(e.target.value)}
-                    placeholder="Ex. ERIC-0001"
+                    placeholder="Ex. 26-0001"
                     className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
                   />
                 </div>
@@ -615,6 +776,18 @@ export default function Home() {
                     value={searchClient}
                     onChange={(e) => setSearchClient(e.target.value)}
                     placeholder="Nom du client"
+                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm text-zinc-200">
+                    Recherche ville
+                  </label>
+                  <input
+                    value={searchVille}
+                    onChange={(e) => setSearchVille(e.target.value)}
+                    placeholder="Ville"
                     className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
                   />
                 </div>
@@ -672,6 +845,7 @@ export default function Home() {
                       <th className="p-3 text-left font-semibold">
                         Numéro projet
                       </th>
+                      <th className="p-3 text-left font-semibold">Ville</th>
                       <th className="p-3 text-left font-semibold">Client</th>
                       <th className="p-3 text-left font-semibold">
                         Description
@@ -688,36 +862,41 @@ export default function Home() {
                     {filteredProjects.length === 0 ? (
                       <tr className="border-t border-white/10">
                         <td
-                          colSpan={6}
+                          colSpan={7}
                           className="p-6 text-center text-zinc-300"
                         >
                           Aucun projet pour le moment.
                         </td>
                       </tr>
                     ) : (
-                      filteredProjects.map((p) => (
+                      filteredProjects.map((project) => (
                         <tr
-                          key={p.id}
+                          key={project.id}
                           className="border-t border-white/10 bg-black/15"
                         >
-                          <td className="p-3 text-white">{p.numeroProjet}</td>
-                          <td className="p-3 text-white">{p.client}</td>
+                          <td className="p-3 text-white">
+                            {project.numeroProjet}
+                          </td>
+                          <td className="p-3 text-zinc-200">{project.ville}</td>
+                          <td className="p-3 text-white">{project.client}</td>
                           <td className="p-3 text-zinc-200">
-                            {p.description}
+                            {project.description}
                           </td>
                           <td className="p-3">
                             <span
                               className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${getStatusBadgeClasses(
-                                p.statut
+                                project.statut
                               )}`}
                             >
-                              {p.statut}
+                              {project.statut}
                             </span>
                           </td>
-                          <td className="p-3 text-zinc-200">{p.charge}</td>
+                          <td className="p-3 text-zinc-200">
+                            {project.charge}
+                          </td>
                           <td className="p-3">
                             <button
-                              onClick={() => openProject(p)}
+                              onClick={() => openProject(project)}
                               className="rounded-md border border-white/15 bg-white/10 px-3 py-1.5 text-sm text-white transition hover:bg-white/20"
                             >
                               Ouvrir ↗
@@ -780,6 +959,20 @@ export default function Home() {
                   value={newProject.client}
                   onChange={(e) =>
                     setNewProject({ ...newProject, client: e.target.value })
+                  }
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm text-zinc-200">
+                  Ville
+                </label>
+                <input
+                  placeholder="Ville du projet"
+                  className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/30"
+                  value={newProject.ville}
+                  onChange={(e) =>
+                    setNewProject({ ...newProject, ville: e.target.value })
                   }
                 />
               </div>
