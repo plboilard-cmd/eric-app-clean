@@ -17,7 +17,9 @@ export default function Home() {
     e.preventDefault();
 
     const match = allowedUsers.find(
-      (user) => user.username === username && user.code === code
+      (user) =>
+        user.username.toLowerCase() === username.toLowerCase().trim() &&
+        user.code === code.trim()
     );
 
     if (!match) {
@@ -126,9 +128,7 @@ export default function Home() {
             </div>
 
             {error && (
-              <p className="text-sm text-red-400 text-left">
-                {error}
-              </p>
+              <p className="text-sm text-red-400 text-left">{error}</p>
             )}
 
             <button
