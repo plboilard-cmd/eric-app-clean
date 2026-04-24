@@ -67,6 +67,18 @@ const EMPTY_PROJECT: Project = {
   createdAt: "",
 };
 
+function makeProjectNumber(nextNumber: number) {
+  return `${YEAR_PREFIX}-${String(nextNumber).padStart(4, "0")}`;
+}
+
+function formatDisplayDate(dateString: string) {
+  if (!dateString) return "";
+  const date = new Date(dateString);
+  return Number.isNaN(date.getTime())
+    ? dateString
+    : date.toLocaleDateString("fr-CA");
+}
+
 function getStatusBadgeClasses(status: StatusType) {
   switch (status) {
     case "À soumissionner":
@@ -84,17 +96,6 @@ function getStatusBadgeClasses(status: StatusType) {
     default:
       return "bg-zinc-300 text-black";
   }
-}
-
-function makeProjectNumber(nextNumber: number) {
-  return `${YEAR_PREFIX}-${String(nextNumber).padStart(4, "0")}`;
-}
-
-function formatDisplayDate(dateString: string) {
-  if (!dateString) return "";
-  const date = new Date(dateString);
-  if (Number.isNaN(date.getTime())) return dateString;
-  return date.toLocaleDateString("fr-CA");
 }
 
 function normalizeProject(raw: Partial<Project>, index: number): Project {
@@ -126,18 +127,17 @@ export default function Home() {
   const [viewMode, setViewMode] = useState<ViewMode>("list");
 
   const [projects, setProjects] = useState<Project[]>([]);
-  const [showModal, setShowModal] = useState(false);
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(
     null
   );
+  const [projectForm, setProjectForm] = useState<Project>(EMPTY_PROJECT);
 
+  const [showModal, setShowModal] = useState(false);
   const [newProject, setNewProject] = useState({
     client: "",
     ville: "",
     description: "",
   });
-
-  const [projectForm, setProjectForm] = useState<Project>(EMPTY_PROJECT);
 
   const [searchNumero, setSearchNumero] = useState("");
   const [searchClient, setSearchClient] = useState("");
@@ -169,7 +169,10 @@ export default function Home() {
           normalizeProject(project, index)
         );
         setProjects(normalizedProjects);
-        localStorage.setItem("eric-projects", JSON.stringify(normalizedProjects));
+        localStorage.setItem(
+          "eric-projects",
+          JSON.stringify(normalizedProjects)
+        );
       } catch {
         setProjects([]);
       }
@@ -186,8 +189,7 @@ export default function Home() {
 
     if (!localStorage.getItem(NEXT_PROJECT_KEY)) {
       const maxExisting = normalizedProjects.reduce((max, project) => {
-        const parts = project.numeroProjet.split("-");
-        const numericPart = Number(parts[1] || "0");
+        const numericPart = Number(project.numeroProjet.split("-")[1] || "0");
         return Number.isFinite(numericPart) ? Math.max(max, numericPart) : max;
       }, 0);
 
@@ -233,7 +235,6 @@ export default function Home() {
     setUsername("");
     setCode("");
     setError("");
-    setActiveSection("projets");
     setViewMode("list");
     setSelectedProjectId(null);
   };
@@ -257,8 +258,8 @@ export default function Home() {
 
     if (
       !newProject.client.trim() ||
-      !newProject.description.trim() ||
-      !newProject.ville.trim()
+      !newProject.ville.trim() ||
+      !newProject.description.trim()
     ) {
       return;
     }
@@ -280,24 +281,18 @@ export default function Home() {
       createdAt: new Date().toISOString(),
     };
 
-    const updated = [...projects, newEntry];
-    persistProjects(updated);
-
+    persistProjects([...projects, newEntry]);
     localStorage.setItem(NEXT_PROJECT_KEY, String(nextNumber + 1));
 
     setShowModal(false);
-    setNewProject({
-      client: "",
-      ville: "",
-      description: "",
-    });
+    setNewProject({ client: "", ville: "", description: "" });
   };
 
   const openProject = (project: Project) => {
     setSelectedProjectId(project.id);
     setProjectForm(project);
-    setViewMode("project");
     setUploadError("");
+    setViewMode("project");
   };
 
   const saveProject = () => {
@@ -311,57 +306,59 @@ export default function Home() {
     setViewMode("list");
   };
 
-const handleBlobUpload = async (e: ChangeEvent<HTMLInputElement>) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
+  const handleBlobUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
 
-  setUploadError("");
-  setIsUploadingDoc(true);
+    setUploadError("");
+    setIsUploadingDoc(true);
 
-  try {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("projectId", projectForm.numeroProjet || "default");
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("projectId", projectForm.numeroProjet || "default");
 
-    const response = await fetch("/api/blob/upload", {
-      method: "POST",
-      body: formData,
-    });
+      const response = await fetch("/api/blob/upload", {
+        method: "POST",
+        body: formData,
+      });
 
-    if (!response.ok) {
-      throw new Error("Upload failed");
+      if (!response.ok) {
+        const text = await response.text();
+        console.error("Upload response error:", text);
+        throw new Error("Upload failed");
+      }
+
+      const data = (await response.json()) as { url: string };
+
+      const newDocument: ProjectDocument = {
+        id: crypto.randomUUID(),
+        name: file.name,
+        url: data.url,
+        uploadedAt: new Date().toISOString(),
+      };
+
+      const updatedForm: Project = {
+        ...projectForm,
+        documents: [...projectForm.documents, newDocument],
+      };
+
+      setProjectForm(updatedForm);
+
+      if (selectedProjectId !== null) {
+        const updatedProjects = projects.map((project) =>
+          project.id === selectedProjectId ? updatedForm : project
+        );
+        persistProjects(updatedProjects);
+      }
+    } catch (err) {
+      console.error(err);
+      setUploadError("Impossible de téléverser le PDF.");
+    } finally {
+      setIsUploadingDoc(false);
+      e.target.value = "";
     }
-
-    const data = (await response.json()) as { url: string };
-
-    const newDocument: ProjectDocument = {
-      id: crypto.randomUUID(),
-      name: file.name,
-      url: data.url,
-      uploadedAt: new Date().toISOString(),
-    };
-
-    const updatedForm = {
-      ...projectForm,
-      documents: [...projectForm.documents, newDocument],
-    };
-
-    setProjectForm(updatedForm);
-
-    if (selectedProjectId !== null) {
-      const updatedProjects = projects.map((project) =>
-        project.id === selectedProjectId ? updatedForm : project
-      );
-      persistProjects(updatedProjects);
-    }
-  } catch (err) {
-    console.error(err);
-    setUploadError("Impossible de téléverser le PDF.");
-  } finally {
-    setIsUploadingDoc(false);
-    e.target.value = "";
-  }
-};
+  };
 
   const filteredProjects = useMemo(() => {
     return projects.filter((project) => {
@@ -416,7 +413,7 @@ const handleBlobUpload = async (e: ChangeEvent<HTMLInputElement>) => {
               Entrez votre identifiant et votre code d’accès pour continuer.
             </p>
 
-            <div className="mb-4 text-left">
+            <div className="mb-4">
               <label className="mb-2 block text-sm text-zinc-200">
                 Identifiant
               </label>
@@ -429,7 +426,7 @@ const handleBlobUpload = async (e: ChangeEvent<HTMLInputElement>) => {
               />
             </div>
 
-            <div className="mb-4 text-left">
+            <div className="mb-4">
               <label className="mb-2 block text-sm text-zinc-200">
                 Code d’accès
               </label>
@@ -486,6 +483,7 @@ const handleBlobUpload = async (e: ChangeEvent<HTMLInputElement>) => {
                 >
                   Retour à la liste
                 </button>
+
                 <button
                   onClick={saveProject}
                   className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-orange-400"
@@ -524,11 +522,7 @@ const handleBlobUpload = async (e: ChangeEvent<HTMLInputElement>) => {
                       className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
                     >
                       {ALL_STATUSES.map((status) => (
-                        <option
-                          key={status}
-                          value={status}
-                          className="text-black"
-                        >
+                        <option key={status} value={status} className="text-black">
                           {status}
                         </option>
                       ))}
@@ -542,10 +536,7 @@ const handleBlobUpload = async (e: ChangeEvent<HTMLInputElement>) => {
                     <input
                       value={projectForm.ville}
                       onChange={(e) =>
-                        setProjectForm({
-                          ...projectForm,
-                          ville: e.target.value,
-                        })
+                        setProjectForm({ ...projectForm, ville: e.target.value })
                       }
                       className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
                     />
@@ -601,6 +592,7 @@ const handleBlobUpload = async (e: ChangeEvent<HTMLInputElement>) => {
                         }
                         className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
                       />
+
                       <button className="rounded border border-orange-400 px-3 py-2 text-orange-400">
                         +
                       </button>
@@ -788,49 +780,24 @@ const handleBlobUpload = async (e: ChangeEvent<HTMLInputElement>) => {
           </div>
 
           <div className="mb-6 flex flex-wrap gap-4">
-            <button
-              onClick={() => changeSection("projets")}
-              className={`min-w-[120px] border-2 px-6 py-3 text-left transition ${
-                activeSection === "projets"
-                  ? "border-white bg-white text-black"
-                  : "border-white/80 bg-black/20 text-white hover:bg-white/10"
-              }`}
-            >
-              Projet
-            </button>
-
-            <button
-              onClick={() => changeSection("plans")}
-              className={`min-w-[120px] border-2 px-6 py-3 text-left transition ${
-                activeSection === "plans"
-                  ? "border-white bg-white text-black"
-                  : "border-white/80 bg-black/20 text-white hover:bg-white/10"
-              }`}
-            >
-              Liste de plan
-            </button>
-
-            <button
-              onClick={() => changeSection("clients")}
-              className={`min-w-[120px] border-2 px-6 py-3 text-left transition ${
-                activeSection === "clients"
-                  ? "border-white bg-white text-black"
-                  : "border-white/80 bg-black/20 text-white hover:bg-white/10"
-              }`}
-            >
-              Client
-            </button>
-
-            <button
-              onClick={() => changeSection("facturation")}
-              className={`min-w-[120px] border-2 px-6 py-3 text-left transition ${
-                activeSection === "facturation"
-                  ? "border-white bg-white text-black"
-                  : "border-white/80 bg-black/20 text-white hover:bg-white/10"
-              }`}
-            >
-              Facturation
-            </button>
+            {[
+              ["projets", "Projet"],
+              ["plans", "Liste de plan"],
+              ["clients", "Client"],
+              ["facturation", "Facturation"],
+            ].map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => changeSection(key as ActiveSection)}
+                className={`min-w-[120px] border-2 px-6 py-3 text-left transition ${
+                  activeSection === key
+                    ? "border-white bg-white text-black"
+                    : "border-white/80 bg-black/20 text-white hover:bg-white/10"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
           </div>
 
           {activeSection === "projets" && (
@@ -1002,23 +969,15 @@ const handleBlobUpload = async (e: ChangeEvent<HTMLInputElement>) => {
             </>
           )}
 
-          {activeSection === "plans" && (
+          {activeSection !== "projets" && (
             <div className="rounded-lg border border-white/10 bg-black/35 p-8 backdrop-blur-sm">
-              <h2 className="text-xl font-semibold">Liste de plan</h2>
-              <p className="mt-2 text-zinc-300">Section en construction.</p>
-            </div>
-          )}
-
-          {activeSection === "clients" && (
-            <div className="rounded-lg border border-white/10 bg-black/35 p-8 backdrop-blur-sm">
-              <h2 className="text-xl font-semibold">Client</h2>
-              <p className="mt-2 text-zinc-300">Section en construction.</p>
-            </div>
-          )}
-
-          {activeSection === "facturation" && (
-            <div className="rounded-lg border border-white/10 bg-black/35 p-8 backdrop-blur-sm">
-              <h2 className="text-xl font-semibold">Facturation</h2>
+              <h2 className="text-xl font-semibold">
+                {activeSection === "plans"
+                  ? "Liste de plan"
+                  : activeSection === "clients"
+                  ? "Client"
+                  : "Facturation"}
+              </h2>
               <p className="mt-2 text-zinc-300">Section en construction.</p>
             </div>
           )}
