@@ -11,6 +11,7 @@ const YEAR_PREFIX = "26";
 const NEXT_PROJECT_KEY = "eric-next-project-number-26";
 const PROJECTS_KEY = "eric-projects";
 const CLIENTS_KEY = "eric-clients";
+const ITEMS_BANK_KEY = "eric-items-bank";
 
 type StatusType =
   | "À soumissionner"
@@ -44,6 +45,26 @@ type ProjectDocument = {
   uploadedAt: string;
 };
 
+type ItemBank = {
+  id: string;
+  name: string;
+  price: number;
+};
+
+type QuoteLine = {
+  id: string;
+  name: string;
+  price: number;
+  quantity: number;
+};
+
+type Quote = {
+  id: string;
+  name: string;
+  date: string;
+  lines: QuoteLine[];
+};
+
 type Project = {
   id: number;
   numeroProjet: string;
@@ -57,11 +78,13 @@ type Project = {
   description: string;
   poNumber: string;
   documents: ProjectDocument[];
+  soumissions: Quote[];
   createdAt: string;
 };
 
 type ActiveSection = "projets" | "plans" | "clients" | "facturation";
 type ViewMode = "list" | "project";
+type ProjectPanel = "fiche" | "soumission";
 
 const ALL_STATUSES: StatusType[] = [
   "À soumissionner",
@@ -87,6 +110,7 @@ const EMPTY_PROJECT: Project = {
   description: "",
   poNumber: "",
   documents: [],
+  soumissions: [],
   createdAt: "",
 };
 
@@ -100,6 +124,13 @@ function formatDisplayDate(dateString: string) {
   return Number.isNaN(date.getTime())
     ? dateString
     : date.toLocaleDateString("fr-CA");
+}
+
+function money(value: number) {
+  return value.toLocaleString("fr-CA", {
+    style: "currency",
+    currency: "CAD",
+  });
 }
 
 function getStatusBadgeClasses(status: StatusType) {
@@ -155,6 +186,19 @@ function normalizeProject(raw: Partial<Project>, index: number): Project {
         pathname: doc.pathname ?? "",
         uploadedAt: doc.uploadedAt,
       })) ?? [],
+    soumissions:
+      raw.soumissions?.map((quote) => ({
+        id: quote.id,
+        name: quote.name,
+        date: quote.date,
+        lines:
+          quote.lines?.map((line) => ({
+            id: line.id,
+            name: line.name,
+            price: Number(line.price) || 0,
+            quantity: Number(line.quantity) || 1,
+          })) ?? [],
+      })) ?? [],
     createdAt: raw.createdAt ?? new Date().toISOString(),
   };
 }
@@ -174,12 +218,34 @@ function normalizeClients(raw: Partial<ClientRecord>[]): ClientRecord[] {
   }));
 }
 
+function normalizeItems(raw: Partial<ItemBank>[]): ItemBank[] {
+  return raw.map((item, index) => ({
+    id: item.id ?? crypto.randomUUID(),
+    name: item.name ?? `Item ${index + 1}`,
+    price: Number(item.price) || 0,
+  }));
+}
+
 function getPrivateBlobOpenUrl(pathname: string, fallbackUrl: string) {
   if (pathname) {
     return `/api/blob/download?pathname=${encodeURIComponent(pathname)}`;
   }
 
   return fallbackUrl;
+}
+
+function getPreparedBy(userName: string) {
+  if (userName === "Véronique") {
+    return {
+      name: "Véronique Lussier",
+      phone: "819-678-6066",
+    };
+  }
+
+  return {
+    name: "Pierre-Luc",
+    phone: "819-314-1262",
+  };
 }
 
 export default function Home() {
@@ -192,6 +258,7 @@ export default function Home() {
   const [activeSection, setActiveSection] =
     useState<ActiveSection>("projets");
   const [viewMode, setViewMode] = useState<ViewMode>("list");
+  const [projectPanel, setProjectPanel] = useState<ProjectPanel>("fiche");
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState<number | null>(
@@ -234,10 +301,17 @@ export default function Home() {
   const [isUploadingDoc, setIsUploadingDoc] = useState(false);
   const [uploadError, setUploadError] = useState("");
 
+  const [itemsBank, setItemsBank] = useState<ItemBank[]>([]);
+  const [newItemName, setNewItemName] = useState("");
+  const [newItemPrice, setNewItemPrice] = useState("");
+  const [newQuoteName, setNewQuoteName] = useState("");
+  const [activeQuoteId, setActiveQuoteId] = useState<string | null>(null);
+
   useEffect(() => {
     const savedUser = localStorage.getItem("eric-user");
     const savedProjects = localStorage.getItem(PROJECTS_KEY);
     const savedClients = localStorage.getItem(CLIENTS_KEY);
+    const savedItems = localStorage.getItem(ITEMS_BANK_KEY);
     const savedSection = localStorage.getItem("eric-section") as
       | ActiveSection
       | null;
@@ -268,6 +342,29 @@ export default function Home() {
       } catch {
         setClients([]);
       }
+    }
+
+    if (savedItems) {
+      try {
+        const parsed = JSON.parse(savedItems) as Partial<ItemBank>[];
+        setItemsBank(normalizeItems(parsed));
+      } catch {
+        setItemsBank([
+          {
+            id: crypto.randomUUID(),
+            name: "Plan de signalisation",
+            price: 300,
+          },
+        ]);
+      }
+    } else {
+      setItemsBank([
+        {
+          id: crypto.randomUUID(),
+          name: "Plan de signalisation",
+          price: 300,
+        },
+      ]);
     }
 
     if (
@@ -302,6 +399,22 @@ export default function Home() {
   const persistClients = (updatedClients: ClientRecord[]) => {
     setClients(updatedClients);
     localStorage.setItem(CLIENTS_KEY, JSON.stringify(updatedClients));
+  };
+
+  const persistItemsBank = (updatedItems: ItemBank[]) => {
+    setItemsBank(updatedItems);
+    localStorage.setItem(ITEMS_BANK_KEY, JSON.stringify(updatedItems));
+  };
+
+  const persistProjectForm = (updatedProject: Project) => {
+    setProjectForm(updatedProject);
+
+    if (selectedProjectId !== null) {
+      const updatedProjects = projects.map((project) =>
+        project.id === selectedProjectId ? updatedProject : project
+      );
+      persistProjects(updatedProjects);
+    }
   };
 
   const selectedClient = clients.find(
@@ -345,6 +458,18 @@ export default function Home() {
       return clientOk && contactOk && statusOk;
     });
   }, [clients, clientListSearch, contactListSearch, clientStatusFilter]);
+
+  const activeQuote = projectForm.soumissions.find(
+    (quote) => quote.id === activeQuoteId
+  );
+
+  const quoteTotal =
+    activeQuote?.lines.reduce(
+      (total, line) => total + line.price * line.quantity,
+      0
+    ) ?? 0;
+
+  const preparedBy = getPreparedBy(projectForm.charge || loggedInUser || "");
 
   const handleLogin = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -501,6 +626,7 @@ export default function Home() {
       description: newProject.description.trim(),
       poNumber: "",
       documents: [],
+      soumissions: [],
       createdAt: new Date().toISOString(),
     };
 
@@ -514,6 +640,8 @@ export default function Home() {
   const openProject = (project: Project) => {
     setSelectedProjectId(project.id);
     setProjectForm(project);
+    setProjectPanel("fiche");
+    setActiveQuoteId(project.soumissions[0]?.id ?? null);
     setUploadError("");
     setViewMode("project");
   };
@@ -527,6 +655,114 @@ export default function Home() {
 
     persistProjects(updatedProjects);
     setViewMode("list");
+  };
+
+  const createQuote = () => {
+    const quote: Quote = {
+      id: crypto.randomUUID(),
+      name: newQuoteName.trim() || `Soumission ${projectForm.soumissions.length + 1}`,
+      date: new Date().toISOString(),
+      lines: [],
+    };
+
+    const updatedProject = {
+      ...projectForm,
+      soumissions: [...projectForm.soumissions, quote],
+    };
+
+    persistProjectForm(updatedProject);
+    setActiveQuoteId(quote.id);
+    setNewQuoteName("");
+  };
+
+  const addItemToBank = () => {
+    if (!newItemName.trim() || !newItemPrice.trim()) return;
+
+    const price = Number(newItemPrice.replace(",", "."));
+
+    if (!Number.isFinite(price)) return;
+
+    persistItemsBank([
+      ...itemsBank,
+      {
+        id: crypto.randomUUID(),
+        name: newItemName.trim(),
+        price,
+      },
+    ]);
+
+    setNewItemName("");
+    setNewItemPrice("");
+  };
+
+  const removeItemFromBank = (itemId: string) => {
+    persistItemsBank(itemsBank.filter((item) => item.id !== itemId));
+  };
+
+  const addLineToQuote = (item: ItemBank) => {
+    if (!activeQuote) return;
+
+    const updatedProject = {
+      ...projectForm,
+      soumissions: projectForm.soumissions.map((quote) =>
+        quote.id === activeQuote.id
+          ? {
+              ...quote,
+              lines: [
+                ...quote.lines,
+                {
+                  id: crypto.randomUUID(),
+                  name: item.name,
+                  price: item.price,
+                  quantity: 1,
+                },
+              ],
+            }
+          : quote
+      ),
+    };
+
+    persistProjectForm(updatedProject);
+  };
+
+  const updateQuoteLineQuantity = (lineId: string, quantity: number) => {
+    if (!activeQuote) return;
+
+    const updatedProject = {
+      ...projectForm,
+      soumissions: projectForm.soumissions.map((quote) =>
+        quote.id === activeQuote.id
+          ? {
+              ...quote,
+              lines: quote.lines.map((line) =>
+                line.id === lineId
+                  ? { ...line, quantity: Math.max(quantity, 0) }
+                  : line
+              ),
+            }
+          : quote
+      ),
+    };
+
+    persistProjectForm(updatedProject);
+  };
+
+  const removeQuoteLine = (lineId: string) => {
+    if (!activeQuote) return;
+
+    const updatedProject = {
+      ...projectForm,
+      soumissions: projectForm.soumissions.map((quote) =>
+        quote.id === activeQuote.id
+          ? {
+              ...quote,
+              lines: quote.lines.filter((line) => line.id !== lineId),
+            }
+          : quote
+      ),
+    };
+
+    persistProjectForm(updatedProject);
   };
 
   const handleBlobUpload = async (e: ChangeEvent<HTMLInputElement>) => {
@@ -565,19 +801,12 @@ export default function Home() {
         uploadedAt: new Date().toISOString(),
       };
 
-      const updatedForm: Project = {
+      const updatedProject: Project = {
         ...projectForm,
         documents: [...projectForm.documents, newDocument],
       };
 
-      setProjectForm(updatedForm);
-
-      if (selectedProjectId !== null) {
-        const updatedProjects = projects.map((project) =>
-          project.id === selectedProjectId ? updatedForm : project
-        );
-        persistProjects(updatedProjects);
-      }
+      persistProjectForm(updatedProject);
     } catch (err) {
       console.error(err);
       setUploadError("Impossible de téléverser le PDF.");
@@ -715,403 +944,667 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-black/35 p-5 shadow-2xl backdrop-blur-sm">
-              <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-                <div className="rounded-xl border border-orange-400/40 bg-black/20 p-5">
-                  <h2 className="mb-5 text-xl font-semibold text-orange-400">
-                    Informations projet
+            <div className="mb-6 grid grid-cols-1 gap-5 lg:grid-cols-3">
+              <button
+                onClick={() => setProjectPanel("soumission")}
+                className={`min-h-[90px] rounded-xl border-2 border-orange-400 text-3xl font-semibold transition ${
+                  projectPanel === "soumission"
+                    ? "bg-orange-500 text-black"
+                    : "bg-transparent text-orange-400 hover:bg-orange-400/10"
+                }`}
+              >
+                Estimation
+              </button>
+
+              <button className="min-h-[90px] rounded-xl border-2 border-orange-400 bg-transparent px-4 text-2xl font-semibold text-orange-400 transition hover:bg-orange-400/10">
+                Bordereau de facturation
+              </button>
+
+              <button
+                onClick={() => setProjectPanel("fiche")}
+                className={`min-h-[90px] rounded-xl border-2 border-orange-400 text-3xl font-semibold transition ${
+                  projectPanel === "fiche"
+                    ? "bg-orange-500 text-black"
+                    : "bg-transparent text-orange-400 hover:bg-orange-400/10"
+                }`}
+              >
+                Projet
+              </button>
+            </div>
+
+            {projectPanel === "soumission" ? (
+              <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+                <div className="rounded-2xl border border-white/10 bg-black/35 p-5 shadow-2xl backdrop-blur-sm">
+                  <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                    <h2 className="text-2xl font-semibold text-orange-400">
+                      Soumission
+                    </h2>
+
+                    <div className="flex flex-wrap gap-3">
+                      <input
+                        value={newQuoteName}
+                        onChange={(e) => setNewQuoteName(e.target.value)}
+                        placeholder="Nom de la soumission"
+                        className="rounded-lg border border-white/10 bg-white/10 px-4 py-2 text-white outline-none placeholder:text-zinc-400"
+                      />
+                      <button
+                        onClick={createQuote}
+                        className="rounded-lg bg-orange-500 px-4 py-2 font-medium text-black transition hover:bg-orange-400"
+                      >
+                        + Nouvelle soumission
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="mb-5 flex flex-wrap gap-2">
+                    {projectForm.soumissions.length === 0 ? (
+                      <p className="text-sm text-zinc-400">
+                        Aucune soumission pour ce projet.
+                      </p>
+                    ) : (
+                      projectForm.soumissions.map((quote) => (
+                        <button
+                          key={quote.id}
+                          onClick={() => setActiveQuoteId(quote.id)}
+                          className={`rounded-lg border px-4 py-2 text-sm transition ${
+                            quote.id === activeQuoteId
+                              ? "border-orange-400 bg-orange-500 text-black"
+                              : "border-white/10 bg-white/5 text-white hover:bg-white/10"
+                          }`}
+                        >
+                          {quote.name}
+                        </button>
+                      ))
+                    )}
+                  </div>
+
+                  {activeQuote ? (
+                    <div className="rounded-xl bg-white p-6 text-black">
+                      <h2 className="mb-4 text-3xl font-bold uppercase">
+                        Soumission
+                      </h2>
+
+                      <div className="mb-5 text-sm">
+                        <strong>O/S No.</strong> {projectForm.numeroProjet}
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                        <div>
+                          <h3 className="mb-2 font-bold uppercase">
+                            Présenté à
+                          </h3>
+                          <p>
+                            <strong>Entreprise :</strong> {projectForm.client}
+                          </p>
+                          <p>
+                            <strong>Contact :</strong>{" "}
+                            {selectedContact?.name || ""}
+                          </p>
+                          <p>
+                            <strong>Courriel :</strong>{" "}
+                            {selectedContact?.email || ""}
+                          </p>
+                          <p>
+                            <strong>No. Tel. :</strong>{" "}
+                            {selectedContact?.phone || ""}
+                          </p>
+                        </div>
+
+                        <div>
+                          <h3 className="mb-2 font-bold uppercase">
+                            Préparé par
+                          </h3>
+                          <p>
+                            <strong>Contact :</strong> {preparedBy.name}
+                          </p>
+                          <p>
+                            <strong>No. Tel. :</strong> {preparedBy.phone}
+                          </p>
+                          <p>
+                            <strong>Date :</strong>{" "}
+                            {formatDisplayDate(activeQuote.date)}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="my-6">
+                        <h3 className="mb-2 font-bold uppercase">
+                          Description du projet
+                        </h3>
+                        <p>
+                          {projectForm.numeroClient
+                            ? `${projectForm.numeroClient} | `
+                            : ""}
+                          {projectForm.description}
+                        </p>
+                      </div>
+
+                      <div className="overflow-hidden border border-zinc-300">
+                        <div className="grid grid-cols-[1.6fr_0.5fr_0.4fr_0.5fr_0.2fr] bg-zinc-200 p-2 text-sm font-bold uppercase">
+                          <div>Item</div>
+                          <div>Prix</div>
+                          <div>Quantité</div>
+                          <div>Total</div>
+                          <div></div>
+                        </div>
+
+                        {activeQuote.lines.length === 0 ? (
+                          <div className="p-4 text-sm text-zinc-500">
+                            Aucun item ajouté.
+                          </div>
+                        ) : (
+                          activeQuote.lines.map((line) => (
+                            <div
+                              key={line.id}
+                              className="grid grid-cols-[1.6fr_0.5fr_0.4fr_0.5fr_0.2fr] items-center border-t border-zinc-200 p-2 text-sm"
+                            >
+                              <div>{line.name}</div>
+                              <div>{money(line.price)}</div>
+                              <div>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={line.quantity}
+                                  onChange={(e) =>
+                                    updateQuoteLineQuantity(
+                                      line.id,
+                                      Number(e.target.value)
+                                    )
+                                  }
+                                  className="w-20 rounded border border-zinc-300 px-2 py-1"
+                                />
+                              </div>
+                              <div>{money(line.price * line.quantity)}</div>
+                              <button
+                                onClick={() => removeQuoteLine(line.id)}
+                                className="text-red-600"
+                              >
+                                X
+                              </button>
+                            </div>
+                          ))
+                        )}
+
+                        <div className="grid grid-cols-[1.6fr_0.5fr_0.4fr_0.5fr_0.2fr] border-t border-zinc-400 bg-zinc-100 p-2 text-sm font-bold">
+                          <div></div>
+                          <div></div>
+                          <div>Total</div>
+                          <div>{money(quoteTotal)}</div>
+                          <div></div>
+                        </div>
+                      </div>
+
+                      <div className="mt-6 text-sm">
+                        <h3 className="mb-2 font-bold uppercase">Notes</h3>
+                        <p>- Validité: 30 jours;</p>
+                        <p>
+                          - Responsabilité: Dynamique Expert-Conseil Inc.
+                          décline toute responsabilité liée à l’installation de
+                          la signalisation découlant d’un plan.
+                        </p>
+                        <p>- Paiement: Net 30 jours;</p>
+                        <p>- Taxes: TPS et TVQ en sus.</p>
+                      </div>
+
+                      <div className="mt-8 grid grid-cols-1 gap-6 text-sm md:grid-cols-2">
+                        <div>Approuvé par: __________________</div>
+                        <div>Bon de commande: __________________</div>
+                      </div>
+
+                      <div className="mt-8 text-sm">
+                        <p>Dynamique Expert-Conseil Inc.</p>
+                        <p>44, Allée du refuge, Magog, Qc, J1X 8B5</p>
+                        <p>(819) 678-6066 | info@dynamiqueexpert.ca</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="rounded-xl border border-white/10 bg-white/5 p-6 text-zinc-300">
+                      Clique sur <strong>+ Nouvelle soumission</strong> pour
+                      commencer.
+                    </div>
+                  )}
+                </div>
+
+                <div className="rounded-2xl border border-white/10 bg-black/35 p-5 shadow-2xl backdrop-blur-sm">
+                  <h2 className="mb-4 text-xl font-semibold text-orange-400">
+                    Banque d’items
                   </h2>
 
-                  <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
-                    <div>
+                  <div className="mb-5 space-y-3 rounded-xl border border-orange-400/30 p-4">
+                    <input
+                      value={newItemName}
+                      onChange={(e) => setNewItemName(e.target.value)}
+                      placeholder="Nom de l’item"
+                      className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                    />
+                    <input
+                      value={newItemPrice}
+                      onChange={(e) => setNewItemPrice(e.target.value)}
+                      placeholder="Prix"
+                      className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                    />
+                    <button
+                      onClick={addItemToBank}
+                      className="rounded-lg bg-orange-500 px-4 py-2 font-medium text-black transition hover:bg-orange-400"
+                    >
+                      Ajouter à la banque
+                    </button>
+                  </div>
+
+                  <div className="space-y-3">
+                    {itemsBank.map((item) => (
+                      <div
+                        key={item.id}
+                        className="rounded-lg border border-white/10 bg-white/5 p-3"
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div>
+                            <p className="font-medium">{item.name}</p>
+                            <p className="text-sm text-zinc-300">
+                              {money(item.price)}
+                            </p>
+                          </div>
+
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => addLineToQuote(item)}
+                              className="rounded-lg border border-orange-400 px-3 py-2 text-sm text-orange-300 transition hover:bg-orange-400/10"
+                            >
+                              Ajouter
+                            </button>
+                            <button
+                              onClick={() => removeItemFromBank(item.id)}
+                              className="rounded-lg border border-red-500/40 px-3 py-2 text-sm text-red-300 transition hover:bg-red-500/10"
+                            >
+                              Supprimer
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-white/10 bg-black/35 p-5 shadow-2xl backdrop-blur-sm">
+                <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+                  <div className="rounded-xl border border-orange-400/40 bg-black/20 p-5">
+                    <h2 className="mb-5 text-xl font-semibold text-orange-400">
+                      Informations projet
+                    </h2>
+
+                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                      <div>
+                        <label className="mb-2 block text-sm text-orange-400">
+                          Numéro de projet
+                        </label>
+                        <input
+                          value={projectForm.numeroProjet}
+                          readOnly
+                          className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-sm text-orange-400">
+                          Numéro client
+                        </label>
+                        <input
+                          value={projectForm.numeroClient}
+                          onChange={(e) =>
+                            setProjectForm({
+                              ...projectForm,
+                              numeroClient: e.target.value,
+                            })
+                          }
+                          placeholder="Ex. no interne client"
+                          className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none placeholder:text-zinc-500"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-5">
                       <label className="mb-2 block text-sm text-orange-400">
-                        Numéro de projet
+                        Statut
+                      </label>
+                      <select
+                        value={projectForm.statut}
+                        onChange={(e) =>
+                          setProjectForm({
+                            ...projectForm,
+                            statut: e.target.value as StatusType,
+                          })
+                        }
+                        className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
+                      >
+                        {ALL_STATUSES.map((status) => (
+                          <option
+                            key={status}
+                            value={status}
+                            className="text-black"
+                          >
+                            {status}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="mt-5">
+                      <label className="mb-2 block text-sm text-orange-400">
+                        Ville
                       </label>
                       <input
-                        value={projectForm.numeroProjet}
-                        readOnly
+                        value={projectForm.ville}
+                        onChange={(e) =>
+                          setProjectForm({
+                            ...projectForm,
+                            ville: e.target.value,
+                          })
+                        }
                         className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
                       />
                     </div>
 
-                    <div>
+                    <div className="mt-5">
                       <label className="mb-2 block text-sm text-orange-400">
-                        Numéro client
+                        Endroit
                       </label>
                       <input
-                        value={projectForm.numeroClient}
+                        value={projectForm.endroit}
                         onChange={(e) =>
                           setProjectForm({
                             ...projectForm,
-                            numeroClient: e.target.value,
+                            endroit: e.target.value,
                           })
                         }
-                        placeholder="Ex. no interne client"
-                        className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none placeholder:text-zinc-500"
+                        className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
+                      />
+                    </div>
+
+                    <div className="mt-5">
+                      <label className="mb-2 block text-sm text-orange-400">
+                        Description
+                      </label>
+                      <textarea
+                        value={projectForm.description}
+                        onChange={(e) =>
+                          setProjectForm({
+                            ...projectForm,
+                            description: e.target.value,
+                          })
+                        }
+                        rows={4}
+                        className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
                       />
                     </div>
                   </div>
 
-                  <div className="mt-5">
-                    <label className="mb-2 block text-sm text-orange-400">
-                      Statut
-                    </label>
-                    <select
-                      value={projectForm.statut}
-                      onChange={(e) =>
-                        setProjectForm({
-                          ...projectForm,
-                          statut: e.target.value as StatusType,
-                        })
-                      }
-                      className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
-                    >
-                      {ALL_STATUSES.map((status) => (
-                        <option
-                          key={status}
-                          value={status}
-                          className="text-black"
-                        >
-                          {status}
+                  <div className="rounded-xl border border-orange-400/40 bg-black/20 p-5">
+                    <div className="mb-5 flex items-center justify-between gap-3">
+                      <h2 className="text-xl font-semibold text-orange-400">
+                        Client et contacts
+                      </h2>
+
+                      <button
+                        onClick={() => {
+                          setShowClientModal(true);
+                          setSelectedClientForContact(projectForm.client);
+                        }}
+                        className="rounded border border-orange-400 px-3 py-2 text-orange-400 transition hover:bg-orange-400/10"
+                      >
+                        +
+                      </button>
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm text-orange-400">
+                        Client
+                      </label>
+                      <input
+                        list="clients-list-project"
+                        value={projectForm.client}
+                        onChange={(e) =>
+                          setProjectForm({
+                            ...projectForm,
+                            client: e.target.value,
+                            contactId: "",
+                          })
+                        }
+                        placeholder="Commencez à taper le nom du client"
+                        className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none placeholder:text-zinc-500"
+                      />
+                      <datalist id="clients-list-project">
+                        {clients.map((client) => (
+                          <option key={client.id} value={client.name} />
+                        ))}
+                      </datalist>
+                    </div>
+
+                    <div className="mt-5">
+                      <label className="mb-2 block text-sm text-orange-400">
+                        Contact
+                      </label>
+                      <select
+                        value={projectForm.contactId}
+                        onChange={(e) =>
+                          setProjectForm({
+                            ...projectForm,
+                            contactId: e.target.value,
+                          })
+                        }
+                        className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
+                      >
+                        <option value="" className="text-black">
+                          Sélectionner un contact
                         </option>
-                      ))}
-                    </select>
-                  </div>
+                        {selectedClient?.contacts.map((contact) => (
+                          <option
+                            key={contact.id}
+                            value={contact.id}
+                            className="text-black"
+                          >
+                            {contact.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                  <div className="mt-5">
-                    <label className="mb-2 block text-sm text-orange-400">
-                      Ville
-                    </label>
-                    <input
-                      value={projectForm.ville}
-                      onChange={(e) =>
-                        setProjectForm({
-                          ...projectForm,
-                          ville: e.target.value,
-                        })
-                      }
-                      className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
-                    />
-                  </div>
+                    <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2">
+                      <div>
+                        <label className="mb-2 block text-sm text-orange-400">
+                          Téléphone
+                        </label>
+                        <input
+                          value={selectedContact?.phone ?? ""}
+                          readOnly
+                          placeholder="Automatique selon le contact"
+                          className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none placeholder:text-zinc-500"
+                        />
+                      </div>
 
-                  <div className="mt-5">
-                    <label className="mb-2 block text-sm text-orange-400">
-                      Endroit
-                    </label>
-                    <input
-                      value={projectForm.endroit}
-                      onChange={(e) =>
-                        setProjectForm({
-                          ...projectForm,
-                          endroit: e.target.value,
-                        })
-                      }
-                      className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
-                    />
-                  </div>
-
-                  <div className="mt-5">
-                    <label className="mb-2 block text-sm text-orange-400">
-                      Description
-                    </label>
-                    <textarea
-                      value={projectForm.description}
-                      onChange={(e) =>
-                        setProjectForm({
-                          ...projectForm,
-                          description: e.target.value,
-                        })
-                      }
-                      rows={4}
-                      className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
-                    />
+                      <div>
+                        <label className="mb-2 block text-sm text-orange-400">
+                          Courriel
+                        </label>
+                        <input
+                          value={selectedContact?.email ?? ""}
+                          readOnly
+                          placeholder="Automatique selon le contact"
+                          className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none placeholder:text-zinc-500"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-orange-400/40 bg-black/20 p-5">
-                  <div className="mb-5 flex items-center justify-between gap-3">
-                    <h2 className="text-xl font-semibold text-orange-400">
-                      Client et contacts
+                <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+                  <div className="rounded-xl border border-orange-400/40 bg-black/20 p-4">
+                    <p className="mb-4 text-xl text-orange-400">PO</p>
+
+                    <div className="mb-4">
+                      <label className="mb-2 block text-sm text-zinc-200">
+                        Numéro de PO
+                      </label>
+                      <input
+                        value={projectForm.poNumber}
+                        onChange={(e) =>
+                          setProjectForm({
+                            ...projectForm,
+                            poNumber: e.target.value,
+                          })
+                        }
+                        placeholder="Inscrire le numéro de PO"
+                        className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                      />
+                    </div>
+
+                    <div className="mb-4 flex flex-wrap items-center gap-3">
+                      <label className="cursor-pointer rounded-lg border border-orange-400 bg-orange-400/10 px-4 py-3 text-sm font-medium text-orange-300 transition hover:bg-orange-400/20">
+                        {isUploadingDoc
+                          ? "Upload en cours..."
+                          : "Importer un PDF"}
+                        <input
+                          type="file"
+                          accept="application/pdf"
+                          onChange={handleBlobUpload}
+                          className="hidden"
+                          disabled={isUploadingDoc}
+                        />
+                      </label>
+
+                      {uploadError && (
+                        <span className="text-sm text-red-400">
+                          {uploadError}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="space-y-3">
+                      {projectForm.documents.length === 0 ? (
+                        <p className="text-sm text-zinc-400">
+                          Aucun PDF attaché pour le moment.
+                        </p>
+                      ) : (
+                        projectForm.documents.map((doc) => (
+                          <div
+                            key={doc.id}
+                            className="flex flex-col gap-2 rounded-lg border border-white/10 bg-white/5 p-3 md:flex-row md:items-center md:justify-between"
+                          >
+                            <div>
+                              <p className="text-sm font-medium text-white">
+                                {doc.name}
+                              </p>
+                              <p className="text-xs text-zinc-400">
+                                Ajouté le {formatDisplayDate(doc.uploadedAt)}
+                              </p>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                              <a
+                                href={getPrivateBlobOpenUrl(
+                                  doc.pathname,
+                                  doc.url
+                                )}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm text-white transition hover:bg-white/20"
+                              >
+                                Ouvrir
+                              </a>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updatedProject = {
+                                    ...projectForm,
+                                    documents: projectForm.documents.filter(
+                                      (item) => item.id !== doc.id
+                                    ),
+                                  };
+
+                                  persistProjectForm(updatedProject);
+                                }}
+                                className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300 transition hover:bg-red-500/20"
+                              >
+                                Retirer
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex items-end justify-start lg:justify-end">
+                    <div className="text-right">
+                      <p className="text-lg text-zinc-200">
+                        Fait par : {projectForm.charge}
+                      </p>
+                      <p className="mt-2 text-lg text-zinc-200">
+                        Date : {formatDisplayDate(projectForm.createdAt)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {showClientModal && (
+              <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/75 px-4">
+                <div className="w-full max-w-4xl rounded-2xl border border-white/10 bg-black/95 p-6 text-white shadow-2xl">
+                  <div className="mb-6 flex items-center justify-between">
+                    <h2 className="text-2xl font-semibold">
+                      Gestion clients / contacts
                     </h2>
 
                     <button
-                      onClick={() => {
-                        setShowClientModal(true);
-                        setSelectedClientForContact(projectForm.client);
-                      }}
-                      className="rounded border border-orange-400 px-3 py-2 text-orange-400 transition hover:bg-orange-400/10"
+                      onClick={() => setShowClientModal(false)}
+                      className="rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm transition hover:bg-white/10"
                     >
-                      +
+                      Fermer
                     </button>
                   </div>
 
-                  <div>
-                    <label className="mb-2 block text-sm text-orange-400">
-                      Client
-                    </label>
-                    <input
-                      list="clients-list-project"
-                      value={projectForm.client}
-                      onChange={(e) =>
-                        setProjectForm({
-                          ...projectForm,
-                          client: e.target.value,
-                          contactId: "",
-                        })
-                      }
-                      placeholder="Commencez à taper le nom du client"
-                      className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none placeholder:text-zinc-500"
-                    />
-                    <datalist id="clients-list-project">
-                      {clients.map((client) => (
-                        <option key={client.id} value={client.name} />
-                      ))}
-                    </datalist>
-                  </div>
+                  <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                    <div className="rounded-xl border border-orange-400/30 p-4">
+                      <h3 className="mb-4 text-lg font-semibold text-orange-400">
+                        Ajouter un client
+                      </h3>
 
-                  <div className="mt-5">
-                    <label className="mb-2 block text-sm text-orange-400">
-                      Contact
-                    </label>
-                    <select
-                      value={projectForm.contactId}
-                      onChange={(e) =>
-                        setProjectForm({
-                          ...projectForm,
-                          contactId: e.target.value,
-                        })
-                      }
-                      className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
-                    >
-                      <option value="" className="text-black">
-                        Sélectionner un contact
-                      </option>
-                      {selectedClient?.contacts.map((contact) => (
-                        <option
-                          key={contact.id}
-                          value={contact.id}
-                          className="text-black"
-                        >
-                          {contact.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2">
-                    <div>
-                      <label className="mb-2 block text-sm text-orange-400">
-                        Téléphone
-                      </label>
                       <input
-                        value={selectedContact?.phone ?? ""}
-                        readOnly
-                        placeholder="Automatique selon le contact"
-                        className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none placeholder:text-zinc-500"
+                        value={newClientName}
+                        onChange={(e) => setNewClientName(e.target.value)}
+                        placeholder="Nom du client"
+                        className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
                       />
-                    </div>
 
-                    <div>
-                      <label className="mb-2 block text-sm text-orange-400">
-                        Courriel
-                      </label>
-                      <input
-                        value={selectedContact?.email ?? ""}
-                        readOnly
-                        placeholder="Automatique selon le contact"
-                        className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none placeholder:text-zinc-500"
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
+                      <select
+                        value={newClientStatus}
+                        onChange={(e) =>
+                          setNewClientStatus(e.target.value as ClientStatus)
+                        }
+                        className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none"
+                      >
+                        {CLIENT_STATUSES.map((status) => (
+                          <option
+                            key={status}
+                            value={status}
+                            className="text-black"
+                          >
+                            {status}
+                          </option>
+                        ))}
+                      </select>
 
-              <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-3">
-                <button className="min-h-[90px] rounded-xl border-2 border-orange-400 bg-transparent text-3xl font-semibold text-orange-400 transition hover:bg-orange-400/10">
-                  Estimation
-                </button>
+                      <button
+                        onClick={addClient}
+                        className="rounded-lg bg-orange-500 px-4 py-2 font-medium text-white transition hover:bg-orange-400"
+                      >
+                        Ajouter client
+                      </button>
 
-                <button className="min-h-[90px] rounded-xl border-2 border-orange-400 bg-transparent px-4 text-2xl font-semibold text-orange-400 transition hover:bg-orange-400/10">
-                  Bordereau de facturation
-                </button>
-
-                <button className="min-h-[90px] rounded-xl border-2 border-orange-400 bg-transparent text-3xl font-semibold text-orange-400 transition hover:bg-orange-400/10">
-                  Plan
-                </button>
-              </div>
-
-              <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-                <div className="rounded-xl border border-orange-400/40 bg-black/20 p-4">
-                  <p className="mb-4 text-xl text-orange-400">PO</p>
-
-                  <div className="mb-4">
-                    <label className="mb-2 block text-sm text-zinc-200">
-                      Numéro de PO
-                    </label>
-                    <input
-                      value={projectForm.poNumber}
-                      onChange={(e) =>
-                        setProjectForm({
-                          ...projectForm,
-                          poNumber: e.target.value,
-                        })
-                      }
-                      placeholder="Inscrire le numéro de PO"
-                      className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
-                    />
-                  </div>
-
-                  <div className="mb-4 flex flex-wrap items-center gap-3">
-                    <label className="cursor-pointer rounded-lg border border-orange-400 bg-orange-400/10 px-4 py-3 text-sm font-medium text-orange-300 transition hover:bg-orange-400/20">
-                      {isUploadingDoc ? "Upload en cours..." : "Importer un PDF"}
-                      <input
-                        type="file"
-                        accept="application/pdf"
-                        onChange={handleBlobUpload}
-                        className="hidden"
-                        disabled={isUploadingDoc}
-                      />
-                    </label>
-
-                    {uploadError && (
-                      <span className="text-sm text-red-400">{uploadError}</span>
-                    )}
-                  </div>
-
-                  <div className="space-y-3">
-                    {projectForm.documents.length === 0 ? (
-                      <p className="text-sm text-zinc-400">
-                        Aucun PDF attaché pour le moment.
-                      </p>
-                    ) : (
-                      projectForm.documents.map((doc) => (
-                        <div
-                          key={doc.id}
-                          className="flex flex-col gap-2 rounded-lg border border-white/10 bg-white/5 p-3 md:flex-row md:items-center md:justify-between"
-                        >
-                          <div>
-                            <p className="text-sm font-medium text-white">
-                              {doc.name}
-                            </p>
-                            <p className="text-xs text-zinc-400">
-                              Ajouté le {formatDisplayDate(doc.uploadedAt)}
-                            </p>
-                          </div>
-
-                          <div className="flex flex-wrap gap-2">
-                            <a
-                              href={getPrivateBlobOpenUrl(doc.pathname, doc.url)}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm text-white transition hover:bg-white/20"
-                            >
-                              Ouvrir
-                            </a>
-
-                            <button
-                              type="button"
-                              onClick={() => {
-                                const updatedForm = {
-                                  ...projectForm,
-                                  documents: projectForm.documents.filter(
-                                    (item) => item.id !== doc.id
-                                  ),
-                                };
-
-                                setProjectForm(updatedForm);
-
-                                if (selectedProjectId !== null) {
-                                  const updatedProjects = projects.map(
-                                    (project) =>
-                                      project.id === selectedProjectId
-                                        ? updatedForm
-                                        : project
-                                  );
-                                  persistProjects(updatedProjects);
-                                }
-                              }}
-                              className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300 transition hover:bg-red-500/20"
-                            >
-                              Retirer
-                            </button>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex items-end justify-start lg:justify-end">
-                  <div className="text-right">
-                    <p className="text-lg text-zinc-200">
-                      Fait par : {loggedInUser}
-                    </p>
-                    <p className="mt-2 text-lg text-zinc-200">
-                      Date : {formatDisplayDate(projectForm.createdAt)}
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {showClientModal && (
-            <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/75 px-4">
-              <div className="w-full max-w-4xl rounded-2xl border border-white/10 bg-black/95 p-6 text-white shadow-2xl">
-                <div className="mb-6 flex items-center justify-between">
-                  <h2 className="text-2xl font-semibold">
-                    Gestion clients / contacts
-                  </h2>
-
-                  <button
-                    onClick={() => setShowClientModal(false)}
-                    className="rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm transition hover:bg-white/10"
-                  >
-                    Fermer
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                  <div className="rounded-xl border border-orange-400/30 p-4">
-                    <h3 className="mb-4 text-lg font-semibold text-orange-400">
-                      Ajouter un client
-                    </h3>
-
-                    <input
-                      value={newClientName}
-                      onChange={(e) => setNewClientName(e.target.value)}
-                      placeholder="Nom du client"
-                      className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
-                    />
-
-                    <select
-                      value={newClientStatus}
-                      onChange={(e) =>
-                        setNewClientStatus(e.target.value as ClientStatus)
-                      }
-                      className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none"
-                    >
-                      {CLIENT_STATUSES.map((status) => (
-                        <option key={status} value={status} className="text-black">
-                          {status}
-                        </option>
-                      ))}
-                    </select>
-
-                    <button
-                      onClick={addClient}
-                      className="rounded-lg bg-orange-500 px-4 py-2 font-medium text-white transition hover:bg-orange-400"
-                    >
-                      Ajouter client
-                    </button>
-
-                    <div className="mt-5 max-h-64 space-y-2 overflow-auto">
-                      {clients.length === 0 ? (
-                        <p className="text-sm text-zinc-400">
-                          Aucun client pour le moment.
-                        </p>
-                      ) : (
-                        clients.map((client) => (
+                      <div className="mt-5 max-h-64 space-y-2 overflow-auto">
+                        {clients.map((client) => (
                           <button
                             key={client.id}
                             onClick={() =>
@@ -1134,98 +1627,80 @@ export default function Home() {
                               </span>
                             </div>
                           </button>
-                        ))
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="rounded-xl border border-orange-400/30 p-4">
-                    <h3 className="mb-4 text-lg font-semibold text-orange-400">
-                      Ajouter un contact
-                    </h3>
-
-                    <input
-                      list="clients-list-contact-modal"
-                      value={selectedClientForContact}
-                      onChange={(e) =>
-                        setSelectedClientForContact(e.target.value)
-                      }
-                      placeholder="Commencez à taper le client"
-                      className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
-                    />
-                    <datalist id="clients-list-contact-modal">
-                      {clients.map((client) => (
-                        <option key={client.id} value={client.name} />
-                      ))}
-                    </datalist>
-
-                    {selectedClientForContact && filteredClientNames.length > 0 && (
-                      <div className="mb-3 rounded-lg border border-white/10 bg-white/5 p-2">
-                        {filteredClientNames.slice(0, 6).map((client) => (
-                          <button
-                            key={client.id}
-                            onClick={() =>
-                              setSelectedClientForContact(client.name)
-                            }
-                            className="block w-full rounded px-3 py-2 text-left text-sm hover:bg-white/10"
-                          >
-                            {client.name}
-                          </button>
                         ))}
                       </div>
-                    )}
+                    </div>
 
-                    <input
-                      value={newContactName}
-                      onChange={(e) => setNewContactName(e.target.value)}
-                      placeholder="Nom du contact"
-                      className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
-                    />
+                    <div className="rounded-xl border border-orange-400/30 p-4">
+                      <h3 className="mb-4 text-lg font-semibold text-orange-400">
+                        Ajouter un contact
+                      </h3>
 
-                    <input
-                      value={newContactPhone}
-                      onChange={(e) => setNewContactPhone(e.target.value)}
-                      placeholder="Téléphone"
-                      className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
-                    />
-
-                    <input
-                      value={newContactEmail}
-                      onChange={(e) => setNewContactEmail(e.target.value)}
-                      placeholder="Courriel"
-                      className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
-                    />
-
-                    <button
-                      onClick={addContact}
-                      className="rounded-lg bg-orange-500 px-4 py-2 font-medium text-white transition hover:bg-orange-400"
-                    >
-                      Ajouter contact
-                    </button>
-
-                    <div className="mt-5 max-h-64 space-y-2 overflow-auto">
-                      {clients
-                        .find(
-                          (client) =>
-                            client.name.toLowerCase() ===
-                            selectedClientForContact.toLowerCase()
-                        )
-                        ?.contacts.map((contact) => (
-                          <div
-                            key={contact.id}
-                            className="rounded-lg border border-white/10 bg-white/5 p-3 text-sm"
-                          >
-                            <p className="font-semibold">{contact.name}</p>
-                            <p className="text-zinc-300">{contact.phone}</p>
-                            <p className="text-zinc-300">{contact.email}</p>
-                          </div>
+                      <input
+                        list="clients-list-contact-modal"
+                        value={selectedClientForContact}
+                        onChange={(e) =>
+                          setSelectedClientForContact(e.target.value)
+                        }
+                        placeholder="Commencez à taper le client"
+                        className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                      />
+                      <datalist id="clients-list-contact-modal">
+                        {clients.map((client) => (
+                          <option key={client.id} value={client.name} />
                         ))}
+                      </datalist>
+
+                      {selectedClientForContact &&
+                        filteredClientNames.length > 0 && (
+                          <div className="mb-3 rounded-lg border border-white/10 bg-white/5 p-2">
+                            {filteredClientNames.slice(0, 6).map((client) => (
+                              <button
+                                key={client.id}
+                                onClick={() =>
+                                  setSelectedClientForContact(client.name)
+                                }
+                                className="block w-full rounded px-3 py-2 text-left text-sm hover:bg-white/10"
+                              >
+                                {client.name}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+
+                      <input
+                        value={newContactName}
+                        onChange={(e) => setNewContactName(e.target.value)}
+                        placeholder="Nom du contact"
+                        className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                      />
+
+                      <input
+                        value={newContactPhone}
+                        onChange={(e) => setNewContactPhone(e.target.value)}
+                        placeholder="Téléphone"
+                        className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                      />
+
+                      <input
+                        value={newContactEmail}
+                        onChange={(e) => setNewContactEmail(e.target.value)}
+                        placeholder="Courriel"
+                        className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                      />
+
+                      <button
+                        onClick={addContact}
+                        className="rounded-lg bg-orange-500 px-4 py-2 font-medium text-white transition hover:bg-orange-400"
+                      >
+                        Ajouter contact
+                      </button>
                     </div>
                   </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
+          </div>
         </div>
       </main>
     );
@@ -1510,7 +1985,11 @@ export default function Home() {
                       Tous
                     </option>
                     {CLIENT_STATUSES.map((status) => (
-                      <option key={status} value={status} className="text-black">
+                      <option
+                        key={status}
+                        value={status}
+                        className="text-black"
+                      >
                         {status}
                       </option>
                     ))}
