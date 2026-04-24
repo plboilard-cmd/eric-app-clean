@@ -285,6 +285,12 @@ export default function Home() {
     (contact) => contact.id === projectForm.contactId
   );
 
+  const filteredClientNames = clients.filter((client) =>
+    client.name
+      .toLowerCase()
+      .includes(selectedClientForContact.toLowerCase().trim())
+  );
+
   const handleLogin = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
@@ -334,25 +340,38 @@ export default function Home() {
   const addClient = () => {
     if (!newClientName.trim()) return;
 
+    const name = newClientName.trim();
+    const alreadyExists = clients.some(
+      (client) => client.name.toLowerCase() === name.toLowerCase()
+    );
+
+    if (alreadyExists) {
+      setSelectedClientForContact(name);
+      setNewClientName("");
+      return;
+    }
+
     const updated = [
       ...clients,
       {
         id: crypto.randomUUID(),
-        name: newClientName.trim(),
+        name,
         contacts: [],
       },
     ];
 
     persistClients(updated);
-    setSelectedClientForContact(newClientName.trim());
+    setSelectedClientForContact(name);
     setNewClientName("");
   };
 
   const addContact = () => {
-    if (!selectedClientForContact || !newContactName.trim()) return;
+    if (!selectedClientForContact.trim() || !newContactName.trim()) return;
+
+    const clientName = selectedClientForContact.trim();
 
     const updated = clients.map((client) => {
-      if (client.name !== selectedClientForContact) return client;
+      if (client.name.toLowerCase() !== clientName.toLowerCase()) return client;
 
       return {
         ...client,
@@ -386,9 +405,10 @@ export default function Home() {
     }
 
     const nextNumber = Number(localStorage.getItem(NEXT_PROJECT_KEY) || "1");
+    const clientName = newProject.client.trim();
 
     const existingClient = clients.find(
-      (client) => client.name.toLowerCase() === newProject.client.toLowerCase()
+      (client) => client.name.toLowerCase() === clientName.toLowerCase()
     );
 
     if (!existingClient) {
@@ -396,7 +416,7 @@ export default function Home() {
         ...clients,
         {
           id: crypto.randomUUID(),
-          name: newProject.client.trim(),
+          name: clientName,
           contacts: [],
         },
       ]);
@@ -406,7 +426,7 @@ export default function Home() {
       id: Date.now(),
       numeroProjet: makeProjectNumber(nextNumber),
       numeroClient: "",
-      client: newProject.client.trim(),
+      client: clientName,
       contactId: "",
       statut: "À soumissionner",
       charge: loggedInUser,
@@ -665,7 +685,7 @@ export default function Home() {
                             numeroClient: e.target.value,
                           })
                         }
-                        placeholder="Ex. PO / numéro client"
+                        placeholder="Ex. no interne client"
                         className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none placeholder:text-zinc-500"
                       />
                     </div>
@@ -754,7 +774,10 @@ export default function Home() {
                     </h2>
 
                     <button
-                      onClick={() => setShowClientModal(true)}
+                      onClick={() => {
+                        setShowClientModal(true);
+                        setSelectedClientForContact(projectForm.client);
+                      }}
                       className="rounded border border-orange-400 px-3 py-2 text-orange-400 transition hover:bg-orange-400/10"
                     >
                       +
@@ -765,7 +788,8 @@ export default function Home() {
                     <label className="mb-2 block text-sm text-orange-400">
                       Client
                     </label>
-                    <select
+                    <input
+                      list="clients-list-project"
                       value={projectForm.client}
                       onChange={(e) =>
                         setProjectForm({
@@ -774,21 +798,14 @@ export default function Home() {
                           contactId: "",
                         })
                       }
-                      className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
-                    >
-                      <option value="" className="text-black">
-                        Sélectionner un client
-                      </option>
+                      placeholder="Commencez à taper le nom du client"
+                      className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none placeholder:text-zinc-500"
+                    />
+                    <datalist id="clients-list-project">
                       {clients.map((client) => (
-                        <option
-                          key={client.id}
-                          value={client.name}
-                          className="text-black"
-                        >
-                          {client.name}
-                        </option>
+                        <option key={client.id} value={client.name} />
                       ))}
-                    </select>
+                    </datalist>
                   </div>
 
                   <div className="mt-5">
@@ -1043,26 +1060,36 @@ export default function Home() {
                       Ajouter un contact
                     </h3>
 
-                    <select
+                    <input
+                      list="clients-list-contact-modal"
                       value={selectedClientForContact}
                       onChange={(e) =>
                         setSelectedClientForContact(e.target.value)
                       }
-                      className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none"
-                    >
-                      <option value="" className="text-black">
-                        Sélectionner un client
-                      </option>
+                      placeholder="Commencez à taper le client"
+                      className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                    />
+                    <datalist id="clients-list-contact-modal">
                       {clients.map((client) => (
-                        <option
-                          key={client.id}
-                          value={client.name}
-                          className="text-black"
-                        >
-                          {client.name}
-                        </option>
+                        <option key={client.id} value={client.name} />
                       ))}
-                    </select>
+                    </datalist>
+
+                    {selectedClientForContact && filteredClientNames.length > 0 && (
+                      <div className="mb-3 rounded-lg border border-white/10 bg-white/5 p-2">
+                        {filteredClientNames.slice(0, 6).map((client) => (
+                          <button
+                            key={client.id}
+                            onClick={() =>
+                              setSelectedClientForContact(client.name)
+                            }
+                            className="block w-full rounded px-3 py-2 text-left text-sm hover:bg-white/10"
+                          >
+                            {client.name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
 
                     <input
                       value={newContactName}
@@ -1094,7 +1121,11 @@ export default function Home() {
 
                     <div className="mt-5 max-h-64 space-y-2 overflow-auto">
                       {clients
-                        .find((client) => client.name === selectedClientForContact)
+                        .find(
+                          (client) =>
+                            client.name.toLowerCase() ===
+                            selectedClientForContact.toLowerCase()
+                        )
                         ?.contacts.map((contact) => (
                           <div
                             key={contact.id}
@@ -1410,13 +1441,19 @@ export default function Home() {
                   Client
                 </label>
                 <input
-                  placeholder="Nom du client"
+                  list="clients-list-new-project"
+                  placeholder="Commencez à taper le nom du client"
                   className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/30"
                   value={newProject.client}
                   onChange={(e) =>
                     setNewProject({ ...newProject, client: e.target.value })
                   }
                 />
+                <datalist id="clients-list-new-project">
+                  {clients.map((client) => (
+                    <option key={client.id} value={client.name} />
+                  ))}
+                </datalist>
               </div>
 
               <div>
@@ -1465,137 +1502,6 @@ export default function Home() {
               >
                 Annuler
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showClientModal && (
-        <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/75 px-4">
-          <div className="w-full max-w-4xl rounded-2xl border border-white/10 bg-black/95 p-6 text-white shadow-2xl">
-            <div className="mb-6 flex items-center justify-between">
-              <h2 className="text-2xl font-semibold">
-                Gestion clients / contacts
-              </h2>
-
-              <button
-                onClick={() => setShowClientModal(false)}
-                className="rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm transition hover:bg-white/10"
-              >
-                Fermer
-              </button>
-            </div>
-
-            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-              <div className="rounded-xl border border-orange-400/30 p-4">
-                <h3 className="mb-4 text-lg font-semibold text-orange-400">
-                  Ajouter un client
-                </h3>
-
-                <input
-                  value={newClientName}
-                  onChange={(e) => setNewClientName(e.target.value)}
-                  placeholder="Nom du client"
-                  className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
-                />
-
-                <button
-                  onClick={addClient}
-                  className="rounded-lg bg-orange-500 px-4 py-2 font-medium text-white transition hover:bg-orange-400"
-                >
-                  Ajouter client
-                </button>
-
-                <div className="mt-5 max-h-64 space-y-2 overflow-auto">
-                  {clients.length === 0 ? (
-                    <p className="text-sm text-zinc-400">
-                      Aucun client pour le moment.
-                    </p>
-                  ) : (
-                    clients.map((client) => (
-                      <button
-                        key={client.id}
-                        onClick={() => setSelectedClientForContact(client.name)}
-                        className={`block w-full rounded-lg border px-3 py-2 text-left text-sm transition ${
-                          selectedClientForContact === client.name
-                            ? "border-orange-400 bg-orange-400/15"
-                            : "border-white/10 bg-white/5 hover:bg-white/10"
-                        }`}
-                      >
-                        {client.name}
-                      </button>
-                    ))
-                  )}
-                </div>
-              </div>
-
-              <div className="rounded-xl border border-orange-400/30 p-4">
-                <h3 className="mb-4 text-lg font-semibold text-orange-400">
-                  Ajouter un contact
-                </h3>
-
-                <select
-                  value={selectedClientForContact}
-                  onChange={(e) => setSelectedClientForContact(e.target.value)}
-                  className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none"
-                >
-                  <option value="" className="text-black">
-                    Sélectionner un client
-                  </option>
-                  {clients.map((client) => (
-                    <option
-                      key={client.id}
-                      value={client.name}
-                      className="text-black"
-                    >
-                      {client.name}
-                    </option>
-                  ))}
-                </select>
-
-                <input
-                  value={newContactName}
-                  onChange={(e) => setNewContactName(e.target.value)}
-                  placeholder="Nom du contact"
-                  className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
-                />
-
-                <input
-                  value={newContactPhone}
-                  onChange={(e) => setNewContactPhone(e.target.value)}
-                  placeholder="Téléphone"
-                  className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
-                />
-
-                <input
-                  value={newContactEmail}
-                  onChange={(e) => setNewContactEmail(e.target.value)}
-                  placeholder="Courriel"
-                  className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
-                />
-
-                <button
-                  onClick={addContact}
-                  className="rounded-lg bg-orange-500 px-4 py-2 font-medium text-white transition hover:bg-orange-400"
-                >
-                  Ajouter contact
-                </button>
-
-                <div className="mt-5 max-h-64 space-y-2 overflow-auto">
-                  {clients
-                    .find((client) => client.name === selectedClientForContact)
-                    ?.contacts.map((contact) => (
-                      <div
-                        key={contact.id}
-                        className="rounded-lg border border-white/10 bg-white/5 p-3 text-sm"
-                      >
-                        <p className="font-semibold">{contact.name}</p>
-                        <p className="text-zinc-300">{contact.phone}</p>
-                        <p className="text-zinc-300">{contact.email}</p>
-                      </div>
-                    ))}
-                </div>
-              </div>
             </div>
           </div>
         </div>
