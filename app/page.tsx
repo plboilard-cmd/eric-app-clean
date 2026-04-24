@@ -488,6 +488,13 @@ export default function Home() {
     "Tous" | ClientStatus
   >("Tous");
 
+  const [planSearchNumber, setPlanSearchNumber] = useState("");
+  const [planSearchVille, setPlanSearchVille] = useState("");
+  const [planSearchClient, setPlanSearchClient] = useState("");
+  const [planSearchDescription, setPlanSearchDescription] = useState("");
+  const [planSearchDessinateur, setPlanSearchDessinateur] = useState("");
+  const [showSentPlans, setShowSentPlans] = useState(false);
+
   const [showModal, setShowModal] = useState(false);
   const [newProject, setNewProject] = useState({
     client: "",
@@ -642,6 +649,58 @@ export default function Home() {
       .toLowerCase()
       .includes(selectedClientForContact.toLowerCase().trim())
   );
+
+  const planListing = useMemo(() => {
+    return projects
+      .flatMap((project) =>
+        project.planRequests.map((plan) => ({
+          project,
+          plan,
+        }))
+      )
+      .filter(({ project, plan }) => {
+        if (!plan.statut) return false;
+        if (plan.statut === "envoyé" && !showSentPlans) return false;
+
+        const fullPlanNumber = `${plan.code} ${project.numeroProjet} P${String(plan.planNumber).padStart(3, "0")} R${String(plan.revisionNumber).padStart(2, "0")}`.toLowerCase();
+
+        const numberOk = fullPlanNumber.includes(planSearchNumber.toLowerCase().trim());
+        const villeOk = (plan.ville || project.ville || "")
+          .toLowerCase()
+          .includes(planSearchVille.toLowerCase().trim());
+        const clientOk = project.client
+          .toLowerCase()
+          .includes(planSearchClient.toLowerCase().trim());
+        const descriptionOk = (plan.descriptionPlan || "")
+          .toLowerCase()
+          .includes(planSearchDescription.toLowerCase().trim());
+        const dessinateurOk = (plan.dessinateurIngenieur || "")
+          .toLowerCase()
+          .includes(planSearchDessinateur.toLowerCase().trim());
+
+        return numberOk && villeOk && clientOk && descriptionOk && dessinateurOk;
+      })
+      .sort((a, b) => {
+        const dateA = a.plan.planRequisLe || "9999-12-31";
+        const dateB = b.plan.planRequisLe || "9999-12-31";
+        if (dateA !== dateB) return dateA.localeCompare(dateB);
+        if (a.project.numeroProjet !== b.project.numeroProjet) {
+          return b.project.numeroProjet.localeCompare(a.project.numeroProjet);
+        }
+        if (a.plan.planNumber !== b.plan.planNumber) {
+          return b.plan.planNumber - a.plan.planNumber;
+        }
+        return b.plan.revisionNumber - a.plan.revisionNumber;
+      });
+  }, [
+    projects,
+    showSentPlans,
+    planSearchNumber,
+    planSearchVille,
+    planSearchClient,
+    planSearchDescription,
+    planSearchDessinateur,
+  ]);
 
   const filteredClientsForList = useMemo(() => {
     return clients.filter((client) => {
@@ -858,6 +917,19 @@ export default function Home() {
     setProjectPanel("fiche");
     setActiveQuoteId(project.soumissions[0]?.id ?? null);
     setSelectedPlan(null);
+    setActivePlanId(null);
+    setUploadError("");
+    setPdfError("");
+    setViewMode("project");
+  };
+
+  const openProjectPlanDetail = (project: Project, plan: PlanRequest) => {
+    setSelectedProjectId(project.id);
+    setProjectForm(project);
+    setProjectPanel("planDetail");
+    setActivePlanId(plan.id);
+    setSelectedPlan(plan);
+    setActiveQuoteId(project.soumissions[0]?.id ?? null);
     setUploadError("");
     setPdfError("");
     setViewMode("project");
@@ -3221,6 +3293,168 @@ export default function Home() {
             </>
           )}
 
+          {activeSection === "plans" && (
+            <div className="rounded-xl border border-white/10 bg-black/35 p-6 backdrop-blur-sm">
+              <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold">Liste de plan</h2>
+                  <p className="mt-1 text-sm text-zinc-300">
+                    Plans commandés classés par date requise.
+                  </p>
+                </div>
+
+                <label className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-zinc-200">
+                  <input
+                    type="checkbox"
+                    checked={showSentPlans}
+                    onChange={(e) => setShowSentPlans(e.target.checked)}
+                  />
+                  Voir envoyé
+                </label>
+              </div>
+
+              <div className="mb-5 grid gap-4 lg:grid-cols-5">
+                <div>
+                  <label className="mb-2 block text-sm text-zinc-200">
+                    No projet / plan
+                  </label>
+                  <input
+                    value={planSearchNumber}
+                    onChange={(e) => setPlanSearchNumber(e.target.value)}
+                    placeholder="Ex. 26-0001, P001"
+                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm text-zinc-200">
+                    Ville
+                  </label>
+                  <input
+                    value={planSearchVille}
+                    onChange={(e) => setPlanSearchVille(e.target.value)}
+                    placeholder="Ville"
+                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm text-zinc-200">
+                    Client
+                  </label>
+                  <input
+                    value={planSearchClient}
+                    onChange={(e) => setPlanSearchClient(e.target.value)}
+                    placeholder="Client"
+                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm text-zinc-200">
+                    Description
+                  </label>
+                  <input
+                    value={planSearchDescription}
+                    onChange={(e) => setPlanSearchDescription(e.target.value)}
+                    placeholder="Description plan"
+                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm text-zinc-200">
+                    Dessinateur
+                  </label>
+                  <input
+                    value={planSearchDessinateur}
+                    onChange={(e) => setPlanSearchDessinateur(e.target.value)}
+                    placeholder="Dessinateur"
+                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                  />
+                </div>
+              </div>
+
+              <div className="overflow-x-auto rounded-xl border border-white/10">
+                <table className="min-w-[1500px] w-full text-sm">
+                  <thead className="bg-orange-500 text-black">
+                    <tr>
+                      <th className="p-3 text-left font-semibold">No Projet</th>
+                      <th className="p-3 text-left font-semibold">Fiche</th>
+                      <th className="p-3 text-left font-semibold">Ville</th>
+                      <th className="p-3 text-left font-semibold">Client</th>
+                      <th className="p-3 text-left font-semibold">Description plan</th>
+                      <th className="p-3 text-left font-semibold">Demande</th>
+                      <th className="p-3 text-left font-semibold"># Plan</th>
+                      <th className="p-3 text-left font-semibold"># Rév.</th>
+                      <th className="p-3 text-left font-semibold">Plan requis le</th>
+                      <th className="p-3 text-left font-semibold">Statut plan</th>
+                      <th className="p-3 text-left font-semibold">Dessinateur</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {planListing.length === 0 ? (
+                      <tr>
+                        <td colSpan={11} className="p-6 text-center text-zinc-300">
+                          Aucun plan à afficher.
+                        </td>
+                      </tr>
+                    ) : (
+                      planListing.map(({ project, plan }) => (
+                        <tr
+                          key={`${project.id}-${plan.id}`}
+                          className={`border-t border-white/10 ${
+                            plan.statut === "envoyé"
+                              ? "bg-zinc-600/35"
+                              : plan.statut === "commandé"
+                                ? "bg-yellow-500/18"
+                                : plan.statut === "en dessin"
+                                  ? "bg-sky-500/18"
+                                  : plan.statut === "a vérifier" || plan.statut === "a corriger"
+                                    ? "bg-purple-500/18"
+                                    : "bg-black/15"
+                          }`}
+                        >
+                          <td className="p-3 text-white">{project.numeroProjet}</td>
+                          <td className="p-3">
+                            <button
+                              onClick={() => openProject(project)}
+                              className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-white hover:bg-white/20"
+                            >
+                              Fiche
+                            </button>
+                          </td>
+                          <td className="p-3 text-zinc-200">{plan.ville || project.ville}</td>
+                          <td className="p-3 text-zinc-200">{project.client}</td>
+                          <td className="p-3 text-zinc-100">
+                            <div className="max-w-[520px] truncate" title={plan.descriptionPlan}>
+                              {plan.descriptionPlan}
+                            </div>
+                            <p className="mt-1 text-xs text-zinc-400">{plan.code}</p>
+                          </td>
+                          <td className="p-3">
+                            <button
+                              onClick={() => openProjectPlanDetail(project, plan)}
+                              className="rounded border border-orange-400/60 bg-orange-400/10 px-3 py-1.5 text-xs text-orange-200 hover:bg-orange-400/20"
+                            >
+                              Demande
+                            </button>
+                          </td>
+                          <td className="p-3 text-zinc-200">{plan.planNumber}</td>
+                          <td className="p-3 text-zinc-200">{plan.revisionNumber}</td>
+                          <td className="p-3 text-zinc-200">{formatDisplayDate(plan.planRequisLe)}</td>
+                          <td className="p-3 text-zinc-200">{plan.statut}</td>
+                          <td className="p-3 text-zinc-200">{plan.dessinateurIngenieur}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           {activeSection === "clients" && (
             <div className="rounded-xl border border-white/10 bg-black/35 p-6 backdrop-blur-sm">
               <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -3354,11 +3588,9 @@ export default function Home() {
             </div>
           )}
 
-          {activeSection !== "projets" && activeSection !== "clients" && (
-            <div className="rounded-lg border border-white/10 bg-black/35 p-8 backdrop-blur-sm">
-              <h2 className="text-xl font-semibold">
-                {activeSection === "plans" ? "Liste de plan" : "Facturation"}
-              </h2>
+          {activeSection === "facturation" && (
+            <div className="rounded-xl border border-white/10 bg-black/35 p-6 backdrop-blur-sm">
+              <h2 className="text-xl font-semibold">Facturation</h2>
               <p className="mt-2 text-zinc-300">Section en construction.</p>
             </div>
           )}
