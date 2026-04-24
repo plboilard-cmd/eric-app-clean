@@ -115,6 +115,10 @@ function normalizeProject(raw: Partial<Project>, index: number): Project {
   };
 }
 
+function getPrivateBlobOpenUrl(url: string) {
+  return `/api/blob/download?url=${encodeURIComponent(url)}`;
+}
+
 export default function Home() {
   const [username, setUsername] = useState("");
   const [code, setCode] = useState("");
@@ -405,7 +409,7 @@ export default function Home() {
         <div className="relative z-10 flex h-full items-center justify-center px-4">
           <form
             onSubmit={handleLogin}
-            className="w-full max-w-md rounded-2xl border border-white/10 bg-black/80 p-8 text-white backdrop-blur-md shadow-2xl"
+            className="w-full max-w-md rounded-2xl border border-white/10 bg-black/80 p-8 text-white shadow-2xl backdrop-blur-md"
           >
             <h1 className="mb-2 text-2xl font-semibold">Connexion à ERIC</h1>
 
@@ -422,7 +426,7 @@ export default function Home() {
                 placeholder="Ex. user"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white placeholder:text-zinc-400 outline-none focus:border-white/30"
+                className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400 focus:border-white/30"
               />
             </div>
 
@@ -435,7 +439,7 @@ export default function Home() {
                 placeholder="Entrez votre code"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white placeholder:text-zinc-400 outline-none focus:border-white/30"
+                className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400 focus:border-white/30"
               />
             </div>
 
@@ -522,7 +526,11 @@ export default function Home() {
                       className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
                     >
                       {ALL_STATUSES.map((status) => (
-                        <option key={status} value={status} className="text-black">
+                        <option
+                          key={status}
+                          value={status}
+                          className="text-black"
+                        >
                           {status}
                         </option>
                       ))}
@@ -691,7 +699,7 @@ export default function Home() {
 
                           <div className="flex flex-wrap gap-2">
                             <a
-                              href={doc.url}
+                              href={getPrivateBlobOpenUrl(doc.url)}
                               target="_blank"
                               rel="noreferrer"
                               className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm text-white transition hover:bg-white/20"

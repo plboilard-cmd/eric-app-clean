@@ -1,26 +1,20 @@
-import { put } from "@vercel/blob";
+import { NextResponse } from "next/server";
+import { get } from "@vercel/blob";
 
-export async function POST(req: Request) {
+export async function GET(req: Request) {
   try {
-    const formData = await req.formData();
-    const file = formData.get("file") as File | null;
-    const projectId = (formData.get("projectId") as string) || "default";
+    const { searchParams } = new URL(req.url);
+    const url = searchParams.get("url");
 
-    if (!file) {
-      return Response.json({ error: "No file" }, { status: 400 });
+    if (!url) {
+      return NextResponse.json({ error: "Missing url" }, { status: 400 });
     }
 
-    const blob = await put(`projects/${projectId}/${file.name}`, file, {
-      access: "public",
-      addRandomSuffix: true,
-    });
+    const blob = await get(url);
 
-    return Response.json({
-      url: blob.url,
-      pathname: blob.pathname,
-    });
+    return NextResponse.redirect(blob.url);
   } catch (error) {
-    console.error("UPLOAD ERROR:", error);
-    return Response.json({ error: "Upload failed" }, { status: 500 });
+    console.error("DOWNLOAD ERROR:", error);
+    return NextResponse.json({ error: "Download failed" }, { status: 500 });
   }
 }
