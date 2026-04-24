@@ -47,6 +47,14 @@ type ProjectDocument = {
   uploadedAt: string;
 };
 
+type PlanAttachment = {
+  id: string;
+  name: string;
+  url: string;
+  pathname: string;
+  uploadedAt: string;
+};
+
 type PlanRequest = {
   id: string;
   planNumber: number;
@@ -55,6 +63,23 @@ type PlanRequest = {
   descriptionPlan: string;
   statut: string;
   planRequisLe: string;
+  ville: string;
+  tronconType: string;
+  tronconNom: string;
+  natureTravaux: string;
+  limiteVitesse: string;
+  direction: string;
+  dureeTravaux: string;
+  referenceType: string;
+  referenceValue: string;
+  fermeture: string;
+  zoneTravaux: string;
+  detours: string;
+  notes: string;
+  materielPdf: PlanAttachment | null;
+  supplementairePdf: PlanAttachment | null;
+  dessinateurPdf: PlanAttachment | null;
+  documents: PlanAttachment[];
   dateChantier: string;
   dateCommande: string;
   dateEnvoye: string;
@@ -105,7 +130,7 @@ type Project = {
 
 type ActiveSection = "projets" | "plans" | "clients" | "facturation";
 type ViewMode = "list" | "project";
-type ProjectPanel = "fiche" | "soumission" | "demandePlan";
+type ProjectPanel = "fiche" | "soumission" | "demandePlan" | "planDetail";
 
 const ALL_STATUSES: StatusType[] = [
   "À soumissionner",
@@ -118,6 +143,50 @@ const ALL_STATUSES: StatusType[] = [
 
 const CLIENT_STATUSES: ClientStatus[] = ["Nouveau", "Actif", "Bloqué"];
 const QUOTE_STATUSES: QuoteStatus[] = ["Actif", "Envoyé", "Non-retenu"];
+const PLAN_STATUSES = [
+  "commandé",
+  "en dessin",
+  "a vérifier",
+  "a corriger",
+  "envoyé",
+  "a réviser",
+  "révisé",
+  "en révision",
+];
+const TRONCON_TYPES = [
+  "",
+  "Rue",
+  "Avenue",
+  "Boulevard",
+  "Autoroute",
+  "Chemin",
+  "Route",
+  "Côte",
+  "Promenade",
+  "Place",
+  "Rang",
+  "Bretelle",
+  "Montée",
+  "Terrasse",
+];
+const DIRECTIONS = ["", "Nord", "Sud", "Est", "Ouest"];
+const REFERENCE_TYPES = ["", "Site", "Phase", "Forage", "Ponceaux", "Travaux", "Plan"];
+const DEFAULT_FERMETURES = [
+  "Fermeture en alternance avec barrières de contrôle",
+  "Fermeture en alternance avec signaleurs",
+  "Fermeture en alternance avec feux de circulation",
+  "Fermeture complète avec contresens",
+  "Fermeture complète avec circulation locale seulement",
+  "Fermeture complète avec détour",
+  "Fermeture de voie de droite",
+  "Fermeture de voie de gauche",
+  "Fermeture des voies de droites",
+  "Fermeture des voies de gauches",
+  "Fermeture d'accotement de droite",
+  "Fermeture d'accotement de gauche",
+  "Fermeture de voie de virage",
+];
+const DESSINATEURS_PLAN = ["", "Pierre-Luc", "Véronique", "Audrey"];
 
 const EMPTY_PROJECT: Project = {
   id: 0,
@@ -235,8 +304,25 @@ function normalizeProject(raw: Partial<Project>, index: number): Project {
             Number(plan.revisionNumber) || 0
           ),
         descriptionPlan: plan.descriptionPlan ?? raw.description ?? "",
-        statut: plan.statut ?? "Brouillon",
+        statut: plan.statut ?? "",
         planRequisLe: plan.planRequisLe ?? "",
+        ville: plan.ville ?? raw.ville ?? "",
+        tronconType: plan.tronconType ?? "",
+        tronconNom: plan.tronconNom ?? "",
+        natureTravaux: plan.natureTravaux ?? "",
+        limiteVitesse: plan.limiteVitesse ?? "",
+        direction: plan.direction ?? "",
+        dureeTravaux: plan.dureeTravaux ?? "",
+        referenceType: plan.referenceType ?? "",
+        referenceValue: plan.referenceValue ?? "",
+        fermeture: plan.fermeture ?? "",
+        zoneTravaux: plan.zoneTravaux ?? "",
+        detours: plan.detours ?? "",
+        notes: plan.notes ?? "",
+        materielPdf: plan.materielPdf ?? null,
+        supplementairePdf: plan.supplementairePdf ?? null,
+        dessinateurPdf: plan.dessinateurPdf ?? null,
+        documents: plan.documents ?? [],
         dateChantier: plan.dateChantier ?? "",
         dateCommande: plan.dateCommande ?? "",
         dateEnvoye: plan.dateEnvoye ?? "",
@@ -302,14 +388,33 @@ function todayFrCa() {
 }
 
 function createPlanRequest(project: Project, planNumber: number, revisionNumber: number, base?: Partial<PlanRequest>): PlanRequest {
+  const code = makePlanCode(project.numeroProjet, planNumber, revisionNumber);
+
   return {
     id: crypto.randomUUID(),
     planNumber,
     revisionNumber,
-    code: makePlanCode(project.numeroProjet, planNumber, revisionNumber),
+    code,
     descriptionPlan: base?.descriptionPlan ?? project.description ?? "",
     statut: base?.statut ?? "",
     planRequisLe: base?.planRequisLe ?? "",
+    ville: base?.ville ?? project.ville ?? "",
+    tronconType: base?.tronconType ?? "",
+    tronconNom: base?.tronconNom ?? "",
+    natureTravaux: base?.natureTravaux ?? "",
+    limiteVitesse: base?.limiteVitesse ?? "",
+    direction: base?.direction ?? "",
+    dureeTravaux: base?.dureeTravaux ?? "",
+    referenceType: base?.referenceType ?? "",
+    referenceValue: base?.referenceValue ?? "",
+    fermeture: base?.fermeture ?? "",
+    zoneTravaux: base?.zoneTravaux ?? "",
+    detours: base?.detours ?? "",
+    notes: base?.notes ?? "",
+    materielPdf: base?.materielPdf ?? null,
+    supplementairePdf: base?.supplementairePdf ?? null,
+    dessinateurPdf: base?.dessinateurPdf ?? null,
+    documents: base?.documents ?? [],
     dateChantier: base?.dateChantier ?? "",
     dateCommande: base?.dateCommande ?? todayFrCa(),
     dateEnvoye: base?.dateEnvoye ?? "",
@@ -408,6 +513,9 @@ export default function Home() {
   const [newQuoteName, setNewQuoteName] = useState("");
   const [activeQuoteId, setActiveQuoteId] = useState<string | null>(null);
   const [selectedPlan, setSelectedPlan] = useState<PlanRequest | null>(null);
+  const [activePlanId, setActivePlanId] = useState<string | null>(null);
+  const [newFermetureOption, setNewFermetureOption] = useState("");
+  const [fermetureOptions, setFermetureOptions] = useState<string[]>(DEFAULT_FERMETURES);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [pdfError, setPdfError] = useState("");
 
@@ -566,6 +674,8 @@ export default function Home() {
   const activeQuote = projectForm.soumissions.find(
     (quote) => quote.id === activeQuoteId
   );
+
+  const activePlan = projectForm.planRequests.find((plan) => plan.id === activePlanId) ?? null;
 
   const quoteTotal =
     activeQuote?.lines.reduce(
@@ -823,12 +933,124 @@ export default function Home() {
   };
 
   const openPlanDemand = (plan: PlanRequest) => {
-    alert(`Ouverture de la demande de plan ${plan.code} à programmer.`);
+    setActivePlanId(plan.id);
+    setProjectPanel("planDetail");
+  };
+
+  const updateActivePlan = (patch: Partial<PlanRequest>) => {
+    if (!activePlan) return;
+    updatePlanRequest(activePlan.id, patch);
+  };
+
+  const generatePlanFileName = (plan: PlanRequest) => {
+    const troncon = `${plan.tronconType} ${plan.tronconNom}`.trim();
+    const reference = `${plan.referenceType} ${plan.referenceValue}`.trim();
+    const rawParts = [
+      plan.code,
+      plan.ville,
+      troncon,
+      plan.direction,
+      plan.fermeture,
+      reference,
+    ];
+
+    return rawParts
+      .map((part) => part.trim())
+      .filter(Boolean)
+      .map((part) =>
+        part
+          .replaceAll("/", "")
+          .replaceAll(String.fromCharCode(92), "")
+          .replaceAll(":", "")
+          .replaceAll("*", "")
+          .replaceAll("?", "")
+          .replaceAll('"', "")
+          .replaceAll("<", "")
+          .replaceAll(">", "")
+          .replaceAll("|", "")
+          .replaceAll(" ", "_")
+      )
+      .join("_");
+  };
+
+  const addFermetureOption = () => {
+    const value = newFermetureOption.trim();
+    if (!value) return;
+    if (!fermetureOptions.includes(value)) {
+      setFermetureOptions([...fermetureOptions, value]);
+    }
+    if (activePlan) updateActivePlan({ fermeture: value });
+    setNewFermetureOption("");
+  };
+
+  const uploadPlanAttachment = async (
+    e: ChangeEvent<HTMLInputElement>,
+    field: "materielPdf" | "supplementairePdf" | "dessinateurPdf"
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file || !activePlan) return;
+
+    try {
+      const data = await uploadPdfBlob(file);
+      const attachment: PlanAttachment = {
+        id: crypto.randomUUID(),
+        name: file.name,
+        url: data.url,
+        pathname: data.pathname,
+        uploadedAt: new Date().toISOString(),
+      };
+      updateActivePlan({ [field]: attachment } as Partial<PlanRequest>);
+    } catch (err) {
+      console.error(err);
+      alert("Impossible de téléverser le PDF.");
+    } finally {
+      e.target.value = "";
+    }
+  };
+
+  const removePlanAttachment = (
+    field: "materielPdf" | "supplementairePdf" | "dessinateurPdf"
+  ) => {
+    updateActivePlan({ [field]: null } as Partial<PlanRequest>);
+  };
+
+  const uploadPlanDocument = async (
+    e: ChangeEvent<HTMLInputElement>,
+    index: number
+  ) => {
+    const file = e.target.files?.[0];
+    if (!file || !activePlan) return;
+
+    try {
+      const data = await uploadPdfBlob(file);
+      const attachment: PlanAttachment = {
+        id: crypto.randomUUID(),
+        name: file.name,
+        url: data.url,
+        pathname: data.pathname,
+        uploadedAt: new Date().toISOString(),
+      };
+      const docs = [...activePlan.documents];
+      docs[index] = attachment;
+      updateActivePlan({ documents: docs.filter(Boolean) });
+    } catch (err) {
+      console.error(err);
+      alert("Impossible de téléverser le PDF.");
+    } finally {
+      e.target.value = "";
+    }
+  };
+
+  const removePlanDocument = (index: number) => {
+    if (!activePlan) return;
+    const docs = [...activePlan.documents];
+    docs.splice(index, 1);
+    updateActivePlan({ documents: docs });
   };
 
   const sendPlanToListing = (plan: PlanRequest) => {
     updatePlanRequest(plan.id, {
-      statut: "Envoyé",
+      statut: "commandé",
       dateEnvoye: todayFrCa(),
     });
     alert(`La demande ${plan.code} sera envoyée à la liste de plan à la prochaine étape.`);
@@ -1854,6 +2076,441 @@ export default function Home() {
                       )}
                     </tbody>
                   </table>
+                </div>
+              </div>
+            ) : projectPanel === "planDetail" && activePlan ? (
+              <div className="rounded-2xl border border-white/10 bg-black/35 p-5 shadow-2xl backdrop-blur-sm">
+                <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+                  <div>
+                    <button
+                      onClick={() => setProjectPanel("demandePlan")}
+                      className="mb-3 rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm text-white transition hover:bg-white/10"
+                    >
+                      ← Retour aux demandes
+                    </button>
+                    <h2 className="text-2xl font-semibold text-orange-400">
+                      Demande de plan
+                    </h2>
+                    <p className="mt-1 text-sm text-zinc-300">
+                      {activePlan.code}
+                    </p>
+                  </div>
+
+                  <div className="rounded-xl border border-orange-400/30 bg-black/20 p-4 text-right">
+                    <p className="text-sm text-zinc-300">Nom du fichier plan généré</p>
+                    <p className="mt-2 max-w-[700px] break-all text-sm font-semibold text-orange-300">
+                      {generatePlanFileName(activePlan)}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-5">
+                    <h3 className="mb-4 text-lg font-semibold text-orange-400">
+                      Informations
+                    </h3>
+
+                    <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+                      <div>
+                        <label className="mb-2 block text-sm text-zinc-300">Projet</label>
+                        <input
+                          value={projectForm.numeroProjet}
+                          readOnly
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-2 block text-sm text-zinc-300">Plan</label>
+                        <input
+                          value={activePlan.planNumber}
+                          readOnly
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-2 block text-sm text-zinc-300">Version</label>
+                        <input
+                          value={activePlan.revisionNumber}
+                          readOnly
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mb-4">
+                      <label className="mb-2 block text-sm text-zinc-300">Client</label>
+                      <input
+                        value={projectForm.client}
+                        readOnly
+                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                      />
+                    </div>
+
+                    <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div>
+                        <label className="mb-2 block text-sm text-zinc-300">Plan requis le</label>
+                        <input
+                          type="date"
+                          value={activePlan.planRequisLe}
+                          onChange={(e) => updateActivePlan({ planRequisLe: e.target.value })}
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-2 block text-sm text-zinc-300">Statut</label>
+                        <select
+                          value={activePlan.statut || ""}
+                          onChange={(e) => updateActivePlan({ statut: e.target.value })}
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                        >
+                          <option value="" className="text-black">--</option>
+                          {PLAN_STATUSES.map((status) => (
+                            <option key={status} value={status} className="text-black">{status}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div>
+                        <label className="mb-2 block text-sm text-zinc-300">Ville</label>
+                        <input
+                          value={activePlan.ville}
+                          onChange={(e) => updateActivePlan({ ville: e.target.value })}
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-2 block text-sm text-zinc-300">Dessinateur</label>
+                        <select
+                          value={activePlan.dessinateurIngenieur || ""}
+                          onChange={(e) => updateActivePlan({ dessinateurIngenieur: e.target.value })}
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                        >
+                          {DESSINATEURS_PLAN.map((name) => (
+                            <option key={name || "empty"} value={name} className="text-black">
+                              {name || "--"}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-[0.7fr_1.3fr]">
+                      <div>
+                        <label className="mb-2 block text-sm text-zinc-300">Tronçon</label>
+                        <select
+                          value={activePlan.tronconType}
+                          onChange={(e) => updateActivePlan({ tronconType: e.target.value })}
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                        >
+                          {TRONCON_TYPES.map((type) => (
+                            <option key={type || "empty"} value={type} className="text-black">
+                              {type || "--"}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="mb-2 block text-sm text-zinc-300">Nom du tronçon</label>
+                        <input
+                          value={activePlan.tronconNom}
+                          onChange={(e) => updateActivePlan({ tronconNom: e.target.value })}
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div>
+                        <label className="mb-2 block text-sm text-zinc-300">Limite de vitesse</label>
+                        <input
+                          value={activePlan.limiteVitesse}
+                          onChange={(e) => updateActivePlan({ limiteVitesse: e.target.value })}
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-2 block text-sm text-zinc-300">Direction</label>
+                        <select
+                          value={activePlan.direction}
+                          onChange={(e) => updateActivePlan({ direction: e.target.value })}
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                        >
+                          {DIRECTIONS.map((direction) => (
+                            <option key={direction || "empty"} value={direction} className="text-black">
+                              {direction || "--"}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="mb-4">
+                      <label className="mb-2 block text-sm text-zinc-300">Nature des travaux</label>
+                      <input
+                        value={activePlan.natureTravaux}
+                        onChange={(e) => updateActivePlan({ natureTravaux: e.target.value })}
+                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                      />
+                    </div>
+
+                    <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-3">
+                      <div>
+                        <label className="mb-2 block text-sm text-zinc-300">Durée des travaux</label>
+                        <input
+                          value={activePlan.dureeTravaux}
+                          onChange={(e) => updateActivePlan({ dureeTravaux: e.target.value })}
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-2 block text-sm text-zinc-300">Référence</label>
+                        <select
+                          value={activePlan.referenceType}
+                          onChange={(e) => updateActivePlan({ referenceType: e.target.value })}
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                        >
+                          {REFERENCE_TYPES.map((type) => (
+                            <option key={type || "empty"} value={type} className="text-black">
+                              {type || "--"}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div>
+                        <label className="mb-2 block text-sm text-zinc-300">No / texte</label>
+                        <input
+                          value={activePlan.referenceValue}
+                          onChange={(e) => updateActivePlan({ referenceValue: e.target.value })}
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mb-4">
+                      <label className="mb-2 block text-sm text-zinc-300">Fermeture</label>
+                      <div className="flex gap-2">
+                        <select
+                          value={activePlan.fermeture}
+                          onChange={(e) => updateActivePlan({ fermeture: e.target.value })}
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                        >
+                          <option value="" className="text-black">--</option>
+                          {fermetureOptions.map((option) => (
+                            <option key={option} value={option} className="text-black">
+                              {option}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="mt-2 flex gap-2">
+                        <input
+                          value={newFermetureOption}
+                          onChange={(e) => setNewFermetureOption(e.target.value)}
+                          placeholder="Ajouter une option de fermeture"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none placeholder:text-zinc-400"
+                        />
+                        <button
+                          onClick={addFermetureOption}
+                          className="rounded bg-orange-500 px-4 py-2 text-sm font-medium text-black hover:bg-orange-400"
+                        >
+                          Ajouter
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="mb-4">
+                      <label className="mb-2 block text-sm text-zinc-300">Zone des travaux</label>
+                      <textarea
+                        value={activePlan.zoneTravaux}
+                        onChange={(e) => updateActivePlan({ zoneTravaux: e.target.value })}
+                        rows={3}
+                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                      />
+                    </div>
+
+                    <div className="mb-4">
+                      <label className="mb-2 block text-sm text-zinc-300">Détour(s)</label>
+                      <textarea
+                        value={activePlan.detours}
+                        onChange={(e) => updateActivePlan({ detours: e.target.value })}
+                        rows={3}
+                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm text-zinc-300">Notes</label>
+                      <textarea
+                        value={activePlan.notes}
+                        onChange={(e) => updateActivePlan({ notes: e.target.value })}
+                        rows={6}
+                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-5">
+                    <div className="rounded-xl border border-white/10 bg-white/5 p-5">
+                      <h3 className="mb-4 text-lg font-semibold text-orange-400">Documents reliés</h3>
+
+                      {[
+                        ["Liste matériel", "materielPdf", activePlan.materielPdf],
+                        ["Document supplémentaire", "supplementairePdf", activePlan.supplementairePdf],
+                      ].map(([label, field, attachment]) => (
+                        <div key={String(field)} className="mb-4 rounded-lg border border-white/10 bg-black/20 p-3">
+                          <p className="mb-2 text-sm font-medium text-zinc-200">{String(label)}</p>
+                          {attachment ? (
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <span className="text-sm text-white">{(attachment as PlanAttachment).name}</span>
+                              <div className="flex gap-2">
+                                <a
+                                  href={getPrivateBlobOpenUrl((attachment as PlanAttachment).pathname, (attachment as PlanAttachment).url)}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-white hover:bg-white/20"
+                                >
+                                  Ouvrir
+                                </a>
+                                <label className="cursor-pointer rounded border border-orange-400/50 bg-orange-400/10 px-3 py-1.5 text-xs text-orange-200 hover:bg-orange-400/20">
+                                  Écraser
+                                  <input
+                                    type="file"
+                                    accept="application/pdf"
+                                    onChange={(e) => uploadPlanAttachment(e, field as "materielPdf" | "supplementairePdf" | "dessinateurPdf")}
+                                    className="hidden"
+                                  />
+                                </label>
+                                <button
+                                  onClick={() => removePlanAttachment(field as "materielPdf" | "supplementairePdf" | "dessinateurPdf")}
+                                  className="rounded border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs text-red-300 hover:bg-red-500/20"
+                                >
+                                  Retirer
+                                </button>
+                              </div>
+                            </div>
+                          ) : (
+                            <label className="inline-block cursor-pointer rounded border border-orange-400/50 bg-orange-400/10 px-3 py-2 text-sm text-orange-200 hover:bg-orange-400/20">
+                              Importer un PDF
+                              <input
+                                type="file"
+                                accept="application/pdf"
+                                onChange={(e) => uploadPlanAttachment(e, field as "materielPdf" | "supplementairePdf" | "dessinateurPdf")}
+                                className="hidden"
+                              />
+                            </label>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="rounded-xl border border-white/10 bg-white/5 p-5">
+                      <h3 className="mb-4 text-lg font-semibold text-orange-400">Pour dessinateur</h3>
+                      <label className="mb-2 block text-sm text-zinc-300">Nom du fichier plan (AutoCAD)</label>
+                      <input
+                        value={generatePlanFileName(activePlan)}
+                        readOnly
+                        className="mb-4 w-full rounded border border-green-500 bg-green-500/10 px-3 py-2 text-green-100 outline-none"
+                      />
+
+                      <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                        <p className="mb-2 text-sm font-medium text-zinc-200">Fichier / document pour dessinateur</p>
+                        {activePlan.dessinateurPdf ? (
+                          <div className="flex flex-wrap items-center justify-between gap-2">
+                            <span className="text-sm text-white">{activePlan.dessinateurPdf.name}</span>
+                            <div className="flex gap-2">
+                              <a
+                                href={getPrivateBlobOpenUrl(activePlan.dessinateurPdf.pathname, activePlan.dessinateurPdf.url)}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-white hover:bg-white/20"
+                              >
+                                Ouvrir
+                              </a>
+                              <label className="cursor-pointer rounded border border-orange-400/50 bg-orange-400/10 px-3 py-1.5 text-xs text-orange-200 hover:bg-orange-400/20">
+                                Écraser
+                                <input
+                                  type="file"
+                                  accept="application/pdf"
+                                  onChange={(e) => uploadPlanAttachment(e, "dessinateurPdf")}
+                                  className="hidden"
+                                />
+                              </label>
+                              <button
+                                onClick={() => removePlanAttachment("dessinateurPdf")}
+                                className="rounded border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs text-red-300 hover:bg-red-500/20"
+                              >
+                                Retirer
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <label className="inline-block cursor-pointer rounded border border-orange-400/50 bg-orange-400/10 px-3 py-2 text-sm text-orange-200 hover:bg-orange-400/20">
+                            Importer un PDF
+                            <input
+                              type="file"
+                              accept="application/pdf"
+                              onChange={(e) => uploadPlanAttachment(e, "dessinateurPdf")}
+                              className="hidden"
+                            />
+                          </label>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="rounded-xl border border-white/10 bg-white/5 p-5">
+                      <h3 className="mb-4 text-lg font-semibold text-orange-400">Documents</h3>
+                      {[0, 1, 2, 3].map((index) => {
+                        const doc = activePlan.documents[index];
+                        return (
+                          <div key={index} className="mb-3 rounded-lg border border-white/10 bg-black/20 p-3">
+                            <div className="flex flex-wrap items-center justify-between gap-2">
+                              <p className="text-sm font-medium text-zinc-200">Document {index + 1}</p>
+                              {doc ? (
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="text-sm text-white">{doc.name}</span>
+                                  <a
+                                    href={getPrivateBlobOpenUrl(doc.pathname, doc.url)}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-white hover:bg-white/20"
+                                  >
+                                    Ouvrir
+                                  </a>
+                                  <label className="cursor-pointer rounded border border-orange-400/50 bg-orange-400/10 px-3 py-1.5 text-xs text-orange-200 hover:bg-orange-400/20">
+                                    Écraser
+                                    <input
+                                      type="file"
+                                      accept="application/pdf"
+                                      onChange={(e) => uploadPlanDocument(e, index)}
+                                      className="hidden"
+                                    />
+                                  </label>
+                                  <button
+                                    onClick={() => removePlanDocument(index)}
+                                    className="rounded border border-red-500/40 bg-red-500/10 px-3 py-1.5 text-xs text-red-300 hover:bg-red-500/20"
+                                  >
+                                    Retirer
+                                  </button>
+                                </div>
+                              ) : (
+                                <label className="cursor-pointer rounded border border-orange-400/50 bg-orange-400/10 px-3 py-2 text-sm text-orange-200 hover:bg-orange-400/20">
+                                  Importer un PDF
+                                  <input
+                                    type="file"
+                                    accept="application/pdf"
+                                    onChange={(e) => uploadPlanDocument(e, index)}
+                                    className="hidden"
+                                  />
+                                </label>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                 </div>
               </div>
             ) : (
