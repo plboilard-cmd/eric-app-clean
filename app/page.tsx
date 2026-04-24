@@ -18,6 +18,13 @@ type StatusType =
   | "Terminé"
   | "Non utilisé";
 
+type ProjectDocument = {
+  id: string;
+  name: string;
+  url: string;
+  uploadedAt: string;
+};
+
 type Project = {
   id: number;
   numeroProjet: string;
@@ -29,8 +36,7 @@ type Project = {
   endroit: string;
   description: string;
   poNumber: string;
-  pdfName: string;
-  pdfDataUrl: string;
+  documents: ProjectDocument[];
   createdAt: string;
 };
 
@@ -57,8 +63,7 @@ const EMPTY_PROJECT: Project = {
   endroit: "",
   description: "",
   poNumber: "",
-  pdfName: "",
-  pdfDataUrl: "",
+  documents: [],
   createdAt: "",
 };
 
@@ -93,11 +98,9 @@ function formatDisplayDate(dateString: string) {
 }
 
 function normalizeProject(raw: Partial<Project>, index: number): Project {
-  const fallbackNumber = makeProjectNumber(index + 1);
-
   return {
     id: raw.id ?? Date.now() + index,
-    numeroProjet: raw.numeroProjet ?? fallbackNumber,
+    numeroProjet: raw.numeroProjet ?? makeProjectNumber(index + 1),
     client: raw.client ?? "",
     contact: raw.contact ?? "",
     statut: raw.statut ?? "À soumissionner",
@@ -106,8 +109,7 @@ function normalizeProject(raw: Partial<Project>, index: number): Project {
     endroit: raw.endroit ?? "",
     description: raw.description ?? "",
     poNumber: raw.poNumber ?? "",
-    pdfName: raw.pdfName ?? "",
-    pdfDataUrl: raw.pdfDataUrl ?? "",
+    documents: raw.documents ?? [],
     createdAt: raw.createdAt ?? new Date().toISOString(),
   };
 }
@@ -146,6 +148,9 @@ export default function Home() {
   const [statusFilters, setStatusFilters] =
     useState<StatusType[]>(ALL_STATUSES);
 
+  const [isUploadingDoc, setIsUploadingDoc] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+
   useEffect(() => {
     const savedUser = localStorage.getItem("eric-user");
     const savedProjects = localStorage.getItem("eric-projects");
@@ -153,9 +158,7 @@ export default function Home() {
       | ActiveSection
       | null;
 
-    if (savedUser) {
-      setLoggedInUser(savedUser);
-    }
+    if (savedUser) setLoggedInUser(savedUser);
 
     let normalizedProjects: Project[] = [];
 
@@ -181,9 +184,7 @@ export default function Home() {
       setActiveSection(savedSection);
     }
 
-    const savedNextNumber = localStorage.getItem(NEXT_PROJECT_KEY);
-
-    if (!savedNextNumber) {
+    if (!localStorage.getItem(NEXT_PROJECT_KEY)) {
       const maxExisting = normalizedProjects.reduce((max, project) => {
         const parts = project.numeroProjet.split("-");
         const numericPart = Number(parts[1] || "0");
@@ -275,8 +276,7 @@ export default function Home() {
       endroit: "",
       description: newProject.description.trim(),
       poNumber: "",
-      pdfName: "",
-      pdfDataUrl: "",
+      documents: [],
       createdAt: new Date().toISOString(),
     };
 
@@ -297,6 +297,7 @@ export default function Home() {
     setSelectedProjectId(project.id);
     setProjectForm(project);
     setViewMode("project");
+    setUploadError("");
   };
 
   const saveProject = () => {
@@ -310,28 +311,56 @@ export default function Home() {
     setViewMode("list");
   };
 
-  const handlePdfUpload = (e: ChangeEvent<HTMLInputElement>) => {
+  const handleBlobUpload = async (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (file.type !== "application/pdf") {
-      return;
-    }
+    setUploadError("");
+    setIsUploadingDoc(true);
 
-    const reader = new FileReader();
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("projectId", projectForm.numeroProjet || "default");
 
-    reader.onload = () => {
-      const result = reader.result;
-      if (typeof result === "string") {
-        setProjectForm((prev) => ({
-          ...prev,
-          pdfName: file.name,
-          pdfDataUrl: result,
-        }));
+      const response = await fetch("/api/blob/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error("Upload failed");
       }
-    };
 
-    reader.readAsDataURL(file);
+      const data = (await response.json()) as { url: string; pathname: string };
+
+      const newDocument: ProjectDocument = {
+        id: crypto.randomUUID(),
+        name: file.name,
+        url: data.url,
+        uploadedAt: new Date().toISOString(),
+      };
+
+      const updatedForm = {
+        ...projectForm,
+        documents: [...projectForm.documents, newDocument],
+      };
+
+      setProjectForm(updatedForm);
+
+      if (selectedProjectId !== null) {
+        const updatedProjects = projects.map((project) =>
+          project.id === selectedProjectId ? updatedForm : project
+        );
+        persistProjects(updatedProjects);
+      }
+    } catch (err) {
+      console.error(err);
+      setUploadError("Impossible de téléverser le PDF.");
+    } finally {
+      setIsUploadingDoc(false);
+      e.target.value = "";
+    }
   };
 
   const filteredProjects = useMemo(() => {
@@ -349,9 +378,7 @@ export default function Home() {
         .includes(searchVille.toLowerCase().trim());
 
       const chargeOk =
-        chargeFilter === "tous"
-          ? true
-          : project.charge === loggedInUser;
+        chargeFilter === "tous" ? true : project.charge === loggedInUser;
 
       const statusOk = statusFilters.includes(project.statut);
 
@@ -367,9 +394,7 @@ export default function Home() {
     loggedInUser,
   ]);
 
-  if (!isLoaded) {
-    return null;
-  }
+  if (!isLoaded) return null;
 
   if (!loggedInUser) {
     return (
@@ -446,7 +471,7 @@ export default function Home() {
 
         <div className="relative z-10 px-6 py-5 md:px-8 xl:px-10">
           <div className="mx-auto max-w-[1700px]">
-            <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
                 <p className="text-sm uppercase tracking-[0.25em] text-zinc-300">
                   ERIC
@@ -470,10 +495,10 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-white/10 bg-black/35 p-6 shadow-2xl backdrop-blur-sm">
-              <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+            <div className="rounded-2xl border border-white/10 bg-black/35 p-5 shadow-2xl backdrop-blur-sm">
+              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
                 <div>
-                  <div className="mb-6">
+                  <div className="mb-5">
                     <label className="mb-2 block text-xl text-orange-400">
                       Numéro de projet
                     </label>
@@ -484,7 +509,7 @@ export default function Home() {
                     />
                   </div>
 
-                  <div className="mb-6">
+                  <div className="mb-5">
                     <label className="mb-2 block text-xl text-orange-400">
                       Statut
                     </label>
@@ -499,40 +524,50 @@ export default function Home() {
                       className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
                     >
                       {ALL_STATUSES.map((status) => (
-                        <option key={status} value={status} className="text-black">
+                        <option
+                          key={status}
+                          value={status}
+                          className="text-black"
+                        >
                           {status}
                         </option>
                       ))}
                     </select>
                   </div>
 
-                  <div className="mb-6">
+                  <div className="mb-5">
                     <label className="mb-2 block text-xl text-orange-400">
                       Ville
                     </label>
                     <input
                       value={projectForm.ville}
                       onChange={(e) =>
-                        setProjectForm({ ...projectForm, ville: e.target.value })
+                        setProjectForm({
+                          ...projectForm,
+                          ville: e.target.value,
+                        })
                       }
                       className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
                     />
                   </div>
 
-                  <div className="mb-6">
+                  <div className="mb-5">
                     <label className="mb-2 block text-xl text-orange-400">
                       Endroit
                     </label>
                     <input
                       value={projectForm.endroit}
                       onChange={(e) =>
-                        setProjectForm({ ...projectForm, endroit: e.target.value })
+                        setProjectForm({
+                          ...projectForm,
+                          endroit: e.target.value,
+                        })
                       }
                       className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
                     />
                   </div>
 
-                  <div className="mb-6">
+                  <div className="mb-5">
                     <label className="mb-2 block text-xl text-orange-400">
                       Description
                     </label>
@@ -551,7 +586,7 @@ export default function Home() {
                 </div>
 
                 <div>
-                  <div className="mb-6">
+                  <div className="mb-5">
                     <label className="mb-2 block text-xl text-orange-400">
                       Client
                     </label>
@@ -559,7 +594,10 @@ export default function Home() {
                       <input
                         value={projectForm.client}
                         onChange={(e) =>
-                          setProjectForm({ ...projectForm, client: e.target.value })
+                          setProjectForm({
+                            ...projectForm,
+                            client: e.target.value,
+                          })
                         }
                         className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
                       />
@@ -569,49 +607,41 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <div className="mb-6">
+                  <div className="mb-5">
                     <label className="mb-2 block text-xl text-orange-400">
                       Contact
                     </label>
                     <input
                       value={projectForm.contact}
                       onChange={(e) =>
-                        setProjectForm({ ...projectForm, contact: e.target.value })
+                        setProjectForm({
+                          ...projectForm,
+                          contact: e.target.value,
+                        })
                       }
-                      className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
-                    />
-                  </div>
-
-                  <div className="mb-6">
-                    <label className="mb-2 block text-xl text-orange-400">
-                      Date de création
-                    </label>
-                    <input
-                      value={formatDisplayDate(projectForm.createdAt)}
-                      readOnly
                       className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
                     />
                   </div>
                 </div>
               </div>
 
-              <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-3">
-                <button className="min-h-[120px] rounded-xl border-2 border-orange-400 bg-transparent text-4xl font-semibold text-orange-400 transition hover:bg-orange-400/10">
+              <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-3">
+                <button className="min-h-[100px] rounded-xl border-2 border-orange-400 bg-transparent text-3xl font-semibold text-orange-400 transition hover:bg-orange-400/10">
                   Estimation
                 </button>
 
-                <button className="min-h-[120px] rounded-xl border-2 border-orange-400 bg-transparent px-4 text-3xl font-semibold text-orange-400 transition hover:bg-orange-400/10">
+                <button className="min-h-[100px] rounded-xl border-2 border-orange-400 bg-transparent px-4 text-2xl font-semibold text-orange-400 transition hover:bg-orange-400/10">
                   Bordereau de facturation
                 </button>
 
-                <button className="min-h-[120px] rounded-xl border-2 border-orange-400 bg-transparent text-4xl font-semibold text-orange-400 transition hover:bg-orange-400/10">
+                <button className="min-h-[100px] rounded-xl border-2 border-orange-400 bg-transparent text-3xl font-semibold text-orange-400 transition hover:bg-orange-400/10">
                   Plan
                 </button>
               </div>
 
-              <div className="mt-10 grid grid-cols-1 gap-8 lg:grid-cols-[1.2fr_0.8fr]">
-                <div className="rounded-xl border border-orange-400/40 bg-black/20 p-5">
-                  <p className="mb-4 text-xl text-orange-400">PO / PDF</p>
+              <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+                <div className="rounded-xl border border-orange-400/40 bg-black/20 p-4">
+                  <p className="mb-4 text-xl text-orange-400">PO / Documents</p>
 
                   <div className="mb-4">
                     <label className="mb-2 block text-sm text-zinc-200">
@@ -630,32 +660,82 @@ export default function Home() {
                     />
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-3">
+                  <div className="mb-4 flex flex-wrap items-center gap-3">
                     <label className="cursor-pointer rounded-lg border border-orange-400 bg-orange-400/10 px-4 py-3 text-sm font-medium text-orange-300 transition hover:bg-orange-400/20">
-                      Importer un PDF
+                      {isUploadingDoc ? "Upload en cours..." : "Importer un PDF"}
                       <input
                         type="file"
                         accept="application/pdf"
-                        onChange={handlePdfUpload}
+                        onChange={handleBlobUpload}
                         className="hidden"
+                        disabled={isUploadingDoc}
                       />
                     </label>
 
-                    {projectForm.pdfName && (
-                      <>
-                        <span className="text-sm text-zinc-200">
-                          {projectForm.pdfName}
-                        </span>
+                    {uploadError && (
+                      <span className="text-sm text-red-400">{uploadError}</span>
+                    )}
+                  </div>
 
-                        <a
-                          href={projectForm.pdfDataUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="rounded-lg border border-white/15 bg-white/10 px-4 py-3 text-sm text-white transition hover:bg-white/20"
+                  <div className="space-y-3">
+                    {projectForm.documents.length === 0 ? (
+                      <p className="text-sm text-zinc-400">
+                        Aucun document attaché pour le moment.
+                      </p>
+                    ) : (
+                      projectForm.documents.map((doc) => (
+                        <div
+                          key={doc.id}
+                          className="flex flex-col gap-2 rounded-lg border border-white/10 bg-white/5 p-3 md:flex-row md:items-center md:justify-between"
                         >
-                          Ouvrir le PDF
-                        </a>
-                      </>
+                          <div>
+                            <p className="text-sm font-medium text-white">
+                              {doc.name}
+                            </p>
+                            <p className="text-xs text-zinc-400">
+                              Ajouté le {formatDisplayDate(doc.uploadedAt)}
+                            </p>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2">
+                            <a
+                              href={doc.url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm text-white transition hover:bg-white/20"
+                            >
+                              Ouvrir
+                            </a>
+
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updatedForm = {
+                                  ...projectForm,
+                                  documents: projectForm.documents.filter(
+                                    (item) => item.id !== doc.id
+                                  ),
+                                };
+
+                                setProjectForm(updatedForm);
+
+                                if (selectedProjectId !== null) {
+                                  const updatedProjects = projects.map(
+                                    (project) =>
+                                      project.id === selectedProjectId
+                                        ? updatedForm
+                                        : project
+                                  );
+                                  persistProjects(updatedProjects);
+                                }
+                              }}
+                              className="rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-300 transition hover:bg-red-500/20"
+                            >
+                              Retirer
+                            </button>
+                          </div>
+                        </div>
+                      ))
                     )}
                   </div>
                 </div>
@@ -877,7 +957,9 @@ export default function Home() {
                           <td className="p-3 text-white">
                             {project.numeroProjet}
                           </td>
-                          <td className="p-3 text-zinc-200">{project.ville}</td>
+                          <td className="p-3 text-zinc-200">
+                            {project.ville}
+                          </td>
                           <td className="p-3 text-white">{project.client}</td>
                           <td className="p-3 text-zinc-200">
                             {project.description}
