@@ -9,6 +9,8 @@ const allowedUsers = [
 
 const YEAR_PREFIX = "26";
 const NEXT_PROJECT_KEY = "eric-next-project-number-26";
+const PROJECTS_KEY = "eric-projects";
+const CLIENTS_KEY = "eric-clients";
 
 type StatusType =
   | "À soumissionner"
@@ -17,6 +19,19 @@ type StatusType =
   | "Perdu"
   | "Terminé"
   | "Non utilisé";
+
+type Contact = {
+  id: string;
+  name: string;
+  phone: string;
+  email: string;
+};
+
+type ClientRecord = {
+  id: string;
+  name: string;
+  contacts: Contact[];
+};
 
 type ProjectDocument = {
   id: string;
@@ -29,8 +44,9 @@ type ProjectDocument = {
 type Project = {
   id: number;
   numeroProjet: string;
+  numeroClient: string;
   client: string;
-  contact: string;
+  contactId: string;
   statut: StatusType;
   charge: string;
   ville: string;
@@ -56,8 +72,9 @@ const ALL_STATUSES: StatusType[] = [
 const EMPTY_PROJECT: Project = {
   id: 0,
   numeroProjet: "",
+  numeroClient: "",
   client: "",
-  contact: "",
+  contactId: "",
   statut: "À soumissionner",
   charge: "",
   ville: "",
@@ -103,8 +120,9 @@ function normalizeProject(raw: Partial<Project>, index: number): Project {
   return {
     id: raw.id ?? Date.now() + index,
     numeroProjet: raw.numeroProjet ?? makeProjectNumber(index + 1),
+    numeroClient: raw.numeroClient ?? "",
     client: raw.client ?? "",
-    contact: raw.contact ?? "",
+    contactId: raw.contactId ?? "",
     statut: raw.statut ?? "À soumissionner",
     charge: raw.charge ?? "",
     ville: raw.ville ?? "",
@@ -121,6 +139,20 @@ function normalizeProject(raw: Partial<Project>, index: number): Project {
       })) ?? [],
     createdAt: raw.createdAt ?? new Date().toISOString(),
   };
+}
+
+function normalizeClients(raw: Partial<ClientRecord>[]): ClientRecord[] {
+  return raw.map((client, index) => ({
+    id: client.id ?? crypto.randomUUID(),
+    name: client.name ?? `Client ${index + 1}`,
+    contacts:
+      client.contacts?.map((contact) => ({
+        id: contact.id ?? crypto.randomUUID(),
+        name: contact.name ?? "",
+        phone: contact.phone ?? "",
+        email: contact.email ?? "",
+      })) ?? [],
+  }));
 }
 
 function getPrivateBlobOpenUrl(pathname: string, fallbackUrl: string) {
@@ -148,6 +180,14 @@ export default function Home() {
   );
   const [projectForm, setProjectForm] = useState<Project>(EMPTY_PROJECT);
 
+  const [clients, setClients] = useState<ClientRecord[]>([]);
+  const [showClientModal, setShowClientModal] = useState(false);
+  const [newClientName, setNewClientName] = useState("");
+  const [selectedClientForContact, setSelectedClientForContact] = useState("");
+  const [newContactName, setNewContactName] = useState("");
+  const [newContactPhone, setNewContactPhone] = useState("");
+  const [newContactEmail, setNewContactEmail] = useState("");
+
   const [showModal, setShowModal] = useState(false);
   const [newProject, setNewProject] = useState({
     client: "",
@@ -169,7 +209,8 @@ export default function Home() {
 
   useEffect(() => {
     const savedUser = localStorage.getItem("eric-user");
-    const savedProjects = localStorage.getItem("eric-projects");
+    const savedProjects = localStorage.getItem(PROJECTS_KEY);
+    const savedClients = localStorage.getItem(CLIENTS_KEY);
     const savedSection = localStorage.getItem("eric-section") as
       | ActiveSection
       | null;
@@ -185,12 +226,20 @@ export default function Home() {
           normalizeProject(project, index)
         );
         setProjects(normalizedProjects);
-        localStorage.setItem(
-          "eric-projects",
-          JSON.stringify(normalizedProjects)
-        );
+        localStorage.setItem(PROJECTS_KEY, JSON.stringify(normalizedProjects));
       } catch {
         setProjects([]);
+      }
+    }
+
+    if (savedClients) {
+      try {
+        const parsed = JSON.parse(savedClients) as Partial<ClientRecord>[];
+        const normalized = normalizeClients(parsed);
+        setClients(normalized);
+        localStorage.setItem(CLIENTS_KEY, JSON.stringify(normalized));
+      } catch {
+        setClients([]);
       }
     }
 
@@ -220,8 +269,21 @@ export default function Home() {
 
   const persistProjects = (updatedProjects: Project[]) => {
     setProjects(updatedProjects);
-    localStorage.setItem("eric-projects", JSON.stringify(updatedProjects));
+    localStorage.setItem(PROJECTS_KEY, JSON.stringify(updatedProjects));
   };
+
+  const persistClients = (updatedClients: ClientRecord[]) => {
+    setClients(updatedClients);
+    localStorage.setItem(CLIENTS_KEY, JSON.stringify(updatedClients));
+  };
+
+  const selectedClient = clients.find(
+    (client) => client.name === projectForm.client
+  );
+
+  const selectedContact = selectedClient?.contacts.find(
+    (contact) => contact.id === projectForm.contactId
+  );
 
   const handleLogin = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -269,6 +331,49 @@ export default function Home() {
     );
   };
 
+  const addClient = () => {
+    if (!newClientName.trim()) return;
+
+    const updated = [
+      ...clients,
+      {
+        id: crypto.randomUUID(),
+        name: newClientName.trim(),
+        contacts: [],
+      },
+    ];
+
+    persistClients(updated);
+    setSelectedClientForContact(newClientName.trim());
+    setNewClientName("");
+  };
+
+  const addContact = () => {
+    if (!selectedClientForContact || !newContactName.trim()) return;
+
+    const updated = clients.map((client) => {
+      if (client.name !== selectedClientForContact) return client;
+
+      return {
+        ...client,
+        contacts: [
+          ...client.contacts,
+          {
+            id: crypto.randomUUID(),
+            name: newContactName.trim(),
+            phone: newContactPhone.trim(),
+            email: newContactEmail.trim(),
+          },
+        ],
+      };
+    });
+
+    persistClients(updated);
+    setNewContactName("");
+    setNewContactPhone("");
+    setNewContactEmail("");
+  };
+
   const addProject = () => {
     if (!loggedInUser) return;
 
@@ -282,11 +387,27 @@ export default function Home() {
 
     const nextNumber = Number(localStorage.getItem(NEXT_PROJECT_KEY) || "1");
 
+    const existingClient = clients.find(
+      (client) => client.name.toLowerCase() === newProject.client.toLowerCase()
+    );
+
+    if (!existingClient) {
+      persistClients([
+        ...clients,
+        {
+          id: crypto.randomUUID(),
+          name: newProject.client.trim(),
+          contacts: [],
+        },
+      ]);
+    }
+
     const newEntry: Project = {
       id: Date.now(),
       numeroProjet: makeProjectNumber(nextNumber),
+      numeroClient: "",
       client: newProject.client.trim(),
-      contact: "",
+      contactId: "",
       statut: "À soumissionner",
       charge: loggedInUser,
       ville: newProject.ville.trim(),
@@ -514,21 +635,44 @@ export default function Home() {
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-black/35 p-5 shadow-2xl backdrop-blur-sm">
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-                <div>
-                  <div className="mb-5">
-                    <label className="mb-2 block text-xl text-orange-400">
-                      Numéro de projet
-                    </label>
-                    <input
-                      value={projectForm.numeroProjet}
-                      readOnly
-                      className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
-                    />
+              <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+                <div className="rounded-xl border border-orange-400/40 bg-black/20 p-5">
+                  <h2 className="mb-5 text-xl font-semibold text-orange-400">
+                    Informations projet
+                  </h2>
+
+                  <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                    <div>
+                      <label className="mb-2 block text-sm text-orange-400">
+                        Numéro de projet
+                      </label>
+                      <input
+                        value={projectForm.numeroProjet}
+                        readOnly
+                        className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm text-orange-400">
+                        Numéro client
+                      </label>
+                      <input
+                        value={projectForm.numeroClient}
+                        onChange={(e) =>
+                          setProjectForm({
+                            ...projectForm,
+                            numeroClient: e.target.value,
+                          })
+                        }
+                        placeholder="Ex. PO / numéro client"
+                        className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none placeholder:text-zinc-500"
+                      />
+                    </div>
                   </div>
 
-                  <div className="mb-5">
-                    <label className="mb-2 block text-xl text-orange-400">
+                  <div className="mt-5">
+                    <label className="mb-2 block text-sm text-orange-400">
                       Statut
                     </label>
                     <select
@@ -553,21 +697,24 @@ export default function Home() {
                     </select>
                   </div>
 
-                  <div className="mb-5">
-                    <label className="mb-2 block text-xl text-orange-400">
+                  <div className="mt-5">
+                    <label className="mb-2 block text-sm text-orange-400">
                       Ville
                     </label>
                     <input
                       value={projectForm.ville}
                       onChange={(e) =>
-                        setProjectForm({ ...projectForm, ville: e.target.value })
+                        setProjectForm({
+                          ...projectForm,
+                          ville: e.target.value,
+                        })
                       }
                       className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
                     />
                   </div>
 
-                  <div className="mb-5">
-                    <label className="mb-2 block text-xl text-orange-400">
+                  <div className="mt-5">
+                    <label className="mb-2 block text-sm text-orange-400">
                       Endroit
                     </label>
                     <input
@@ -582,8 +729,8 @@ export default function Home() {
                     />
                   </div>
 
-                  <div className="mb-5">
-                    <label className="mb-2 block text-xl text-orange-400">
+                  <div className="mt-5">
+                    <label className="mb-2 block text-sm text-orange-400">
                       Description
                     </label>
                     <textarea
@@ -594,70 +741,130 @@ export default function Home() {
                           description: e.target.value,
                         })
                       }
-                      rows={3}
+                      rows={4}
                       className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
                     />
                   </div>
                 </div>
 
-                <div>
-                  <div className="mb-5">
-                    <label className="mb-2 block text-xl text-orange-400">
-                      Client
-                    </label>
-                    <div className="flex gap-3">
-                      <input
-                        value={projectForm.client}
-                        onChange={(e) =>
-                          setProjectForm({
-                            ...projectForm,
-                            client: e.target.value,
-                          })
-                        }
-                        className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
-                      />
+                <div className="rounded-xl border border-orange-400/40 bg-black/20 p-5">
+                  <div className="mb-5 flex items-center justify-between gap-3">
+                    <h2 className="text-xl font-semibold text-orange-400">
+                      Client et contacts
+                    </h2>
 
-                      <button className="rounded border border-orange-400 px-3 py-2 text-orange-400">
-                        +
-                      </button>
-                    </div>
+                    <button
+                      onClick={() => setShowClientModal(true)}
+                      className="rounded border border-orange-400 px-3 py-2 text-orange-400 transition hover:bg-orange-400/10"
+                    >
+                      +
+                    </button>
                   </div>
 
-                  <div className="mb-5">
-                    <label className="mb-2 block text-xl text-orange-400">
-                      Contact
+                  <div>
+                    <label className="mb-2 block text-sm text-orange-400">
+                      Client
                     </label>
-                    <input
-                      value={projectForm.contact}
+                    <select
+                      value={projectForm.client}
                       onChange={(e) =>
                         setProjectForm({
                           ...projectForm,
-                          contact: e.target.value,
+                          client: e.target.value,
+                          contactId: "",
                         })
                       }
                       className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
-                    />
+                    >
+                      <option value="" className="text-black">
+                        Sélectionner un client
+                      </option>
+                      {clients.map((client) => (
+                        <option
+                          key={client.id}
+                          value={client.name}
+                          className="text-black"
+                        >
+                          {client.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="mt-5">
+                    <label className="mb-2 block text-sm text-orange-400">
+                      Contact
+                    </label>
+                    <select
+                      value={projectForm.contactId}
+                      onChange={(e) =>
+                        setProjectForm({
+                          ...projectForm,
+                          contactId: e.target.value,
+                        })
+                      }
+                      className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
+                    >
+                      <option value="" className="text-black">
+                        Sélectionner un contact
+                      </option>
+                      {selectedClient?.contacts.map((contact) => (
+                        <option
+                          key={contact.id}
+                          value={contact.id}
+                          className="text-black"
+                        >
+                          {contact.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2">
+                    <div>
+                      <label className="mb-2 block text-sm text-orange-400">
+                        Téléphone
+                      </label>
+                      <input
+                        value={selectedContact?.phone ?? ""}
+                        readOnly
+                        placeholder="Automatique selon le contact"
+                        className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none placeholder:text-zinc-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm text-orange-400">
+                        Courriel
+                      </label>
+                      <input
+                        value={selectedContact?.email ?? ""}
+                        readOnly
+                        placeholder="Automatique selon le contact"
+                        className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none placeholder:text-zinc-500"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>
 
               <div className="mt-8 grid grid-cols-1 gap-5 lg:grid-cols-3">
-                <button className="min-h-[100px] rounded-xl border-2 border-orange-400 bg-transparent text-3xl font-semibold text-orange-400 transition hover:bg-orange-400/10">
+                <button className="min-h-[90px] rounded-xl border-2 border-orange-400 bg-transparent text-3xl font-semibold text-orange-400 transition hover:bg-orange-400/10">
                   Estimation
                 </button>
 
-                <button className="min-h-[100px] rounded-xl border-2 border-orange-400 bg-transparent px-4 text-2xl font-semibold text-orange-400 transition hover:bg-orange-400/10">
+                <button className="min-h-[90px] rounded-xl border-2 border-orange-400 bg-transparent px-4 text-2xl font-semibold text-orange-400 transition hover:bg-orange-400/10">
                   Bordereau de facturation
                 </button>
 
-                <button className="min-h-[100px] rounded-xl border-2 border-orange-400 bg-transparent text-3xl font-semibold text-orange-400 transition hover:bg-orange-400/10">
+                <button className="min-h-[90px] rounded-xl border-2 border-orange-400 bg-transparent text-3xl font-semibold text-orange-400 transition hover:bg-orange-400/10">
                   Plan
                 </button>
               </div>
 
               <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[1.2fr_0.8fr]">
                 <div className="rounded-xl border border-orange-400/40 bg-black/20 p-4">
-                  <p className="mb-4 text-xl text-orange-400">PO / Documents</p>
+                  <p className="mb-4 text-xl text-orange-400">PO</p>
 
                   <div className="mb-4">
                     <label className="mb-2 block text-sm text-zinc-200">
@@ -696,7 +903,7 @@ export default function Home() {
                   <div className="space-y-3">
                     {projectForm.documents.length === 0 ? (
                       <p className="text-sm text-zinc-400">
-                        Aucun document attaché pour le moment.
+                        Aucun PDF attaché pour le moment.
                       </p>
                     ) : (
                       projectForm.documents.map((doc) => (
@@ -769,6 +976,141 @@ export default function Home() {
               </div>
             </div>
           </div>
+
+          {showClientModal && (
+            <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/75 px-4">
+              <div className="w-full max-w-4xl rounded-2xl border border-white/10 bg-black/95 p-6 text-white shadow-2xl">
+                <div className="mb-6 flex items-center justify-between">
+                  <h2 className="text-2xl font-semibold">
+                    Gestion clients / contacts
+                  </h2>
+
+                  <button
+                    onClick={() => setShowClientModal(false)}
+                    className="rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm transition hover:bg-white/10"
+                  >
+                    Fermer
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+                  <div className="rounded-xl border border-orange-400/30 p-4">
+                    <h3 className="mb-4 text-lg font-semibold text-orange-400">
+                      Ajouter un client
+                    </h3>
+
+                    <input
+                      value={newClientName}
+                      onChange={(e) => setNewClientName(e.target.value)}
+                      placeholder="Nom du client"
+                      className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                    />
+
+                    <button
+                      onClick={addClient}
+                      className="rounded-lg bg-orange-500 px-4 py-2 font-medium text-white transition hover:bg-orange-400"
+                    >
+                      Ajouter client
+                    </button>
+
+                    <div className="mt-5 max-h-64 space-y-2 overflow-auto">
+                      {clients.length === 0 ? (
+                        <p className="text-sm text-zinc-400">
+                          Aucun client pour le moment.
+                        </p>
+                      ) : (
+                        clients.map((client) => (
+                          <button
+                            key={client.id}
+                            onClick={() =>
+                              setSelectedClientForContact(client.name)
+                            }
+                            className={`block w-full rounded-lg border px-3 py-2 text-left text-sm transition ${
+                              selectedClientForContact === client.name
+                                ? "border-orange-400 bg-orange-400/15"
+                                : "border-white/10 bg-white/5 hover:bg-white/10"
+                            }`}
+                          >
+                            {client.name}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="rounded-xl border border-orange-400/30 p-4">
+                    <h3 className="mb-4 text-lg font-semibold text-orange-400">
+                      Ajouter un contact
+                    </h3>
+
+                    <select
+                      value={selectedClientForContact}
+                      onChange={(e) =>
+                        setSelectedClientForContact(e.target.value)
+                      }
+                      className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none"
+                    >
+                      <option value="" className="text-black">
+                        Sélectionner un client
+                      </option>
+                      {clients.map((client) => (
+                        <option
+                          key={client.id}
+                          value={client.name}
+                          className="text-black"
+                        >
+                          {client.name}
+                        </option>
+                      ))}
+                    </select>
+
+                    <input
+                      value={newContactName}
+                      onChange={(e) => setNewContactName(e.target.value)}
+                      placeholder="Nom du contact"
+                      className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                    />
+
+                    <input
+                      value={newContactPhone}
+                      onChange={(e) => setNewContactPhone(e.target.value)}
+                      placeholder="Téléphone"
+                      className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                    />
+
+                    <input
+                      value={newContactEmail}
+                      onChange={(e) => setNewContactEmail(e.target.value)}
+                      placeholder="Courriel"
+                      className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                    />
+
+                    <button
+                      onClick={addContact}
+                      className="rounded-lg bg-orange-500 px-4 py-2 font-medium text-white transition hover:bg-orange-400"
+                    >
+                      Ajouter contact
+                    </button>
+
+                    <div className="mt-5 max-h-64 space-y-2 overflow-auto">
+                      {clients
+                        .find((client) => client.name === selectedClientForContact)
+                        ?.contacts.map((contact) => (
+                          <div
+                            key={contact.id}
+                            className="rounded-lg border border-white/10 bg-white/5 p-3 text-sm"
+                          >
+                            <p className="font-semibold">{contact.name}</p>
+                            <p className="text-zinc-300">{contact.phone}</p>
+                            <p className="text-zinc-300">{contact.email}</p>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </main>
     );
@@ -916,6 +1258,9 @@ export default function Home() {
                       <th className="p-3 text-left font-semibold">
                         Numéro projet
                       </th>
+                      <th className="p-3 text-left font-semibold">
+                        Numéro client
+                      </th>
                       <th className="p-3 text-left font-semibold">Ville</th>
                       <th className="p-3 text-left font-semibold">Client</th>
                       <th className="p-3 text-left font-semibold">
@@ -933,7 +1278,7 @@ export default function Home() {
                     {filteredProjects.length === 0 ? (
                       <tr className="border-t border-white/10">
                         <td
-                          colSpan={7}
+                          colSpan={8}
                           className="p-6 text-center text-zinc-300"
                         >
                           Aucun projet pour le moment.
@@ -947,6 +1292,9 @@ export default function Home() {
                         >
                           <td className="p-3 text-white">
                             {project.numeroProjet}
+                          </td>
+                          <td className="p-3 text-zinc-200">
+                            {project.numeroClient}
                           </td>
                           <td className="p-3 text-zinc-200">
                             {project.ville}
@@ -993,14 +1341,57 @@ export default function Home() {
             </>
           )}
 
-          {activeSection !== "projets" && (
+          {activeSection === "clients" && (
+            <div className="rounded-xl border border-white/10 bg-black/35 p-6 backdrop-blur-sm">
+              <div className="mb-5 flex items-center justify-between">
+                <h2 className="text-xl font-semibold">Clients / Contacts</h2>
+                <button
+                  onClick={() => setShowClientModal(true)}
+                  className="rounded-lg bg-orange-500 px-4 py-2 font-medium text-white transition hover:bg-orange-400"
+                >
+                  + Gestion clients
+                </button>
+              </div>
+
+              {clients.length === 0 ? (
+                <p className="text-zinc-300">Aucun client pour le moment.</p>
+              ) : (
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+                  {clients.map((client) => (
+                    <div
+                      key={client.id}
+                      className="rounded-lg border border-white/10 bg-white/5 p-4"
+                    >
+                      <h3 className="mb-3 text-lg font-semibold text-orange-400">
+                        {client.name}
+                      </h3>
+                      {client.contacts.length === 0 ? (
+                        <p className="text-sm text-zinc-400">Aucun contact.</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {client.contacts.map((contact) => (
+                            <div
+                              key={contact.id}
+                              className="rounded border border-white/10 bg-black/20 p-3 text-sm"
+                            >
+                              <p className="font-semibold">{contact.name}</p>
+                              <p className="text-zinc-300">{contact.phone}</p>
+                              <p className="text-zinc-300">{contact.email}</p>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {activeSection !== "projets" && activeSection !== "clients" && (
             <div className="rounded-lg border border-white/10 bg-black/35 p-8 backdrop-blur-sm">
               <h2 className="text-xl font-semibold">
-                {activeSection === "plans"
-                  ? "Liste de plan"
-                  : activeSection === "clients"
-                  ? "Client"
-                  : "Facturation"}
+                {activeSection === "plans" ? "Liste de plan" : "Facturation"}
               </h2>
               <p className="mt-2 text-zinc-300">Section en construction.</p>
             </div>
@@ -1074,6 +1465,137 @@ export default function Home() {
               >
                 Annuler
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showClientModal && (
+        <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/75 px-4">
+          <div className="w-full max-w-4xl rounded-2xl border border-white/10 bg-black/95 p-6 text-white shadow-2xl">
+            <div className="mb-6 flex items-center justify-between">
+              <h2 className="text-2xl font-semibold">
+                Gestion clients / contacts
+              </h2>
+
+              <button
+                onClick={() => setShowClientModal(false)}
+                className="rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm transition hover:bg-white/10"
+              >
+                Fermer
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+              <div className="rounded-xl border border-orange-400/30 p-4">
+                <h3 className="mb-4 text-lg font-semibold text-orange-400">
+                  Ajouter un client
+                </h3>
+
+                <input
+                  value={newClientName}
+                  onChange={(e) => setNewClientName(e.target.value)}
+                  placeholder="Nom du client"
+                  className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                />
+
+                <button
+                  onClick={addClient}
+                  className="rounded-lg bg-orange-500 px-4 py-2 font-medium text-white transition hover:bg-orange-400"
+                >
+                  Ajouter client
+                </button>
+
+                <div className="mt-5 max-h-64 space-y-2 overflow-auto">
+                  {clients.length === 0 ? (
+                    <p className="text-sm text-zinc-400">
+                      Aucun client pour le moment.
+                    </p>
+                  ) : (
+                    clients.map((client) => (
+                      <button
+                        key={client.id}
+                        onClick={() => setSelectedClientForContact(client.name)}
+                        className={`block w-full rounded-lg border px-3 py-2 text-left text-sm transition ${
+                          selectedClientForContact === client.name
+                            ? "border-orange-400 bg-orange-400/15"
+                            : "border-white/10 bg-white/5 hover:bg-white/10"
+                        }`}
+                      >
+                        {client.name}
+                      </button>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div className="rounded-xl border border-orange-400/30 p-4">
+                <h3 className="mb-4 text-lg font-semibold text-orange-400">
+                  Ajouter un contact
+                </h3>
+
+                <select
+                  value={selectedClientForContact}
+                  onChange={(e) => setSelectedClientForContact(e.target.value)}
+                  className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none"
+                >
+                  <option value="" className="text-black">
+                    Sélectionner un client
+                  </option>
+                  {clients.map((client) => (
+                    <option
+                      key={client.id}
+                      value={client.name}
+                      className="text-black"
+                    >
+                      {client.name}
+                    </option>
+                  ))}
+                </select>
+
+                <input
+                  value={newContactName}
+                  onChange={(e) => setNewContactName(e.target.value)}
+                  placeholder="Nom du contact"
+                  className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                />
+
+                <input
+                  value={newContactPhone}
+                  onChange={(e) => setNewContactPhone(e.target.value)}
+                  placeholder="Téléphone"
+                  className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                />
+
+                <input
+                  value={newContactEmail}
+                  onChange={(e) => setNewContactEmail(e.target.value)}
+                  placeholder="Courriel"
+                  className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                />
+
+                <button
+                  onClick={addContact}
+                  className="rounded-lg bg-orange-500 px-4 py-2 font-medium text-white transition hover:bg-orange-400"
+                >
+                  Ajouter contact
+                </button>
+
+                <div className="mt-5 max-h-64 space-y-2 overflow-auto">
+                  {clients
+                    .find((client) => client.name === selectedClientForContact)
+                    ?.contacts.map((contact) => (
+                      <div
+                        key={contact.id}
+                        className="rounded-lg border border-white/10 bg-white/5 p-3 text-sm"
+                      >
+                        <p className="font-semibold">{contact.name}</p>
+                        <p className="text-zinc-300">{contact.phone}</p>
+                        <p className="text-zinc-300">{contact.email}</p>
+                      </div>
+                    ))}
+                </div>
+              </div>
             </div>
           </div>
         </div>
