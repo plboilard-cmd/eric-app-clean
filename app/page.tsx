@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  ChangeEvent,
-  FormEvent,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
-import html2canvas from "html2canvas";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import jsPDF from "jspdf";
 
 const allowedUsers = [
@@ -275,9 +267,23 @@ function getPreparedBy(userName: string) {
   };
 }
 
-export default function Home() {
-  const quotePdfRef = useRef<HTMLDivElement | null>(null);
+async function loadImageDataUrl(src: string): Promise<string | null> {
+  try {
+    const response = await fetch(src);
+    const blob = await response.blob();
 
+    return await new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(blob);
+    });
+  } catch {
+    return null;
+  }
+}
+
+export default function Home() {
   const [username, setUsername] = useState("");
   const [code, setCode] = useState("");
   const [error, setError] = useState("");
@@ -833,39 +839,155 @@ export default function Home() {
   };
 
   const generateQuotePdf = async () => {
-    if (!activeQuote || !quotePdfRef.current) return;
+    if (!activeQuote) return;
 
     setPdfError("");
     setIsGeneratingPdf(true);
 
     try {
-      const canvas = await html2canvas(quotePdfRef.current, {
-        scale: 2,
-        backgroundColor: "#ffffff",
-        useCORS: true,
+      const pdf = new jsPDF("p", "mm", "letter");
+      const logo = await loadImageDataUrl("/logo-dynamique.png");
+
+      const margin = 15;
+      let y = 15;
+
+      if (logo) {
+        pdf.addImage(logo, "PNG", margin, y - 2, 50, 18);
+      } else {
+        pdf.setFont("helvetica", "bold");
+        pdf.setFontSize(16);
+        pdf.text("DYNAMIQUE", margin, y + 2);
+        pdf.setFontSize(10);
+        pdf.text("EXPERT-CONSEIL", margin, y + 9);
+      }
+
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(22);
+      pdf.setTextColor(255, 102, 0);
+      pdf.text("SOUMISSION", 200, y, { align: "right" });
+
+      pdf.setFontSize(11);
+      pdf.setTextColor(0, 0, 0);
+      pdf.text(activeQuote.name, 200, y + 7, { align: "right" });
+
+      y += 28;
+
+      pdf.setDrawColor(220);
+      pdf.line(margin, y, 200, y);
+      y += 10;
+
+      pdf.setFontSize(11);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("PRÉSENTÉ À", margin, y);
+      pdf.text("PRÉPARÉ PAR", 200, y, { align: "right" });
+
+      y += 8;
+
+      pdf.setFont("helvetica", "normal");
+      pdf.text(`Entreprise : ${projectForm.client || ""}`, margin, y);
+      pdf.text(`Contact : ${preparedBy.name}`, 200, y, { align: "right" });
+
+      y += 6;
+      pdf.text(`Contact : ${selectedContact?.name || ""}`, margin, y);
+      pdf.text(`No. Tel. : ${preparedBy.phone}`, 200, y, { align: "right" });
+
+      y += 6;
+      pdf.text(`Courriel : ${selectedContact?.email || ""}`, margin, y);
+      pdf.text(`Date : ${formatDisplayDate(activeQuote.date)}`, 200, y, {
+        align: "right",
       });
 
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF("p", "mm", "letter");
+      y += 6;
+      pdf.text(`No. Tel. : ${selectedContact?.phone || ""}`, margin, y);
 
-      const pageWidth = pdf.internal.pageSize.getWidth();
-      const pageHeight = pdf.internal.pageSize.getHeight();
+      y += 16;
 
-      const imgWidth = pageWidth;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
+      pdf.setFont("helvetica", "bold");
+      pdf.text("DESCRIPTION DU PROJET", margin, y);
+      y += 8;
 
-      let heightLeft = imgHeight;
-      let position = 0;
+      pdf.setFont("helvetica", "normal");
+      const description = projectForm.numeroClient
+        ? `${projectForm.numeroClient} | ${projectForm.description || ""}`
+        : projectForm.description || "";
+      const descriptionLines = pdf.splitTextToSize(description, 180);
+      pdf.text(descriptionLines, margin, y);
+      y += descriptionLines.length * 6 + 10;
 
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+      pdf.setFont("helvetica", "bold");
+      pdf.setFillColor(230, 230, 230);
+      pdf.rect(margin, y, 180, 8, "F");
+      pdf.text("ITEM", margin + 2, y + 5.5);
+      pdf.text("PRIX", 122, y + 5.5);
+      pdf.text("QUANTITÉ", 145, y + 5.5);
+      pdf.text("TOTAL", 175, y + 5.5);
 
-      while (heightLeft > 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+      y += 8;
+
+      pdf.setFont("helvetica", "normal");
+
+      if (activeQuote.lines.length === 0) {
+        pdf.rect(margin, y, 180, 10);
+        pdf.text("Aucun item ajouté.", margin + 2, y + 6);
+        y += 10;
+      } else {
+        activeQuote.lines.forEach((line) => {
+          const itemLines = pdf.splitTextToSize(line.name, 100);
+          const rowHeight = Math.max(9, itemLines.length * 5 + 3);
+
+          pdf.rect(margin, y, 180, rowHeight);
+          pdf.text(itemLines, margin + 2, y + 6);
+          pdf.text(money(line.price), 122, y + 6);
+          pdf.text(String(line.quantity), 150, y + 6);
+          pdf.text(money(line.price * line.quantity), 175, y + 6);
+          y += rowHeight;
+        });
       }
+
+      pdf.setFont("helvetica", "bold");
+      pdf.setFillColor(245, 245, 245);
+      pdf.rect(margin, y, 180, 9, "F");
+      pdf.text("TOTAL", 145, y + 6);
+      pdf.text(money(quoteTotal), 175, y + 6);
+      y += 18;
+
+      pdf.setFont("helvetica", "bold");
+      pdf.text("NOTES", margin, y);
+      y += 7;
+
+      pdf.setFont("helvetica", "normal");
+      const notes = [
+        "- Validité: 30 jours;",
+        "- Responsabilité: Dynamique Expert-Conseil Inc. décline toute responsabilité liée à l’installation de la signalisation découlant d’un plan. La conformité sur site relève de l'installateur;",
+        "- Paiement: Net 30 jours;",
+        "- Taxes: TPS et TVQ en sus.",
+      ];
+
+      notes.forEach((note) => {
+        const lines = pdf.splitTextToSize(note, 180);
+        pdf.text(lines, margin, y);
+        y += lines.length * 5.5;
+      });
+
+      y += 12;
+
+      pdf.text("Approuvé par: __________________________", margin, y);
+      pdf.text("Bon de commande: ______________________", 115, y);
+
+      y += 18;
+
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Dynamique Expert-Conseil Inc.", margin, y);
+      y += 6;
+      pdf.setFont("helvetica", "normal");
+      pdf.text("44, Allée du refuge", margin, y);
+      pdf.text("(819) 678-6066", 145, y);
+      y += 6;
+      pdf.text("Magog, Qc", margin, y);
+      pdf.text("info@dynamiqueexpert.ca", 145, y);
+      y += 6;
+      pdf.text("J1X 8B5", margin, y);
+      pdf.text("www.dynamiqueexpert.ca", 145, y);
 
       const safeName = activeQuote.name.replace(/[^\w\-]+/g, "_");
       const fileName = `${safeName}.pdf`;
@@ -1172,9 +1294,7 @@ export default function Home() {
                           disabled={isGeneratingPdf}
                           className="rounded-lg bg-white px-4 py-2 font-medium text-black transition hover:bg-zinc-200 disabled:opacity-50"
                         >
-                          {isGeneratingPdf
-                            ? "Génération..."
-                            : "Générer PDF"}
+                          {isGeneratingPdf ? "Génération..." : "Générer PDF"}
                         </button>
 
                         {activeQuote.generatedPdf && (
@@ -1192,32 +1312,17 @@ export default function Home() {
                         )}
 
                         {pdfError && (
-                          <span className="text-sm text-red-400">
-                            {pdfError}
-                          </span>
+                          <span className="text-sm text-red-400">{pdfError}</span>
                         )}
                       </div>
 
-                      <div
-                        ref={quotePdfRef}
-                        className="mx-auto w-full max-w-[850px] rounded bg-white p-10 text-black"
-                      >
+                      <div className="mx-auto w-full max-w-[850px] rounded bg-white p-10 text-black">
                         <div className="mb-8 flex items-start justify-between">
-                          <div className="flex items-start gap-3">
-                            <img
-                              src="/file.svg"
-                              alt="Dynamique Expert-Conseil"
-                              className="h-16 w-16 object-contain"
-                            />
-                            <div>
-                              <div className="text-2xl font-bold tracking-wide">
-                                DYNAMIQUE
-                              </div>
-                              <div className="text-sm font-semibold tracking-wide">
-                                EXPERT-CONSEIL
-                              </div>
-                            </div>
-                          </div>
+                          <img
+                            src="/logo-dynamique.png"
+                            alt="Dynamique Expert-Conseil"
+                            className="h-16 w-auto object-contain"
+                          />
 
                           <div className="text-right">
                             <h1 className="text-3xl font-bold text-orange-500">
@@ -1231,12 +1336,9 @@ export default function Home() {
 
                         <div className="mb-6 grid grid-cols-2 gap-8 border-t border-zinc-300 pt-5">
                           <div>
-                            <p className="mb-2 font-bold uppercase">
-                              Présenté à
-                            </p>
+                            <p className="mb-2 font-bold uppercase">Présenté à</p>
                             <p>
-                              <strong>Entreprise :</strong>{" "}
-                              {projectForm.client}
+                              <strong>Entreprise :</strong> {projectForm.client}
                             </p>
                             <p>
                               <strong>Contact :</strong>{" "}
@@ -1252,10 +1354,8 @@ export default function Home() {
                             </p>
                           </div>
 
-                          <div>
-                            <p className="mb-2 font-bold uppercase">
-                              Préparé par
-                            </p>
+                          <div className="text-right">
+                            <p className="mb-2 font-bold uppercase">Préparé par</p>
                             <p>
                               <strong>Contact :</strong> {preparedBy.name}
                             </p>
@@ -1270,21 +1370,15 @@ export default function Home() {
                         </div>
 
                         <div className="mb-6">
-                          <p>
-                            <strong>O/S No.</strong>{" "}
-                            {projectForm.numeroProjet}
-                          </p>
-                          <p>
-                            <strong>No client.</strong>{" "}
-                            {projectForm.numeroClient}
-                          </p>
-                        </div>
-
-                        <div className="mb-6">
                           <p className="mb-2 font-bold uppercase">
                             Description du projet
                           </p>
-                          <p>{projectForm.description}</p>
+                          <p>
+                            {projectForm.numeroClient
+                              ? `${projectForm.numeroClient} | `
+                              : ""}
+                            {projectForm.description}
+                          </p>
                         </div>
 
                         <div className="overflow-hidden border border-zinc-300">
@@ -1325,7 +1419,7 @@ export default function Home() {
                                 <div>{money(line.price * line.quantity)}</div>
                                 <button
                                   onClick={() => removeQuoteLine(line.id)}
-                                  className="text-red-600 print:hidden"
+                                  className="text-red-600"
                                 >
                                   X
                                 </button>
@@ -1336,7 +1430,7 @@ export default function Home() {
                           <div className="grid grid-cols-[1.8fr_0.6fr_0.5fr_0.6fr_0.2fr] border-t border-zinc-400 bg-zinc-100 p-2 text-sm font-bold">
                             <div></div>
                             <div></div>
-                            <div>Total</div>
+                            <div>TOTAL</div>
                             <div>{money(quoteTotal)}</div>
                             <div></div>
                           </div>
@@ -1347,8 +1441,9 @@ export default function Home() {
                           <p>- Validité: 30 jours;</p>
                           <p>
                             - Responsabilité: Dynamique Expert-Conseil Inc.
-                            décline toute responsabilité liée à l’installation
-                            de la signalisation découlant d’un plan.
+                            décline toute responsabilité liée à l’installation de
+                            la signalisation découlant d’un plan. La conformité
+                            sur site relève de l'installateur;
                           </p>
                           <p>- Paiement: Net 30 jours;</p>
                           <p>- Taxes: TPS et TVQ en sus.</p>
@@ -1365,12 +1460,20 @@ export default function Home() {
                           </div>
                         </div>
 
-                        <div className="mt-10 text-sm">
-                          <p className="font-semibold">
-                            Dynamique Expert-Conseil Inc.
-                          </p>
-                          <p>44, Allée du refuge, Magog, Qc, J1X 8B5</p>
-                          <p>(819) 678-6066 | info@dynamiqueexpert.ca</p>
+                        <div className="mt-10 grid grid-cols-2 text-sm">
+                          <div>
+                            <p className="font-semibold">
+                              Dynamique Expert-Conseil Inc.
+                            </p>
+                            <p>44, Allée du refuge</p>
+                            <p>Magog, Qc</p>
+                            <p>J1X 8B5</p>
+                          </div>
+                          <div className="text-right">
+                            <p>(819) 678-6066</p>
+                            <p>info@dynamiqueexpert.ca</p>
+                            <p>www.dynamiqueexpert.ca</p>
+                          </div>
                         </div>
                       </div>
                     </>
