@@ -308,7 +308,7 @@ function createPlanRequest(project: Project, planNumber: number, revisionNumber:
     revisionNumber,
     code: makePlanCode(project.numeroProjet, planNumber, revisionNumber),
     descriptionPlan: base?.descriptionPlan ?? project.description ?? "",
-    statut: base?.statut ?? "Brouillon",
+    statut: base?.statut ?? "",
     planRequisLe: base?.planRequisLe ?? "",
     dateChantier: base?.dateChantier ?? "",
     dateCommande: base?.dateCommande ?? todayFrCa(),
@@ -407,6 +407,7 @@ export default function Home() {
   const [newItemPrice, setNewItemPrice] = useState("");
   const [newQuoteName, setNewQuoteName] = useState("");
   const [activeQuoteId, setActiveQuoteId] = useState<string | null>(null);
+  const [selectedPlan, setSelectedPlan] = useState<PlanRequest | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [pdfError, setPdfError] = useState("");
 
@@ -746,6 +747,7 @@ export default function Home() {
     setProjectForm(project);
     setProjectPanel("fiche");
     setActiveQuoteId(project.soumissions[0]?.id ?? null);
+    setSelectedPlan(null);
     setUploadError("");
     setPdfError("");
     setViewMode("project");
@@ -1323,18 +1325,25 @@ export default function Home() {
 
             <div className="mb-6 grid grid-cols-1 gap-5 lg:grid-cols-4">
               <button
+                onClick={() => setProjectPanel("fiche")}
+                className={`min-h-[90px] rounded-xl border-2 border-orange-400 px-4 text-2xl font-semibold transition ${
+                  projectPanel === "fiche"
+                    ? "bg-orange-500 text-black"
+                    : "bg-transparent text-orange-400 hover:bg-orange-400/10"
+                }`}
+              >
+                Projet
+              </button>
+
+              <button
                 onClick={() => setProjectPanel("soumission")}
-                className={`min-h-[90px] rounded-xl border-2 border-orange-400 text-3xl font-semibold transition ${
+                className={`min-h-[90px] rounded-xl border-2 border-orange-400 px-4 text-2xl font-semibold transition ${
                   projectPanel === "soumission"
                     ? "bg-orange-500 text-black"
                     : "bg-transparent text-orange-400 hover:bg-orange-400/10"
                 }`}
               >
                 Estimation
-              </button>
-
-              <button className="min-h-[90px] rounded-xl border-2 border-orange-400 bg-transparent px-4 text-2xl font-semibold text-orange-400 transition hover:bg-orange-400/10">
-                Bordereau de facturation
               </button>
 
               <button
@@ -1348,15 +1357,8 @@ export default function Home() {
                 Demande de plan
               </button>
 
-              <button
-                onClick={() => setProjectPanel("fiche")}
-                className={`min-h-[90px] rounded-xl border-2 border-orange-400 text-3xl font-semibold transition ${
-                  projectPanel === "fiche"
-                    ? "bg-orange-500 text-black"
-                    : "bg-transparent text-orange-400 hover:bg-orange-400/10"
-                }`}
-              >
-                Projet
+              <button className="min-h-[90px] rounded-xl border-2 border-orange-400 bg-transparent px-4 text-2xl font-semibold text-orange-400 transition hover:bg-orange-400/10">
+                Facturation
               </button>
             </div>
 
@@ -1695,7 +1697,7 @@ export default function Home() {
               </div>
             ) : projectPanel === "demandePlan" ? (
               <div className="rounded-2xl border border-white/10 bg-black/35 p-5 shadow-2xl backdrop-blur-sm">
-                <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+                <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                   <div>
                     <h2 className="text-2xl font-semibold text-orange-400">
                       Demandes de plan
@@ -1705,37 +1707,58 @@ export default function Home() {
                     </p>
                   </div>
 
-                  <button
-                    onClick={createPlanDemand}
-                    className="rounded-lg bg-orange-500 px-4 py-2 font-medium text-black transition hover:bg-orange-400"
-                  >
-                    + Nouvelle demande de plan
-                  </button>
+                  <div className="flex flex-wrap gap-2">
+                    <button
+                      onClick={createPlanDemand}
+                      className="rounded-lg bg-orange-500 px-4 py-2 font-medium text-black transition hover:bg-orange-400"
+                    >
+                      + Nouvelle demande de plan
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        if (!selectedPlan) {
+                          alert("Sélectionne un plan avant de le copier.");
+                          return;
+                        }
+                        copyPlanAsNewPlan(selectedPlan);
+                      }}
+                      className="rounded-lg border border-blue-400/60 bg-blue-400/10 px-4 py-2 text-sm font-medium text-blue-200 transition hover:bg-blue-400/20"
+                    >
+                      Copier en nouveau plan
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        if (!selectedPlan) {
+                          alert("Sélectionne un plan avant de créer une révision.");
+                          return;
+                        }
+                        copyPlanAsRevision(selectedPlan);
+                      }}
+                      className="rounded-lg border border-green-400/60 bg-green-400/10 px-4 py-2 text-sm font-medium text-green-200 transition hover:bg-green-400/20"
+                    >
+                      Copier en nouvelle révision
+                    </button>
+                  </div>
                 </div>
 
                 <div className="overflow-x-auto rounded-xl border border-white/10">
-                  <table className="min-w-[1500px] w-full text-sm">
+                  <table className="min-w-[1000px] w-full text-sm">
                     <thead className="bg-orange-500 text-black">
                       <tr>
-                        <th className="p-3 text-left font-semibold"># Plan</th>
-                        <th className="p-3 text-left font-semibold">Version</th>
-                        <th className="p-3 text-left font-semibold">Description Plan</th>
-                        <th className="p-3 text-left font-semibold">Actions</th>
+                        <th className="p-3 text-left font-semibold">Sélection</th>
+                        <th className="p-3 text-left font-semibold">Plan</th>
+                        <th className="p-3 text-left font-semibold">Accès</th>
                         <th className="p-3 text-left font-semibold">Statut</th>
-                        <th className="p-3 text-left font-semibold">Plan requis le</th>
-                        <th className="p-3 text-left font-semibold">Date chantier</th>
-                        <th className="p-3 text-left font-semibold">Date commandé</th>
-                        <th className="p-3 text-left font-semibold">Date envoyé</th>
-                        <th className="p-3 text-left font-semibold">Aujourd’hui?</th>
-                        <th className="p-3 text-left font-semibold">Complété?</th>
-                        <th className="p-3 text-left font-semibold">Dessinateur / Ingénieur</th>
+                        <th className="p-3 text-left font-semibold">Dessinateur</th>
                       </tr>
                     </thead>
 
                     <tbody>
                       {projectForm.planRequests.length === 0 ? (
                         <tr>
-                          <td colSpan={12} className="p-6 text-center text-zinc-300">
+                          <td colSpan={5} className="p-6 text-center text-zinc-300">
                             Aucune demande de plan pour le moment.
                           </td>
                         </tr>
@@ -1743,13 +1766,20 @@ export default function Home() {
                         [...projectForm.planRequests]
                           .sort((a, b) =>
                             a.planNumber === b.planNumber
-                              ? a.revisionNumber - b.revisionNumber
-                              : a.planNumber - b.planNumber
+                              ? b.revisionNumber - a.revisionNumber
+                              : b.planNumber - a.planNumber
                           )
                           .map((plan) => (
                             <tr key={plan.id} className="border-t border-white/10 bg-black/15">
-                              <td className="p-3 text-white">{plan.planNumber}</td>
-                              <td className="p-3 text-white">{plan.revisionNumber}</td>
+                              <td className="p-3 text-center">
+                                <input
+                                  type="radio"
+                                  name="selectedPlan"
+                                  checked={selectedPlan?.id === plan.id}
+                                  onChange={() => setSelectedPlan(plan)}
+                                />
+                              </td>
+
                               <td className="p-3">
                                 <input
                                   value={plan.descriptionPlan}
@@ -1758,122 +1788,66 @@ export default function Home() {
                                       descriptionPlan: e.target.value,
                                     })
                                   }
-                                  className="w-full min-w-[360px] rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                                  className="w-full min-w-[420px] rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
                                 />
                                 <p className="mt-1 text-xs text-zinc-400">{plan.code}</p>
                               </td>
+
+                              <td className="p-3">
+                                <button
+                                  onClick={() => openPlanDemand(plan)}
+                                  className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-white hover:bg-white/20"
+                                >
+                                  Demande
+                                </button>
+                              </td>
+
                               <td className="p-3">
                                 <div className="flex flex-wrap gap-2">
-                                  <button
-                                    onClick={() => openPlanDemand(plan)}
-                                    className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-white hover:bg-white/20"
+                                  <select
+                                    value={plan.statut || ""}
+                                    onChange={(e) =>
+                                      updatePlanRequest(plan.id, {
+                                        statut: e.target.value,
+                                      })
+                                    }
+                                    className="rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
                                   >
-                                    Demande
-                                  </button>
+                                    <option value="" className="text-black">--</option>
+                                    {["commandé", "en dessin", "a vérifier", "a corriger", "envoyé", "a réviser", "révisé", "en révision"].map((status) => (
+                                      <option key={status} value={status} className="text-black">
+                                        {status}
+                                      </option>
+                                    ))}
+                                  </select>
+
                                   <button
-                                    onClick={() => sendPlanToListing(plan)}
-                                    className="rounded border border-orange-400 bg-orange-400/10 px-3 py-1.5 text-xs text-orange-300 hover:bg-orange-400/20"
+                                    onClick={() => {
+                                      updatePlanRequest(plan.id, { statut: "commandé" });
+                                      alert(`La demande ${plan.code} sera envoyée au listing de plan à la prochaine étape.`);
+                                    }}
+                                    className="rounded bg-orange-500 px-3 py-2 text-xs font-medium text-black hover:bg-orange-400"
                                   >
-                                    Envoyer
-                                  </button>
-                                  <button
-                                    onClick={() => copyPlanAsNewPlan(plan)}
-                                    className="rounded border border-blue-400/50 bg-blue-400/10 px-3 py-1.5 text-xs text-blue-200 hover:bg-blue-400/20"
-                                  >
-                                    Copier + plan
-                                  </button>
-                                  <button
-                                    onClick={() => copyPlanAsRevision(plan)}
-                                    className="rounded border border-green-400/50 bg-green-400/10 px-3 py-1.5 text-xs text-green-200 hover:bg-green-400/20"
-                                  >
-                                    Copier + révision
+                                    Commandé
                                   </button>
                                 </div>
                               </td>
+
                               <td className="p-3">
                                 <select
-                                  value={plan.statut}
-                                  onChange={(e) =>
-                                    updatePlanRequest(plan.id, { statut: e.target.value })
-                                  }
-                                  className="rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
-                                >
-                                  {["Brouillon", "Envoyé", "En cours", "Complété", "Annulé"].map((status) => (
-                                    <option key={status} value={status} className="text-black">
-                                      {status}
-                                    </option>
-                                  ))}
-                                </select>
-                              </td>
-                              <td className="p-3">
-                                <input
-                                  type="date"
-                                  value={plan.planRequisLe}
-                                  onChange={(e) =>
-                                    updatePlanRequest(plan.id, { planRequisLe: e.target.value })
-                                  }
-                                  className="rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
-                                />
-                              </td>
-                              <td className="p-3">
-                                <input
-                                  type="date"
-                                  value={plan.dateChantier}
-                                  onChange={(e) =>
-                                    updatePlanRequest(plan.id, { dateChantier: e.target.value })
-                                  }
-                                  className="rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
-                                />
-                              </td>
-                              <td className="p-3">
-                                <input
-                                  type="date"
-                                  value={plan.dateCommande}
-                                  onChange={(e) =>
-                                    updatePlanRequest(plan.id, { dateCommande: e.target.value })
-                                  }
-                                  className="rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
-                                />
-                              </td>
-                              <td className="p-3">
-                                <input
-                                  type="date"
-                                  value={plan.dateEnvoye}
-                                  onChange={(e) =>
-                                    updatePlanRequest(plan.id, { dateEnvoye: e.target.value })
-                                  }
-                                  className="rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
-                                />
-                              </td>
-                              <td className="p-3 text-center">
-                                <input
-                                  type="checkbox"
-                                  checked={plan.aujourdHui}
-                                  onChange={(e) =>
-                                    updatePlanRequest(plan.id, { aujourdHui: e.target.checked })
-                                  }
-                                />
-                              </td>
-                              <td className="p-3 text-center">
-                                <input
-                                  type="checkbox"
-                                  checked={plan.complete}
-                                  onChange={(e) =>
-                                    updatePlanRequest(plan.id, { complete: e.target.checked })
-                                  }
-                                />
-                              </td>
-                              <td className="p-3">
-                                <textarea
-                                  value={plan.dessinateurIngenieur}
+                                  value={plan.dessinateurIngenieur || ""}
                                   onChange={(e) =>
                                     updatePlanRequest(plan.id, {
                                       dessinateurIngenieur: e.target.value,
                                     })
                                   }
-                                  rows={2}
-                                  className="w-full min-w-[220px] rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
-                                />
+                                  className="rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                                >
+                                  <option value="" className="text-black">--</option>
+                                  <option value="Pierre-Luc" className="text-black">Pierre-Luc</option>
+                                  <option value="Véronique" className="text-black">Véronique</option>
+                                  <option value="Audrey" className="text-black">Audrey</option>
+                                </select>
                               </td>
                             </tr>
                           ))
@@ -2532,7 +2506,9 @@ export default function Home() {
                         </td>
                       </tr>
                     ) : (
-                      filteredProjects.map((project) => (
+                      [...filteredProjects]
+                        .sort((a, b) => b.id - a.id)
+                        .map((project) => (
                         <tr
                           key={project.id}
                           className="border-t border-white/10 bg-black/15"
