@@ -13,6 +13,7 @@ const NEXT_PROJECT_KEY = "eric-next-project-number-26";
 const PROJECTS_KEY = "eric-projects";
 const CLIENTS_KEY = "eric-clients";
 const ITEMS_BANK_KEY = "eric-items-bank";
+const NEXT_INVOICE_KEY = "eric-next-invoice-number-26";
 
 type StatusType =
   | "À soumissionner"
@@ -110,6 +111,35 @@ type Quote = {
   generatedPdf?: ProjectDocument | null;
 };
 
+type BillingMonthLine = {
+  lineId: string;
+  quantity: number;
+};
+
+type GeneratedInvoice = {
+  id: string;
+  invoiceNumber: string;
+  monthId: string;
+  name: string;
+  url: string;
+  pathname: string;
+  uploadedAt: string;
+};
+
+type BillingMonth = {
+  id: string;
+  month: number;
+  year: number;
+  label: string;
+  lines: BillingMonthLine[];
+  invoice?: GeneratedInvoice | null;
+};
+
+type BillingBoard = {
+  quoteId: string;
+  months: BillingMonth[];
+};
+
 type Project = {
   id: number;
   numeroProjet: string;
@@ -125,12 +155,13 @@ type Project = {
   documents: ProjectDocument[];
   planRequests: PlanRequest[];
   soumissions: Quote[];
+  billingBoards: BillingBoard[];
   createdAt: string;
 };
 
 type ActiveSection = "projets" | "plans" | "clients" | "facturation";
 type ViewMode = "list" | "project";
-type ProjectPanel = "fiche" | "soumission" | "demandePlan" | "planDetail";
+type ProjectPanel = "fiche" | "soumission" | "demandePlan" | "planDetail" | "facturation";
 
 const ALL_STATUSES: StatusType[] = [
   "À soumissionner",
@@ -203,6 +234,7 @@ const EMPTY_PROJECT: Project = {
   documents: [],
   planRequests: [],
   soumissions: [],
+  billingBoards: [],
   createdAt: "",
 };
 
@@ -223,6 +255,24 @@ function money(value: number) {
     style: "currency",
     currency: "CAD",
   });
+}
+
+function makeInvoiceNumber(nextNumber: number) {
+  return `F-${YEAR_PREFIX}-${String(nextNumber).padStart(4, "0")}`;
+}
+
+function getMonthLabel(month: number, year: number) {
+  const date = new Date(year, month - 1, 1);
+  return date.toLocaleDateString("fr-CA", { month: "long", year: "numeric" });
+}
+
+function getMonthYearFromDate(dateString: string) {
+  const date = dateString ? new Date(dateString) : new Date();
+  if (Number.isNaN(date.getTime())) {
+    const now = new Date();
+    return { month: now.getMonth() + 1, year: now.getFullYear() };
+  }
+  return { month: date.getMonth() + 1, year: date.getFullYear() };
 }
 
 function getStatusBadgeClasses(status: StatusType) {
@@ -345,6 +395,7 @@ function normalizeProject(raw: Partial<Project>, index: number): Project {
           })) ?? [],
         generatedPdf: quote.generatedPdf ?? null,
       })) ?? [],
+    billingBoards: raw.billingBoards ?? [],
     createdAt: raw.createdAt ?? new Date().toISOString(),
   };
 }
@@ -524,7 +575,11 @@ export default function Home() {
   const [newFermetureOption, setNewFermetureOption] = useState("");
   const [fermetureOptions, setFermetureOptions] = useState<string[]>(DEFAULT_FERMETURES);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
+  const [isGeneratingInvoicePdf, setIsGeneratingInvoicePdf] = useState(false);
   const [pdfError, setPdfError] = useState("");
+  const [invoicePdfError, setInvoicePdfError] = useState("");
+  const [newBillingMonth, setNewBillingMonth] = useState(String(new Date().getMonth() + 1));
+  const [newBillingYear, setNewBillingYear] = useState(String(new Date().getFullYear()));
 
   useEffect(() => {
     const savedUser = localStorage.getItem("eric-user");
@@ -605,6 +660,10 @@ export default function Home() {
         NEXT_PROJECT_KEY,
         String(maxExisting > 0 ? maxExisting + 1 : 1)
       );
+    }
+
+    if (!localStorage.getItem(NEXT_INVOICE_KEY)) {
+      localStorage.setItem(NEXT_INVOICE_KEY, "500");
     }
 
     setIsLoaded(true);
@@ -735,6 +794,10 @@ export default function Home() {
   );
 
   const activePlan = projectForm.planRequests.find((plan) => plan.id === activePlanId) ?? null;
+  const activeBillingQuote = projectForm.soumissions.find((quote) => quote.status === "Actif") ?? projectForm.soumissions[0] ?? null;
+  const activeBillingBoard = activeBillingQuote
+    ? projectForm.billingBoards.find((board) => board.quoteId === activeBillingQuote.id) ?? null
+    : null;
 
   const quoteTotal =
     activeQuote?.lines.reduce(
@@ -901,6 +964,7 @@ export default function Home() {
       documents: [],
       planRequests: [],
       soumissions: [],
+      billingBoards: [],
       createdAt: new Date().toISOString(),
     };
 
@@ -1140,9 +1204,25 @@ export default function Home() {
       generatedPdf: null,
     };
 
+    const { month, year } = getMonthYearFromDate(quote.date);
+    const billingBoard: BillingBoard = {
+      quoteId: quote.id,
+      months: [
+        {
+          id: crypto.randomUUID(),
+          month,
+          year,
+          label: getMonthLabel(month, year),
+          lines: [],
+          invoice: null,
+        },
+      ],
+    };
+
     const updatedProject = {
       ...projectForm,
       soumissions: [...projectForm.soumissions, quote],
+      billingBoards: [...projectForm.billingBoards, billingBoard],
     };
 
     persistProjectForm(updatedProject);
@@ -1489,6 +1569,303 @@ export default function Home() {
     }
   };
 
+  const ensureBillingBoard = () => {
+    if (!activeBillingQuote) return null;
+
+    const existing = projectForm.billingBoards.find(
+      (board) => board.quoteId === activeBillingQuote.id
+    );
+
+    if (existing) return existing;
+
+    const { month, year } = getMonthYearFromDate(activeBillingQuote.date);
+    const newBoard: BillingBoard = {
+      quoteId: activeBillingQuote.id,
+      months: [
+        {
+          id: crypto.randomUUID(),
+          month,
+          year,
+          label: getMonthLabel(month, year),
+          lines: [],
+          invoice: null,
+        },
+      ],
+    };
+
+    persistProjectForm({
+      ...projectForm,
+      billingBoards: [...projectForm.billingBoards, newBoard],
+    });
+
+    return newBoard;
+  };
+
+  const updateBillingMonthQuantity = (monthId: string, lineId: string, quantity: number) => {
+    if (!activeBillingQuote) return;
+    const board = ensureBillingBoard();
+    if (!board) return;
+
+    const updatedBoard: BillingBoard = {
+      ...board,
+      months: board.months.map((month) => {
+        if (month.id !== monthId) return month;
+
+        const existingLine = month.lines.find((line) => line.lineId === lineId);
+        const updatedLines = existingLine
+          ? month.lines.map((line) =>
+              line.lineId === lineId ? { ...line, quantity: Math.max(0, quantity) } : line
+            )
+          : [...month.lines, { lineId, quantity: Math.max(0, quantity) }];
+
+        return { ...month, lines: updatedLines };
+      }),
+    };
+
+    persistProjectForm({
+      ...projectForm,
+      billingBoards: projectForm.billingBoards.some((item) => item.quoteId === board.quoteId)
+        ? projectForm.billingBoards.map((item) =>
+            item.quoteId === board.quoteId ? updatedBoard : item
+          )
+        : [...projectForm.billingBoards, updatedBoard],
+    });
+  };
+
+  const addBillingMonth = () => {
+    if (!activeBillingQuote) return;
+    const board = ensureBillingBoard();
+    if (!board) return;
+
+    const month = Number(newBillingMonth);
+    const year = Number(newBillingYear);
+    if (!month || !year) return;
+
+    const alreadyExists = board.months.some(
+      (item) => item.month === month && item.year === year
+    );
+    if (alreadyExists) return;
+
+    const updatedBoard: BillingBoard = {
+      ...board,
+      months: [
+        ...board.months,
+        {
+          id: crypto.randomUUID(),
+          month,
+          year,
+          label: getMonthLabel(month, year),
+          lines: [],
+          invoice: null,
+        },
+      ].sort((a, b) => a.year === b.year ? a.month - b.month : a.year - b.year),
+    };
+
+    persistProjectForm({
+      ...projectForm,
+      billingBoards: projectForm.billingBoards.map((item) =>
+        item.quoteId === board.quoteId ? updatedBoard : item
+      ),
+    });
+  };
+
+  const getMonthLineQuantity = (month: BillingMonth, lineId: string) => {
+    return month.lines.find((line) => line.lineId === lineId)?.quantity ?? 0;
+  };
+
+  const getRealQuantityTotal = (lineId: string) => {
+    if (!activeBillingBoard) return 0;
+    return activeBillingBoard.months.reduce(
+      (total, month) => total + getMonthLineQuantity(month, lineId),
+      0
+    );
+  };
+
+  const generateInvoicePdf = async (month: BillingMonth) => {
+    if (!activeBillingQuote) return;
+
+    setInvoicePdfError("");
+    setIsGeneratingInvoicePdf(true);
+
+    try {
+      const nextInvoiceNumber = Number(localStorage.getItem(NEXT_INVOICE_KEY) || "500");
+      const invoiceNumber = makeInvoiceNumber(nextInvoiceNumber);
+      const pdf = new jsPDF("p", "mm", "letter");
+      const logo = await loadImageDataUrl("/logo-dynamique.png");
+
+      const margin = 15;
+      let y = 15;
+
+      if (logo) {
+        pdf.addImage(logo, "PNG", margin, y - 2, 50, 18);
+      }
+
+      pdf.setFont("helvetica", "bold");
+      pdf.setFontSize(22);
+      pdf.setTextColor(255, 102, 0);
+      pdf.text("FACTURE", 200, y, { align: "right" });
+
+      pdf.setFontSize(11);
+      pdf.setTextColor(0, 0, 0);
+      pdf.text(invoiceNumber, 200, y + 7, { align: "right" });
+      pdf.text(`Date : ${formatDisplayDate(new Date().toISOString())}`, 200, y + 14, { align: "right" });
+      pdf.text("NEQ: 1181748436", 200, y + 21, { align: "right" });
+
+      y += 35;
+      pdf.setDrawColor(220);
+      pdf.line(margin, y, 200, y);
+      y += 10;
+
+      pdf.setFont("helvetica", "bold");
+      pdf.text("FACTURÉ À", margin, y);
+      pdf.text("RÉFÉRENCE", 200, y, { align: "right" });
+      y += 8;
+
+      pdf.setFont("helvetica", "normal");
+      pdf.text(`Client : ${projectForm.client || ""}`, margin, y);
+      pdf.text(`O/S No. : ${activeBillingQuote.name}`, 200, y, { align: "right" });
+      y += 6;
+      pdf.text(`Contact : ${selectedContact?.name || ""}`, margin, y);
+      pdf.text(`No. BC Client : ${projectForm.poNumber || ""}`, 200, y, { align: "right" });
+      y += 6;
+      pdf.text(`Courriel : ${selectedContact?.email || ""}`, margin, y);
+      y += 6;
+      pdf.text(`Facturation : ${selectedContact?.email || ""}`, margin, y);
+      y += 14;
+
+      pdf.setFont("helvetica", "bold");
+      pdf.text("DESCRIPTION DU PROJET", margin, y);
+      y += 8;
+      pdf.setFont("helvetica", "normal");
+      const description = projectForm.numeroClient
+        ? `${projectForm.numeroClient} | ${projectForm.description || ""}`
+        : projectForm.description || "";
+      pdf.text(pdf.splitTextToSize(description, 180), margin, y);
+      y += 16;
+
+      pdf.setFont("helvetica", "bold");
+      pdf.setFillColor(230, 230, 230);
+      pdf.rect(margin, y, 180, 8, "F");
+      pdf.text("ITEM", margin + 2, y + 5.5);
+      pdf.text("PRIX", 120, y + 5.5);
+      pdf.text("QUANTITÉ", 145, y + 5.5);
+      pdf.text("TOTAL", 175, y + 5.5);
+      y += 8;
+
+      pdf.setFont("helvetica", "normal");
+      const invoiceLines = activeBillingQuote.lines
+        .map((line) => ({
+          ...line,
+          invoiceQty: getMonthLineQuantity(month, line.id),
+        }))
+        .filter((line) => line.invoiceQty > 0);
+
+      let subtotal = 0;
+      if (invoiceLines.length === 0) {
+        pdf.rect(margin, y, 180, 10);
+        pdf.text("Aucun item à facturer pour ce mois.", margin + 2, y + 6);
+        y += 10;
+      } else {
+        invoiceLines.forEach((line) => {
+          const total = line.price * line.invoiceQty;
+          subtotal += total;
+          const itemLines = pdf.splitTextToSize(line.name, 100);
+          const rowHeight = Math.max(9, itemLines.length * 5 + 3);
+          pdf.rect(margin, y, 180, rowHeight);
+          pdf.text(itemLines, margin + 2, y + 6);
+          pdf.text(money(line.price), 120, y + 6);
+          pdf.text(String(line.invoiceQty), 150, y + 6);
+          pdf.text(money(total), 175, y + 6);
+          y += rowHeight;
+        });
+      }
+
+      const tps = subtotal * 0.05;
+      const tvq = subtotal * 0.09975;
+      const total = subtotal + tps + tvq;
+
+      y += 6;
+      pdf.setFont("helvetica", "bold");
+      pdf.text(`Sous-total : ${money(subtotal)}`, 200, y, { align: "right" });
+      y += 6;
+      pdf.text(`(74091 4239 RT 0001) T.P.S. 5% : ${money(tps)}`, 200, y, { align: "right" });
+      y += 6;
+      pdf.text(`(12 3349 7637 TQ 0001) T.V.Q. 9.975% : ${money(tvq)}`, 200, y, { align: "right" });
+      y += 8;
+      pdf.setFontSize(13);
+      pdf.text(`TOTAL : ${money(total)}`, 200, y, { align: "right" });
+      y += 16;
+
+      pdf.setFontSize(10);
+      pdf.text("NOTES", margin, y);
+      y += 7;
+      pdf.setFont("helvetica", "normal");
+      const invoiceNotes = [
+        "- Paiement : Net 30 jours;",
+        "- Virement Interac : admin@dynamiqueexpert.ca | Réponse: 6066 | Note (Obligatoire) : S.V.P. inscrire le numéro de facture dans le champ Message au destinataire du virement.",
+        "- Dépôt direct : Caisse Desjardins | Transit: 50066 | Institution: 815 | Compte: 7508443 | Note : Veuillez S.V.P. acheminer votre avis de dépôt à admin@dynamiqueexpert.ca",
+      ];
+      invoiceNotes.forEach((note) => {
+        const lines = pdf.splitTextToSize(note, 180);
+        pdf.text(lines, margin, y);
+        y += lines.length * 5.5;
+      });
+
+      y = Math.max(y + 12, 245);
+      pdf.setFont("helvetica", "bold");
+      pdf.text("Dynamique Expert-Conseil Inc.", margin, y);
+      y += 6;
+      pdf.setFont("helvetica", "normal");
+      pdf.text("44, Allée du refuge", margin, y);
+      pdf.text("(819) 678-6066", 145, y);
+      y += 6;
+      pdf.text("Magog, Qc", margin, y);
+      pdf.text("info@dynamiqueexpert.ca", 145, y);
+      y += 6;
+      pdf.text("J1X 8B5", margin, y);
+      pdf.text("www.dynamiqueexpert.ca", 145, y);
+
+      const fileName = `${invoiceNumber}_${projectForm.numeroProjet}_${month.label.replaceAll(" ", "_")}.pdf`;
+      const pdfBlob = pdf.output("blob");
+      const file = new File([pdfBlob], fileName, { type: "application/pdf" });
+      const data = await uploadPdfBlob(file);
+
+      const generatedInvoice: GeneratedInvoice = {
+        id: crypto.randomUUID(),
+        invoiceNumber,
+        monthId: month.id,
+        name: fileName,
+        url: data.url,
+        pathname: data.pathname,
+        uploadedAt: new Date().toISOString(),
+      };
+
+      const board = ensureBillingBoard();
+      if (!board) return;
+
+      const updatedBoard: BillingBoard = {
+        ...board,
+        months: board.months.map((item) =>
+          item.id === month.id ? { ...item, invoice: generatedInvoice } : item
+        ),
+      };
+
+      persistProjectForm({
+        ...projectForm,
+        billingBoards: projectForm.billingBoards.map((item) =>
+          item.quoteId === board.quoteId ? updatedBoard : item
+        ),
+      });
+
+      localStorage.setItem(NEXT_INVOICE_KEY, String(nextInvoiceNumber + 1));
+    } catch (err) {
+      console.error(err);
+      setInvoicePdfError("Impossible de générer la facture PDF.");
+    } finally {
+      setIsGeneratingInvoicePdf(false);
+    }
+  };
+
   const filteredProjects = useMemo(() => {
     return projects.filter((project) => {
       const numeroOk = project.numeroProjet
@@ -1651,7 +2028,14 @@ export default function Home() {
                 Demande de plan
               </button>
 
-              <button className="min-h-[90px] rounded-xl border-2 border-orange-400 bg-transparent px-4 text-2xl font-semibold text-orange-400 transition hover:bg-orange-400/10">
+              <button
+                onClick={() => setProjectPanel("facturation")}
+                className={`min-h-[90px] rounded-xl border-2 border-orange-400 px-4 text-2xl font-semibold transition ${
+                  projectPanel === "facturation"
+                    ? "bg-orange-500 text-black"
+                    : "bg-transparent text-orange-400 hover:bg-orange-400/10"
+                }`}
+              >
                 Facturation
               </button>
             </div>
@@ -1988,6 +2372,199 @@ export default function Home() {
                     ))}
                   </div>
                 </div>
+              </div>
+            ) : projectPanel === "facturation" ? (
+              <div className="rounded-2xl border border-white/10 bg-black/35 p-5 shadow-2xl backdrop-blur-sm">
+                <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+                  <div>
+                    <h2 className="text-2xl font-semibold text-orange-400">Bordereau de facturation</h2>
+                    <p className="mt-1 text-sm text-zinc-300">
+                      Les items proviennent de la soumission active du projet.
+                    </p>
+                  </div>
+
+                  {activeBillingQuote && (
+                    <div className="rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-zinc-200">
+                      Soumission active : <span className="font-semibold text-white">{activeBillingQuote.name}</span>
+                    </div>
+                  )}
+                </div>
+
+                {!activeBillingQuote ? (
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-6 text-zinc-300">
+                    Aucune soumission disponible. Crée une soumission active avant de facturer.
+                  </div>
+                ) : (
+                  <>
+                    <div className="mb-5 flex flex-wrap items-end gap-3 rounded-xl border border-orange-400/30 bg-black/20 p-4">
+                      <div>
+                        <label className="mb-2 block text-sm text-zinc-200">Mois</label>
+                        <select
+                          value={newBillingMonth}
+                          onChange={(e) => setNewBillingMonth(e.target.value)}
+                          className="rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none"
+                        >
+                          {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
+                            <option key={month} value={month} className="text-black">
+                              {getMonthLabel(month, 2026).split(" ")[0]}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-sm text-zinc-200">Année</label>
+                        <input
+                          value={newBillingYear}
+                          onChange={(e) => setNewBillingYear(e.target.value)}
+                          className="w-28 rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none"
+                        />
+                      </div>
+
+                      <button
+                        onClick={addBillingMonth}
+                        className="rounded-lg bg-orange-500 px-4 py-3 font-medium text-black transition hover:bg-orange-400"
+                      >
+                        + Ajouter un mois
+                      </button>
+
+                      {invoicePdfError && <span className="text-sm text-red-400">{invoicePdfError}</span>}
+                    </div>
+
+                    <div className="overflow-x-auto rounded-xl border border-white/10">
+                      <table className="min-w-[1400px] w-full text-sm">
+                        <thead className="bg-orange-500 text-black">
+                          <tr>
+                            <th className="p-3 text-left font-semibold">Ligne</th>
+                            <th className="p-3 text-left font-semibold">Description</th>
+                            <th className="p-3 text-left font-semibold">Unité</th>
+                            <th className="p-3 text-left font-semibold">$ Unitaire</th>
+                            <th className="p-3 text-left font-semibold">Qté soumise</th>
+                            <th className="p-3 text-left font-semibold">$ Total soumis</th>
+                            <th className="p-3 text-left font-semibold">Qté réelle total</th>
+                            <th className="p-3 text-left font-semibold">$ Total réel</th>
+                            {(activeBillingBoard?.months ?? []).map((month) => (
+                              <th key={month.id} className="p-3 text-left font-semibold">
+                                <div>{month.label}</div>
+                                <div className="mt-1 text-xs font-normal">Qté réelle / $ total</div>
+                              </th>
+                            ))}
+                          </tr>
+                        </thead>
+
+                        <tbody>
+                          {activeBillingQuote.lines.length === 0 ? (
+                            <tr>
+                              <td colSpan={8 + (activeBillingBoard?.months.length ?? 0)} className="p-6 text-center text-zinc-300">
+                                Aucun item dans la soumission active.
+                              </td>
+                            </tr>
+                          ) : (
+                            activeBillingQuote.lines.map((line, index) => {
+                              const realQtyTotal = getRealQuantityTotal(line.id);
+                              const realMoneyTotal = realQtyTotal * line.price;
+                              return (
+                                <tr key={line.id} className="border-t border-white/10 bg-black/15">
+                                  <td className="p-3 text-white">{index + 1}</td>
+                                  <td className="p-3 text-white">{line.name}</td>
+                                  <td className="p-3 text-zinc-200">Unité</td>
+                                  <td className="p-3 text-zinc-200">{money(line.price)}</td>
+                                  <td className="p-3 text-zinc-200">{line.quantity}</td>
+                                  <td className="p-3 text-zinc-200">{money(line.price * line.quantity)}</td>
+                                  <td className="p-3 text-zinc-200">{realQtyTotal}</td>
+                                  <td className="p-3 text-zinc-200">{money(realMoneyTotal)}</td>
+                                  {(activeBillingBoard?.months ?? []).map((month) => {
+                                    const monthQty = getMonthLineQuantity(month, line.id);
+                                    return (
+                                      <td key={`${month.id}-${line.id}`} className="p-3">
+                                        <div className="flex items-center gap-2">
+                                          <input
+                                            type="number"
+                                            min="0"
+                                            value={monthQty}
+                                            onChange={(e) =>
+                                              updateBillingMonthQuantity(month.id, line.id, Number(e.target.value))
+                                            }
+                                            className="w-20 rounded border border-white/10 bg-white/10 px-2 py-1 text-white outline-none"
+                                          />
+                                          <span className="text-zinc-200">{money(monthQty * line.price)}</span>
+                                        </div>
+                                      </td>
+                                    );
+                                  })}
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+
+                        {activeBillingQuote.lines.length > 0 && (
+                          <tfoot>
+                            <tr className="border-t-2 border-orange-400 bg-black/40 font-semibold">
+                              <td colSpan={5} className="p-3 text-right text-white">TOTAL</td>
+                              <td className="p-3 text-white">
+                                {money(activeBillingQuote.lines.reduce((total, line) => total + line.price * line.quantity, 0))}
+                              </td>
+                              <td className="p-3 text-white">
+                                {activeBillingQuote.lines.reduce((total, line) => total + getRealQuantityTotal(line.id), 0)}
+                              </td>
+                              <td className="p-3 text-white">
+                                {money(activeBillingQuote.lines.reduce((total, line) => total + getRealQuantityTotal(line.id) * line.price, 0))}
+                              </td>
+                              {(activeBillingBoard?.months ?? []).map((month) => {
+                                const monthTotal = activeBillingQuote.lines.reduce(
+                                  (total, line) => total + getMonthLineQuantity(month, line.id) * line.price,
+                                  0
+                                );
+                                return (
+                                  <td key={`total-${month.id}`} className="p-3 text-white">
+                                    {money(monthTotal)}
+                                  </td>
+                                );
+                              })}
+                            </tr>
+                          </tfoot>
+                        )}
+                      </table>
+                    </div>
+
+                    <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
+                      {(activeBillingBoard?.months ?? []).map((month) => (
+                        <div key={month.id} className="rounded-xl border border-white/10 bg-white/5 p-4">
+                          <div className="flex flex-wrap items-center justify-between gap-3">
+                            <div>
+                              <p className="font-semibold text-orange-400">Facture - {month.label}</p>
+                              <p className="text-sm text-zinc-300">
+                                Total du mois : {money(activeBillingQuote.lines.reduce((total, line) => total + getMonthLineQuantity(month, line.id) * line.price, 0))}
+                              </p>
+                            </div>
+
+                            <div className="flex flex-wrap gap-2">
+                              <button
+                                onClick={() => generateInvoicePdf(month)}
+                                disabled={isGeneratingInvoicePdf}
+                                className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-black hover:bg-zinc-200 disabled:opacity-50"
+                              >
+                                {isGeneratingInvoicePdf ? "Génération..." : "Générer PDF facture"}
+                              </button>
+
+                              {month.invoice && (
+                                <a
+                                  href={getPrivateBlobOpenUrl(month.invoice.pathname, month.invoice.url)}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="rounded-lg border border-white/15 bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/20"
+                                >
+                                  Ouvrir {month.invoice.invoiceNumber}
+                                </a>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
               </div>
             ) : projectPanel === "demandePlan" ? (
               <div className="rounded-2xl border border-white/10 bg-black/35 p-5 shadow-2xl backdrop-blur-sm">
