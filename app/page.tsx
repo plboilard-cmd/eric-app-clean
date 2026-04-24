@@ -20,6 +20,8 @@ type StatusType =
   | "Terminé"
   | "Non utilisé";
 
+type ClientStatus = "Nouveau" | "Actif" | "Bloqué";
+
 type Contact = {
   id: string;
   name: string;
@@ -30,6 +32,7 @@ type Contact = {
 type ClientRecord = {
   id: string;
   name: string;
+  status: ClientStatus;
   contacts: Contact[];
 };
 
@@ -68,6 +71,8 @@ const ALL_STATUSES: StatusType[] = [
   "Terminé",
   "Non utilisé",
 ];
+
+const CLIENT_STATUSES: ClientStatus[] = ["Nouveau", "Actif", "Bloqué"];
 
 const EMPTY_PROJECT: Project = {
   id: 0,
@@ -116,6 +121,19 @@ function getStatusBadgeClasses(status: StatusType) {
   }
 }
 
+function getClientStatusBadgeClasses(status: ClientStatus) {
+  switch (status) {
+    case "Nouveau":
+      return "bg-blue-500 text-white";
+    case "Actif":
+      return "bg-green-600 text-white";
+    case "Bloqué":
+      return "bg-red-600 text-white";
+    default:
+      return "bg-zinc-500 text-white";
+  }
+}
+
 function normalizeProject(raw: Partial<Project>, index: number): Project {
   return {
     id: raw.id ?? Date.now() + index,
@@ -145,6 +163,7 @@ function normalizeClients(raw: Partial<ClientRecord>[]): ClientRecord[] {
   return raw.map((client, index) => ({
     id: client.id ?? crypto.randomUUID(),
     name: client.name ?? `Client ${index + 1}`,
+    status: client.status ?? "Nouveau",
     contacts:
       client.contacts?.map((contact) => ({
         id: contact.id ?? crypto.randomUUID(),
@@ -183,10 +202,18 @@ export default function Home() {
   const [clients, setClients] = useState<ClientRecord[]>([]);
   const [showClientModal, setShowClientModal] = useState(false);
   const [newClientName, setNewClientName] = useState("");
+  const [newClientStatus, setNewClientStatus] =
+    useState<ClientStatus>("Nouveau");
   const [selectedClientForContact, setSelectedClientForContact] = useState("");
   const [newContactName, setNewContactName] = useState("");
   const [newContactPhone, setNewContactPhone] = useState("");
   const [newContactEmail, setNewContactEmail] = useState("");
+
+  const [clientListSearch, setClientListSearch] = useState("");
+  const [contactListSearch, setContactListSearch] = useState("");
+  const [clientStatusFilter, setClientStatusFilter] = useState<
+    "Tous" | ClientStatus
+  >("Tous");
 
   const [showModal, setShowModal] = useState(false);
   const [newProject, setNewProject] = useState({
@@ -291,6 +318,34 @@ export default function Home() {
       .includes(selectedClientForContact.toLowerCase().trim())
   );
 
+  const filteredClientsForList = useMemo(() => {
+    return clients.filter((client) => {
+      const clientOk = client.name
+        .toLowerCase()
+        .includes(clientListSearch.toLowerCase().trim());
+
+      const contactOk =
+        contactListSearch.trim() === "" ||
+        client.contacts.some(
+          (contact) =>
+            contact.name
+              .toLowerCase()
+              .includes(contactListSearch.toLowerCase().trim()) ||
+            contact.email
+              .toLowerCase()
+              .includes(contactListSearch.toLowerCase().trim()) ||
+            contact.phone
+              .toLowerCase()
+              .includes(contactListSearch.toLowerCase().trim())
+        );
+
+      const statusOk =
+        clientStatusFilter === "Tous" || client.status === clientStatusFilter;
+
+      return clientOk && contactOk && statusOk;
+    });
+  }, [clients, clientListSearch, contactListSearch, clientStatusFilter]);
+
   const handleLogin = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
@@ -337,6 +392,14 @@ export default function Home() {
     );
   };
 
+  const updateClientStatus = (clientName: string, status: ClientStatus) => {
+    const updated = clients.map((client) =>
+      client.name === clientName ? { ...client, status } : client
+    );
+
+    persistClients(updated);
+  };
+
   const addClient = () => {
     if (!newClientName.trim()) return;
 
@@ -356,6 +419,7 @@ export default function Home() {
       {
         id: crypto.randomUUID(),
         name,
+        status: newClientStatus,
         contacts: [],
       },
     ];
@@ -363,6 +427,7 @@ export default function Home() {
     persistClients(updated);
     setSelectedClientForContact(name);
     setNewClientName("");
+    setNewClientStatus("Nouveau");
   };
 
   const addContact = () => {
@@ -417,6 +482,7 @@ export default function Home() {
         {
           id: crypto.randomUUID(),
           name: clientName,
+          status: "Nouveau",
           contacts: [],
         },
       ]);
@@ -569,7 +635,6 @@ export default function Home() {
             className="w-full max-w-md rounded-2xl border border-white/10 bg-black/80 p-8 text-white shadow-2xl backdrop-blur-md"
           >
             <h1 className="mb-2 text-2xl font-semibold">Connexion à ERIC</h1>
-
             <p className="mb-6 text-sm text-zinc-300">
               Entrez votre identifiant et votre code d’accès pour continuer.
             </p>
@@ -608,10 +673,6 @@ export default function Home() {
             >
               Se connecter
             </button>
-
-            <p className="mt-5 text-xs text-zinc-500">
-              Accès réservé aux utilisateurs autorisés
-            </p>
           </form>
         </div>
       </main>
@@ -1023,6 +1084,20 @@ export default function Home() {
                       className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
                     />
 
+                    <select
+                      value={newClientStatus}
+                      onChange={(e) =>
+                        setNewClientStatus(e.target.value as ClientStatus)
+                      }
+                      className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none"
+                    >
+                      {CLIENT_STATUSES.map((status) => (
+                        <option key={status} value={status} className="text-black">
+                          {status}
+                        </option>
+                      ))}
+                    </select>
+
                     <button
                       onClick={addClient}
                       className="rounded-lg bg-orange-500 px-4 py-2 font-medium text-white transition hover:bg-orange-400"
@@ -1048,7 +1123,16 @@ export default function Home() {
                                 : "border-white/10 bg-white/5 hover:bg-white/10"
                             }`}
                           >
-                            {client.name}
+                            <div className="flex items-center justify-between gap-3">
+                              <span>{client.name}</span>
+                              <span
+                                className={`rounded-full px-2 py-1 text-xs ${getClientStatusBadgeClasses(
+                                  client.status
+                                )}`}
+                              >
+                                {client.status}
+                              </span>
+                            </div>
                           </button>
                         ))
                       )}
@@ -1374,7 +1458,7 @@ export default function Home() {
 
           {activeSection === "clients" && (
             <div className="rounded-xl border border-white/10 bg-black/35 p-6 backdrop-blur-sm">
-              <div className="mb-5 flex items-center justify-between">
+              <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <h2 className="text-xl font-semibold">Clients / Contacts</h2>
                 <button
                   onClick={() => setShowClientModal(true)}
@@ -1384,18 +1468,100 @@ export default function Home() {
                 </button>
               </div>
 
-              {clients.length === 0 ? (
-                <p className="text-zinc-300">Aucun client pour le moment.</p>
+              <div className="mb-5 grid gap-4 lg:grid-cols-3">
+                <div>
+                  <label className="mb-2 block text-sm text-zinc-200">
+                    Recherche client
+                  </label>
+                  <input
+                    value={clientListSearch}
+                    onChange={(e) => setClientListSearch(e.target.value)}
+                    placeholder="Nom du client"
+                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm text-zinc-200">
+                    Recherche contact
+                  </label>
+                  <input
+                    value={contactListSearch}
+                    onChange={(e) => setContactListSearch(e.target.value)}
+                    placeholder="Nom, téléphone ou courriel"
+                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm text-zinc-200">
+                    Statut client
+                  </label>
+                  <select
+                    value={clientStatusFilter}
+                    onChange={(e) =>
+                      setClientStatusFilter(
+                        e.target.value as "Tous" | ClientStatus
+                      )
+                    }
+                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none"
+                  >
+                    <option value="Tous" className="text-black">
+                      Tous
+                    </option>
+                    {CLIENT_STATUSES.map((status) => (
+                      <option key={status} value={status} className="text-black">
+                        {status}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {filteredClientsForList.length === 0 ? (
+                <p className="text-zinc-300">Aucun client trouvé.</p>
               ) : (
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-                  {clients.map((client) => (
+                  {filteredClientsForList.map((client) => (
                     <div
                       key={client.id}
                       className="rounded-lg border border-white/10 bg-white/5 p-4"
                     >
-                      <h3 className="mb-3 text-lg font-semibold text-orange-400">
-                        {client.name}
-                      </h3>
+                      <div className="mb-3 flex items-center justify-between gap-3">
+                        <h3 className="text-lg font-semibold text-orange-400">
+                          {client.name}
+                        </h3>
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`rounded-full px-3 py-1 text-xs font-medium ${getClientStatusBadgeClasses(
+                              client.status
+                            )}`}
+                          >
+                            {client.status}
+                          </span>
+                          <select
+                            value={client.status}
+                            onChange={(e) =>
+                              updateClientStatus(
+                                client.name,
+                                e.target.value as ClientStatus
+                              )
+                            }
+                            className="rounded border border-white/10 bg-black/40 px-2 py-1 text-sm text-white"
+                          >
+                            {CLIENT_STATUSES.map((status) => (
+                              <option
+                                key={status}
+                                value={status}
+                                className="text-black"
+                              >
+                                {status}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+
                       {client.contacts.length === 0 ? (
                         <p className="text-sm text-zinc-400">Aucun contact.</p>
                       ) : (
