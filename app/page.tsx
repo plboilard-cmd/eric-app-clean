@@ -311,57 +311,57 @@ export default function Home() {
     setViewMode("list");
   };
 
-  const handleBlobUpload = async (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+const handleBlobUpload = async (e: ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
 
-    setUploadError("");
-    setIsUploadingDoc(true);
+  setUploadError("");
+  setIsUploadingDoc(true);
 
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("projectId", projectForm.numeroProjet || "default");
+  try {
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("projectId", projectForm.numeroProjet || "default");
 
-      const response = await fetch("/api/blob/upload", {
-        method: "POST",
-        body: formData,
-      });
+    const response = await fetch("/api/blob/upload", {
+      method: "POST",
+      body: formData,
+    });
 
-      if (!response.ok) {
-        throw new Error("Upload failed");
-      }
-
-      const data = (await response.json()) as { url: string; pathname: string };
-
-      const newDocument: ProjectDocument = {
-        id: crypto.randomUUID(),
-        name: file.name,
-        url: data.url,
-        uploadedAt: new Date().toISOString(),
-      };
-
-      const updatedForm = {
-        ...projectForm,
-        documents: [...projectForm.documents, newDocument],
-      };
-
-      setProjectForm(updatedForm);
-
-      if (selectedProjectId !== null) {
-        const updatedProjects = projects.map((project) =>
-          project.id === selectedProjectId ? updatedForm : project
-        );
-        persistProjects(updatedProjects);
-      }
-    } catch (err) {
-      console.error(err);
-      setUploadError("Impossible de téléverser le PDF.");
-    } finally {
-      setIsUploadingDoc(false);
-      e.target.value = "";
+    if (!response.ok) {
+      throw new Error("Upload failed");
     }
-  };
+
+    const data = (await response.json()) as { url: string };
+
+    const newDocument: ProjectDocument = {
+      id: crypto.randomUUID(),
+      name: file.name,
+      url: data.url,
+      uploadedAt: new Date().toISOString(),
+    };
+
+    const updatedForm = {
+      ...projectForm,
+      documents: [...projectForm.documents, newDocument],
+    };
+
+    setProjectForm(updatedForm);
+
+    if (selectedProjectId !== null) {
+      const updatedProjects = projects.map((project) =>
+        project.id === selectedProjectId ? updatedForm : project
+      );
+      persistProjects(updatedProjects);
+    }
+  } catch (err) {
+    console.error(err);
+    setUploadError("Impossible de téléverser le PDF.");
+  } finally {
+    setIsUploadingDoc(false);
+    e.target.value = "";
+  }
+};
 
   const filteredProjects = useMemo(() => {
     return projects.filter((project) => {

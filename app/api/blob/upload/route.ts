@@ -1,5 +1,4 @@
 import { put } from '@vercel/blob';
-import { NextResponse } from 'next/server';
 
 export async function POST(req: Request) {
   try {
@@ -7,27 +6,21 @@ export async function POST(req: Request) {
     const file = formData.get('file') as File;
 
     if (!file) {
-      return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+      return new Response(JSON.stringify({ error: 'No file' }), { status: 400 });
     }
 
-    // IMPORTANT: organise tes fichiers par projet
-    const projectId = formData.get('projectId') as string || 'default';
-
-    const blob = await put(
-      `projects/${projectId}/${file.name}`,
-      file,
-      {
-        access: 'public', // accès public pour pouvoir ouvrir le PDF facilement
-      }
-    );
-
-    return NextResponse.json({
-      url: blob.url,
-      pathname: blob.pathname,
+    const blob = await put(`plans/${file.name}`, file, {
+      access: 'public',
     });
 
+    return Response.json({ url: blob.url });
+
   } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: 'Upload failed' }, { status: 500 });
+    console.error('UPLOAD ERROR:', error);
+
+    return new Response(
+      JSON.stringify({ error: 'Upload failed' }),
+      { status: 500 }
+    );
   }
 }
