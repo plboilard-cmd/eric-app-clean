@@ -3099,8 +3099,8 @@ export default function Home() {
             {[
               ["projets", "Projet"],
               ["plans", "Liste de plan"],
-              ["clients", "Client"],
               ["facturation", "Facturation"],
+              ["clients", "Client"],
             ].map(([key, label]) => (
               <button
                 key={key}
