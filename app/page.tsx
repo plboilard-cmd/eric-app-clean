@@ -22,6 +22,7 @@ type ProjectDocument = {
   id: string;
   name: string;
   url: string;
+  pathname: string;
   uploadedAt: string;
 };
 
@@ -110,13 +111,24 @@ function normalizeProject(raw: Partial<Project>, index: number): Project {
     endroit: raw.endroit ?? "",
     description: raw.description ?? "",
     poNumber: raw.poNumber ?? "",
-    documents: raw.documents ?? [],
+    documents:
+      raw.documents?.map((doc) => ({
+        id: doc.id,
+        name: doc.name,
+        url: doc.url,
+        pathname: doc.pathname ?? "",
+        uploadedAt: doc.uploadedAt,
+      })) ?? [],
     createdAt: raw.createdAt ?? new Date().toISOString(),
   };
 }
 
-function getPrivateBlobOpenUrl(url: string) {
-  return `/api/blob/download?url=${encodeURIComponent(url)}`;
+function getPrivateBlobOpenUrl(pathname: string, fallbackUrl: string) {
+  if (pathname) {
+    return `/api/blob/download?pathname=${encodeURIComponent(pathname)}`;
+  }
+
+  return fallbackUrl;
 }
 
 export default function Home() {
@@ -333,12 +345,16 @@ export default function Home() {
         throw new Error("Upload failed");
       }
 
-      const data = (await response.json()) as { url: string };
+      const data = (await response.json()) as {
+        url: string;
+        pathname: string;
+      };
 
       const newDocument: ProjectDocument = {
         id: crypto.randomUUID(),
         name: file.name,
         url: data.url,
+        pathname: data.pathname,
         uploadedAt: new Date().toISOString(),
       };
 
@@ -699,7 +715,7 @@ export default function Home() {
 
                           <div className="flex flex-wrap gap-2">
                             <a
-                              href={getPrivateBlobOpenUrl(doc.url)}
+                              href={getPrivateBlobOpenUrl(doc.pathname, doc.url)}
                               target="_blank"
                               rel="noreferrer"
                               className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm text-white transition hover:bg-white/20"

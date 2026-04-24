@@ -1,12 +1,24 @@
-import { NextResponse } from "next/server";
+import { get } from "@vercel/blob";
+import { NextRequest, NextResponse } from "next/server";
 
-export async function GET(req: Request) {
-  const { searchParams } = new URL(req.url);
-  const url = searchParams.get("url");
+export async function GET(request: NextRequest) {
+  const pathname = request.nextUrl.searchParams.get("pathname");
 
-  if (!url) {
-    return NextResponse.json({ error: "Missing url" }, { status: 400 });
+  if (!pathname) {
+    return NextResponse.json({ error: "Missing pathname" }, { status: 400 });
   }
 
-  return NextResponse.redirect(url);
+  const result = await get(pathname, { access: "private" });
+
+  if (result?.statusCode !== 200) {
+    return new NextResponse("Not found", { status: 404 });
+  }
+
+  return new NextResponse(result.stream, {
+    headers: {
+      "Content-Type": result.blob.contentType || "application/pdf",
+      "X-Content-Type-Options": "nosniff",
+      "Cache-Control": "private, no-cache",
+    },
+  });
 }
