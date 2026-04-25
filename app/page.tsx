@@ -545,6 +545,13 @@ export default function Home() {
   const [planSearchDescription, setPlanSearchDescription] = useState("");
   const [planSearchDessinateur, setPlanSearchDessinateur] = useState("");
   const [showSentPlans, setShowSentPlans] = useState(false);
+  const [invoiceSummarySearch, setInvoiceSummarySearch] = useState("");
+  const [invoiceSummaryMonth, setInvoiceSummaryMonth] = useState(
+    String(new Date().getMonth() + 1)
+  );
+  const [invoiceSummaryYear, setInvoiceSummaryYear] = useState(
+    String(new Date().getFullYear())
+  );
 
   const [showModal, setShowModal] = useState(false);
   const [newProject, setNewProject] = useState({
@@ -760,6 +767,48 @@ export default function Home() {
     planSearchDescription,
     planSearchDessinateur,
   ]);
+
+  const invoiceSummaryListing = useMemo(() => {
+    const selectedMonth = Number(invoiceSummaryMonth);
+    const selectedYear = Number(invoiceSummaryYear);
+    const search = invoiceSummarySearch.toLowerCase().trim();
+
+    return projects
+      .flatMap((project) =>
+        project.billingBoards.flatMap((board) =>
+          board.months
+            .filter(
+              (month) =>
+                month.invoice &&
+                month.month === selectedMonth &&
+                month.year === selectedYear
+            )
+            .map((month) => ({
+              project,
+              month,
+              invoice: month.invoice as GeneratedInvoice,
+            }))
+        )
+      )
+      .filter(({ project, invoice, month }) => {
+        if (!search) return true;
+
+        const searchable = [
+          project.numeroProjet,
+          project.client,
+          project.ville,
+          project.description,
+          invoice.invoiceNumber,
+          invoice.name,
+          month.label,
+        ]
+          .join(" ")
+          .toLowerCase();
+
+        return searchable.includes(search);
+      })
+      .sort((a, b) => b.invoice.invoiceNumber.localeCompare(a.invoice.invoiceNumber));
+  }, [projects, invoiceSummaryMonth, invoiceSummaryYear, invoiceSummarySearch]);
 
   const filteredClientsForList = useMemo(() => {
     return clients.filter((client) => {
@@ -4167,8 +4216,102 @@ export default function Home() {
 
           {activeSection === "facturation" && (
             <div className="rounded-xl border border-white/10 bg-black/35 p-6 backdrop-blur-sm">
-              <h2 className="text-xl font-semibold">Facturation</h2>
-              <p className="mt-2 text-zinc-300">Section en construction.</p>
+              <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div>
+                  <h2 className="text-xl font-semibold">Résumé de facturation</h2>
+                  <p className="mt-1 text-sm text-zinc-300">
+                    Factures générées par mois pour la comptabilité.
+                  </p>
+                </div>
+              </div>
+
+              <div className="mb-5 grid gap-4 lg:grid-cols-[0.8fr_0.8fr_2fr]">
+                <div>
+                  <label className="mb-2 block text-sm text-zinc-200">Mois</label>
+                  <select
+                    value={invoiceSummaryMonth}
+                    onChange={(e) => setInvoiceSummaryMonth(e.target.value)}
+                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none"
+                  >
+                    {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
+                      <option key={month} value={month} className="text-black">
+                        {getMonthLabel(month, Number(invoiceSummaryYear) || new Date().getFullYear()).split(" ")[0]}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm text-zinc-200">Année</label>
+                  <input
+                    value={invoiceSummaryYear}
+                    onChange={(e) => setInvoiceSummaryYear(e.target.value)}
+                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="mb-2 block text-sm text-zinc-200">Recherche globale</label>
+                  <input
+                    value={invoiceSummarySearch}
+                    onChange={(e) => setInvoiceSummarySearch(e.target.value)}
+                    placeholder="No facture, projet, client, ville, description..."
+                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                  />
+                </div>
+              </div>
+
+              <div className="overflow-x-auto rounded-xl border border-white/10">
+                <table className="min-w-[1100px] w-full text-sm">
+                  <thead className="bg-orange-500 text-black">
+                    <tr>
+                      <th className="p-3 text-left font-semibold">Numéro facture</th>
+                      <th className="p-3 text-left font-semibold">Numéro projet</th>
+                      <th className="p-3 text-left font-semibold">Client</th>
+                      <th className="p-3 text-left font-semibold">Mois facturé</th>
+                      <th className="p-3 text-left font-semibold">PDF facture</th>
+                      <th className="p-3 text-left font-semibold">Accès projet</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {invoiceSummaryListing.length === 0 ? (
+                      <tr>
+                        <td colSpan={6} className="p-6 text-center text-zinc-300">
+                          Aucune facture trouvée pour ce mois.
+                        </td>
+                      </tr>
+                    ) : (
+                      invoiceSummaryListing.map(({ project, month, invoice }) => (
+                        <tr key={invoice.id} className="border-t border-white/10 bg-black/15">
+                          <td className="p-3 font-semibold text-white">{invoice.invoiceNumber}</td>
+                          <td className="p-3 text-zinc-200">{project.numeroProjet}</td>
+                          <td className="p-3 text-zinc-200">{project.client}</td>
+                          <td className="p-3 text-zinc-200">{month.label}</td>
+                          <td className="p-3">
+                            <a
+                              href={getPrivateBlobOpenUrl(invoice.pathname, invoice.url)}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="rounded border border-orange-400/60 bg-orange-400/10 px-3 py-1.5 text-xs text-orange-200 hover:bg-orange-400/20"
+                            >
+                              Ouvrir PDF
+                            </a>
+                          </td>
+                          <td className="p-3">
+                            <button
+                              onClick={() => openProject(project)}
+                              className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-white hover:bg-white/20"
+                            >
+                              Fiche projet
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           )}
         </div>
