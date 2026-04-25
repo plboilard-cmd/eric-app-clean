@@ -431,7 +431,7 @@ function getPrivateBlobOpenUrl(pathname: string, fallbackUrl: string) {
 }
 
 function makePlanCode(projectNumber: string, planNumber: number, revisionNumber: number) {
-  return `${projectNumber}_P${String(planNumber).padStart(3, "0")}_R${String(revisionNumber).padStart(2, "0")}`;
+  return `${projectNumber}_P${String(planNumber).padStart(3, "0")}_V${String(revisionNumber).padStart(2, "0")}`;
 }
 
 function todayFrCa() {
@@ -545,13 +545,6 @@ export default function Home() {
   const [planSearchDescription, setPlanSearchDescription] = useState("");
   const [planSearchDessinateur, setPlanSearchDessinateur] = useState("");
   const [showSentPlans, setShowSentPlans] = useState(false);
-  const [invoiceSummarySearch, setInvoiceSummarySearch] = useState("");
-  const [invoiceSummaryMonth, setInvoiceSummaryMonth] = useState(
-    String(new Date().getMonth() + 1)
-  );
-  const [invoiceSummaryYear, setInvoiceSummaryYear] = useState(
-    String(new Date().getFullYear())
-  );
 
   const [showModal, setShowModal] = useState(false);
   const [newProject, setNewProject] = useState({
@@ -728,7 +721,7 @@ export default function Home() {
         if (!plan.statut) return false;
         if (plan.statut === "envoyé" && !showSentPlans) return false;
 
-        const fullPlanNumber = `${plan.code} ${project.numeroProjet} P${String(plan.planNumber).padStart(3, "0")} R${String(plan.revisionNumber).padStart(2, "0")}`.toLowerCase();
+        const fullPlanNumber = `${plan.code} ${project.numeroProjet} P${String(plan.planNumber).padStart(3, "0")} V${String(plan.revisionNumber).padStart(2, "0")}`.toLowerCase();
 
         const numberOk = fullPlanNumber.includes(planSearchNumber.toLowerCase().trim());
         const villeOk = (plan.ville || project.ville || "")
@@ -768,48 +761,6 @@ export default function Home() {
     planSearchDessinateur,
   ]);
 
-  const invoiceSummaryListing = useMemo(() => {
-    const selectedMonth = Number(invoiceSummaryMonth);
-    const selectedYear = Number(invoiceSummaryYear);
-    const search = invoiceSummarySearch.toLowerCase().trim();
-
-    return projects
-      .flatMap((project) =>
-        project.billingBoards.flatMap((board) =>
-          board.months
-            .filter(
-              (month) =>
-                month.invoice &&
-                month.month === selectedMonth &&
-                month.year === selectedYear
-            )
-            .map((month) => ({
-              project,
-              month,
-              invoice: month.invoice as GeneratedInvoice,
-            }))
-        )
-      )
-      .filter(({ project, invoice, month }) => {
-        if (!search) return true;
-
-        const searchable = [
-          project.numeroProjet,
-          project.client,
-          project.ville,
-          project.description,
-          invoice.invoiceNumber,
-          invoice.name,
-          month.label,
-        ]
-          .join(" ")
-          .toLowerCase();
-
-        return searchable.includes(search);
-      })
-      .sort((a, b) => b.invoice.invoiceNumber.localeCompare(a.invoice.invoiceNumber));
-  }, [projects, invoiceSummaryMonth, invoiceSummaryYear, invoiceSummarySearch]);
-
   const filteredClientsForList = useMemo(() => {
     return clients.filter((client) => {
       const clientOk = client.name
@@ -847,6 +798,12 @@ export default function Home() {
   const activeBillingBoard = activeBillingQuote
     ? projectForm.billingBoards.find((board) => board.quoteId === activeBillingQuote.id) ?? null
     : null;
+
+  const activeBillingMonths = useMemo(() => {
+    return [...(activeBillingBoard?.months ?? [])]
+      .sort((a, b) => (b.year === a.year ? b.month - a.month : b.year - a.year))
+      .slice(0, 3);
+  }, [activeBillingBoard]);
 
   const quoteTotal =
     activeQuote?.lines.reduce(
@@ -2492,7 +2449,7 @@ export default function Home() {
                             <th className="p-3 text-left font-semibold">$ Total soumis</th>
                             <th className="p-3 text-left font-semibold">Qté réelle total</th>
                             <th className="p-3 text-left font-semibold">$ Total réel</th>
-                            {(activeBillingBoard?.months ?? []).map((month) => (
+                            {activeBillingMonths.map((month) => (
                               <th key={month.id} className="p-3 text-left font-semibold">
                                 <div>{month.label}</div>
                                 <div className="mt-1 text-xs font-normal">Qté réelle / $ total</div>
@@ -2504,7 +2461,7 @@ export default function Home() {
                         <tbody>
                           {activeBillingQuote.lines.length === 0 ? (
                             <tr>
-                              <td colSpan={8 + (activeBillingBoard?.months.length ?? 0)} className="p-6 text-center text-zinc-300">
+                              <td colSpan={8 + activeBillingMonths.length} className="p-6 text-center text-zinc-300">
                                 Aucun item dans la soumission active.
                               </td>
                             </tr>
@@ -2522,7 +2479,7 @@ export default function Home() {
                                   <td className="p-3 text-zinc-200">{money(line.price * line.quantity)}</td>
                                   <td className="p-3 text-zinc-200">{realQtyTotal}</td>
                                   <td className="p-3 text-zinc-200">{money(realMoneyTotal)}</td>
-                                  {(activeBillingBoard?.months ?? []).map((month) => {
+                                  {activeBillingMonths.map((month) => {
                                     const monthQty = getMonthLineQuantity(month, line.id);
                                     return (
                                       <td key={`${month.id}-${line.id}`} className="p-3">
@@ -2560,7 +2517,7 @@ export default function Home() {
                               <td className="p-3 text-white">
                                 {money(activeBillingQuote.lines.reduce((total, line) => total + getRealQuantityTotal(line.id) * line.price, 0))}
                               </td>
-                              {(activeBillingBoard?.months ?? []).map((month) => {
+                              {activeBillingMonths.map((month) => {
                                 const monthTotal = activeBillingQuote.lines.reduce(
                                   (total, line) => total + getMonthLineQuantity(month, line.id) * line.price,
                                   0
@@ -2578,7 +2535,7 @@ export default function Home() {
                     </div>
 
                     <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
-                      {(activeBillingBoard?.months ?? []).map((month) => (
+                      {activeBillingMonths.map((month) => (
                         <div key={month.id} className="rounded-xl border border-white/10 bg-white/5 p-4">
                           <div className="flex flex-wrap items-center justify-between gap-3">
                             <div>
@@ -2651,14 +2608,14 @@ export default function Home() {
                     <button
                       onClick={() => {
                         if (!selectedPlan) {
-                          alert("Sélectionne un plan avant de créer une révision.");
+                          alert("Sélectionne un plan avant de créer une version.");
                           return;
                         }
                         copyPlanAsRevision(selectedPlan);
                       }}
                       className="rounded-lg border border-green-400/60 bg-green-400/10 px-4 py-2 text-sm font-medium text-green-200 transition hover:bg-green-400/20"
                     >
-                      Copier en nouvelle révision
+                      Copier en nouvelle version
                     </button>
                   </div>
                 </div>
@@ -2802,7 +2759,38 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+                <div className="mb-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+                  <div className="rounded-xl border border-orange-400/40 bg-orange-500/10 p-4">
+                    <label className="mb-2 block text-sm font-semibold text-orange-300">Statut de la demande</label>
+                    <select
+                      value={activePlan.statut || ""}
+                      onChange={(e) => updateActivePlan({ statut: e.target.value })}
+                      className="w-full rounded border border-orange-400/40 bg-black/40 px-3 py-3 text-lg font-semibold text-white outline-none"
+                    >
+                      <option value="" className="text-black">--</option>
+                      {PLAN_STATUSES.map((status) => (
+                        <option key={status} value={status} className="text-black">{status}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="rounded-xl border border-orange-400/40 bg-orange-500/10 p-4">
+                    <label className="mb-2 block text-sm font-semibold text-orange-300">Dessinateur</label>
+                    <select
+                      value={activePlan.dessinateurIngenieur || ""}
+                      onChange={(e) => updateActivePlan({ dessinateurIngenieur: e.target.value })}
+                      className="w-full rounded border border-orange-400/40 bg-black/40 px-3 py-3 text-lg font-semibold text-white outline-none"
+                    >
+                      {DESSINATEURS_PLAN.map((name) => (
+                        <option key={name || "empty"} value={name} className="text-black">
+                          {name || "--"}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 gap-6 xl:grid-cols-[2fr_1fr]">
                   <div className="rounded-xl border border-white/10 bg-white/5 p-5">
                     <h3 className="mb-4 text-lg font-semibold text-orange-400">
                       Informations
@@ -2844,54 +2832,23 @@ export default function Home() {
                       />
                     </div>
 
-                    <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-                      <div>
-                        <label className="mb-2 block text-sm text-zinc-300">Plan requis le</label>
-                        <input
-                          type="date"
-                          value={activePlan.planRequisLe}
-                          onChange={(e) => updateActivePlan({ planRequisLe: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-2 block text-sm text-zinc-300">Statut</label>
-                        <select
-                          value={activePlan.statut || ""}
-                          onChange={(e) => updateActivePlan({ statut: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
-                        >
-                          <option value="" className="text-black">--</option>
-                          {PLAN_STATUSES.map((status) => (
-                            <option key={status} value={status} className="text-black">{status}</option>
-                          ))}
-                        </select>
-                      </div>
+                    <div className="mb-4">
+                      <label className="mb-2 block text-sm text-zinc-300">Plan requis le</label>
+                      <input
+                        type="date"
+                        value={activePlan.planRequisLe}
+                        onChange={(e) => updateActivePlan({ planRequisLe: e.target.value })}
+                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                      />
                     </div>
 
-                    <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
-                      <div>
-                        <label className="mb-2 block text-sm text-zinc-300">Ville</label>
-                        <input
-                          value={activePlan.ville}
-                          onChange={(e) => updateActivePlan({ ville: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
-                        />
-                      </div>
-                      <div>
-                        <label className="mb-2 block text-sm text-zinc-300">Dessinateur</label>
-                        <select
-                          value={activePlan.dessinateurIngenieur || ""}
-                          onChange={(e) => updateActivePlan({ dessinateurIngenieur: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
-                        >
-                          {DESSINATEURS_PLAN.map((name) => (
-                            <option key={name || "empty"} value={name} className="text-black">
-                              {name || "--"}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                    <div className="mb-4">
+                      <label className="mb-2 block text-sm text-zinc-300">Ville</label>
+                      <input
+                        value={activePlan.ville}
+                        onChange={(e) => updateActivePlan({ ville: e.target.value })}
+                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                      />
                     </div>
 
                     <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-[0.7fr_1.3fr]">
@@ -3707,7 +3664,7 @@ export default function Home() {
               <p className="text-sm uppercase tracking-[0.25em] text-zinc-300">
                 ERIC
               </p>
-              <h1 className="mt-1 text-2xl font-semibold">Liste de projet</h1>
+              <h1 className="mt-1 text-2xl font-semibold">Liste de projets</h1>
             </div>
 
             <div className="flex items-center gap-4">
@@ -3723,8 +3680,8 @@ export default function Home() {
 
           <div className="mb-6 flex flex-wrap gap-4">
             {[
-              ["projets", "Projet"],
-              ["plans", "Liste de plan"],
+              ["projets", "Projets"],
+              ["plans", "Liste de plans"],
               ["facturation", "Facturation"],
               ["clients", "Client"],
             ].map(([key, label]) => (
@@ -3828,7 +3785,17 @@ export default function Home() {
               </div>
 
               <div className="overflow-hidden rounded-lg border border-white/10 bg-black/35 shadow-2xl backdrop-blur-sm">
-                <table className="w-full text-sm">
+                <table className="w-full table-fixed text-sm">
+                  <colgroup>
+                    <col className="w-[120px]" />
+                    <col className="w-[130px]" />
+                    <col className="w-[150px]" />
+                    <col className="w-[210px]" />
+                    <col />
+                    <col className="w-[155px]" />
+                    <col className="w-[125px]" />
+                    <col className="w-[125px]" />
+                  </colgroup>
                   <thead className="bg-orange-500 text-black">
                     <tr>
                       <th className="p-3 text-left font-semibold">
@@ -3877,9 +3844,9 @@ export default function Home() {
                           <td className="p-3 text-zinc-200">
                             {project.ville}
                           </td>
-                          <td className="p-3 text-white">{project.client}</td>
+                          <td className="p-3 text-white"><div className="truncate">{project.client}</div></td>
                           <td className="p-3 text-zinc-200">
-                            {project.description}
+                            <div className="line-clamp-2">{project.description}</div>
                           </td>
                           <td className="p-3">
                             <span
@@ -3923,7 +3890,7 @@ export default function Home() {
             <div className="rounded-xl border border-white/10 bg-black/35 p-6 backdrop-blur-sm">
               <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                  <h2 className="text-xl font-semibold">Liste de plan</h2>
+                  <h2 className="text-xl font-semibold">Liste de plans</h2>
                   <p className="mt-1 text-sm text-zinc-300">
                     Plans commandés classés par date requise.
                   </p>
@@ -3935,7 +3902,7 @@ export default function Home() {
                     checked={showSentPlans}
                     onChange={(e) => setShowSentPlans(e.target.checked)}
                   />
-                  Voir envoyé
+                  Voir envoyés
                 </label>
               </div>
 
@@ -4002,7 +3969,20 @@ export default function Home() {
               </div>
 
               <div className="overflow-x-auto rounded-xl border border-white/10">
-                <table className="min-w-[1500px] w-full text-sm">
+                <table className="min-w-[1320px] w-full table-fixed text-sm">
+                  <colgroup>
+                    <col className="w-[105px]" />
+                    <col className="w-[75px]" />
+                    <col className="w-[135px]" />
+                    <col className="w-[170px]" />
+                    <col />
+                    <col className="w-[95px]" />
+                    <col className="w-[70px]" />
+                    <col className="w-[65px]" />
+                    <col className="w-[125px]" />
+                    <col className="w-[130px]" />
+                    <col className="w-[135px]" />
+                  </colgroup>
                   <thead className="bg-orange-500 text-black">
                     <tr>
                       <th className="p-3 text-left font-semibold">No Projet</th>
@@ -4012,7 +3992,7 @@ export default function Home() {
                       <th className="p-3 text-left font-semibold">Description plan</th>
                       <th className="p-3 text-left font-semibold">Demande</th>
                       <th className="p-3 text-left font-semibold"># Plan</th>
-                      <th className="p-3 text-left font-semibold"># Rév.</th>
+                      <th className="p-3 text-left font-semibold"># Ver.</th>
                       <th className="p-3 text-left font-semibold">Plan requis le</th>
                       <th className="p-3 text-left font-semibold">Statut plan</th>
                       <th className="p-3 text-left font-semibold">Dessinateur</th>
@@ -4216,102 +4196,8 @@ export default function Home() {
 
           {activeSection === "facturation" && (
             <div className="rounded-xl border border-white/10 bg-black/35 p-6 backdrop-blur-sm">
-              <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold">Résumé de facturation</h2>
-                  <p className="mt-1 text-sm text-zinc-300">
-                    Factures générées par mois pour la comptabilité.
-                  </p>
-                </div>
-              </div>
-
-              <div className="mb-5 grid gap-4 lg:grid-cols-[0.8fr_0.8fr_2fr]">
-                <div>
-                  <label className="mb-2 block text-sm text-zinc-200">Mois</label>
-                  <select
-                    value={invoiceSummaryMonth}
-                    onChange={(e) => setInvoiceSummaryMonth(e.target.value)}
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none"
-                  >
-                    {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
-                      <option key={month} value={month} className="text-black">
-                        {getMonthLabel(month, Number(invoiceSummaryYear) || new Date().getFullYear()).split(" ")[0]}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm text-zinc-200">Année</label>
-                  <input
-                    value={invoiceSummaryYear}
-                    onChange={(e) => setInvoiceSummaryYear(e.target.value)}
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm text-zinc-200">Recherche globale</label>
-                  <input
-                    value={invoiceSummarySearch}
-                    onChange={(e) => setInvoiceSummarySearch(e.target.value)}
-                    placeholder="No facture, projet, client, ville, description..."
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
-                  />
-                </div>
-              </div>
-
-              <div className="overflow-x-auto rounded-xl border border-white/10">
-                <table className="min-w-[1100px] w-full text-sm">
-                  <thead className="bg-orange-500 text-black">
-                    <tr>
-                      <th className="p-3 text-left font-semibold">Numéro facture</th>
-                      <th className="p-3 text-left font-semibold">Numéro projet</th>
-                      <th className="p-3 text-left font-semibold">Client</th>
-                      <th className="p-3 text-left font-semibold">Mois facturé</th>
-                      <th className="p-3 text-left font-semibold">PDF facture</th>
-                      <th className="p-3 text-left font-semibold">Accès projet</th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {invoiceSummaryListing.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="p-6 text-center text-zinc-300">
-                          Aucune facture trouvée pour ce mois.
-                        </td>
-                      </tr>
-                    ) : (
-                      invoiceSummaryListing.map(({ project, month, invoice }) => (
-                        <tr key={invoice.id} className="border-t border-white/10 bg-black/15">
-                          <td className="p-3 font-semibold text-white">{invoice.invoiceNumber}</td>
-                          <td className="p-3 text-zinc-200">{project.numeroProjet}</td>
-                          <td className="p-3 text-zinc-200">{project.client}</td>
-                          <td className="p-3 text-zinc-200">{month.label}</td>
-                          <td className="p-3">
-                            <a
-                              href={getPrivateBlobOpenUrl(invoice.pathname, invoice.url)}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="rounded border border-orange-400/60 bg-orange-400/10 px-3 py-1.5 text-xs text-orange-200 hover:bg-orange-400/20"
-                            >
-                              Ouvrir PDF
-                            </a>
-                          </td>
-                          <td className="p-3">
-                            <button
-                              onClick={() => openProject(project)}
-                              className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-white hover:bg-white/20"
-                            >
-                              Fiche projet
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+              <h2 className="text-xl font-semibold">Facturation</h2>
+              <p className="mt-2 text-zinc-300">Section en construction.</p>
             </div>
           )}
         </div>
