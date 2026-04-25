@@ -2827,12 +2827,25 @@ export default function Home() {
               <div className="rounded-2xl border border-white/10 bg-black/35 p-5 shadow-2xl backdrop-blur-sm">
                 <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div>
-                    <button
-                      onClick={() => setProjectPanel("demandePlan")}
-                      className="mb-3 rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm text-white transition hover:bg-white/10"
-                    >
-                      ← Retour aux demandes
-                    </button>
+                    <div className="mb-3 flex flex-wrap gap-2">
+                      <button
+                        onClick={() => setProjectPanel("demandePlan")}
+                        className="rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm text-white transition hover:bg-white/10"
+                      >
+                        ← Retour aux demandes
+                      </button>
+
+                      <button
+                        onClick={() => {
+                          setActiveSection("plans");
+                          localStorage.setItem("eric-section", "plans");
+                          setViewMode("list");
+                        }}
+                        className="rounded-lg border border-orange-400/60 bg-orange-400/10 px-4 py-2 text-sm text-orange-200 transition hover:bg-orange-400/20"
+                      >
+                        ← Retour à la liste de plans
+                      </button>
+                    </div>
                     <h2 className="text-2xl font-semibold text-orange-400">
                       Demande de plan
                     </h2>
