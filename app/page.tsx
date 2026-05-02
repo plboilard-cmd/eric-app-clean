@@ -2,6 +2,7 @@
 
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import jsPDF from "jspdf";
+import { supabase } from "@/lib/supabase";
 
 const allowedUsers = [
   { username: "pierre-luc", code: "0580", name: "Pierre-Luc" },
@@ -157,6 +158,18 @@ type Project = {
   soumissions: Quote[];
   billingBoards: BillingBoard[];
   createdAt: string;
+};
+
+type SupabaseProjectRow = {
+  id: number;
+  numero_projet: string | null;
+  numero_client: string | null;
+  client: string | null;
+  ville: string | null;
+  description: string | null;
+  charge: string | null;
+  statut: string | null;
+  created_at: string | null;
 };
 
 type ActiveSection = "projets" | "plans" | "clients" | "facturation";
@@ -401,6 +414,25 @@ function normalizeProject(raw: Partial<Project>, index: number): Project {
   };
 }
 
+function normalizeSupabaseProject(raw: SupabaseProjectRow, index: number): Project {
+  const status = ALL_STATUSES.includes(raw.statut as StatusType)
+    ? (raw.statut as StatusType)
+    : "À soumissionner";
+
+  return {
+    ...EMPTY_PROJECT,
+    id: raw.id ?? Date.now() + index,
+    numeroProjet: raw.numero_projet ?? makeProjectNumber(index + 1),
+    numeroClient: raw.numero_client ?? "",
+    client: raw.client ?? "",
+    statut: status,
+    charge: raw.charge ?? "",
+    ville: raw.ville ?? "",
+    description: raw.description ?? "",
+    createdAt: raw.created_at ?? new Date().toISOString(),
+  };
+}
+
 function normalizeClients(raw: Partial<ClientRecord>[]): ClientRecord[] {
   return raw.map((client, index) => ({
     id: client.id ?? crypto.randomUUID(),
@@ -584,7 +616,6 @@ export default function Home() {
 
   useEffect(() => {
     const savedUser = localStorage.getItem("eric-user");
-    const savedProjects = localStorage.getItem(PROJECTS_KEY);
     const savedClients = localStorage.getItem(CLIENTS_KEY);
     const savedItems = localStorage.getItem(ITEMS_BANK_KEY);
     const savedSection = localStorage.getItem("eric-section") as
@@ -593,20 +624,36 @@ export default function Home() {
 
     if (savedUser) setLoggedInUser(savedUser);
 
-    let normalizedProjects: Project[] = [];
+    const loadSupabaseProjects = async () => {
+      const { data, error } = await supabase
+        .from("projects")
+        .select("*")
+        .order("id", { ascending: false });
 
-    if (savedProjects) {
-      try {
-        const parsed = JSON.parse(savedProjects) as Partial<Project>[];
-        normalizedProjects = parsed.map((project, index) =>
-          normalizeProject(project, index)
-        );
-        setProjects(normalizedProjects);
-        localStorage.setItem(PROJECTS_KEY, JSON.stringify(normalizedProjects));
-      } catch {
+      console.log("SUPABASE DATA:", data);
+      console.log("SUPABASE ERROR:", error);
+
+      if (error) {
         setProjects([]);
+        localStorage.setItem(PROJECTS_KEY, JSON.stringify([]));
+        localStorage.setItem(NEXT_PROJECT_KEY, "1");
+        return;
       }
-    }
+
+      const normalizedProjects = (data ?? []).map((project, index) =>
+        normalizeSupabaseProject(project as SupabaseProjectRow, index)
+      );
+
+      setProjects(normalizedProjects);
+      localStorage.setItem(PROJECTS_KEY, JSON.stringify(normalizedProjects));
+
+      const maxExisting = normalizedProjects.reduce((max, project) => {
+        const numericPart = Number(project.numeroProjet.split("-")[1] || "0");
+        return Number.isFinite(numericPart) ? Math.max(max, numericPart) : max;
+      }, 0);
+
+      localStorage.setItem(NEXT_PROJECT_KEY, String(maxExisting + 1));
+    };
 
     if (savedClients) {
       try {
@@ -651,23 +698,11 @@ export default function Home() {
       setActiveSection(savedSection);
     }
 
-    if (!localStorage.getItem(NEXT_PROJECT_KEY)) {
-      const maxExisting = normalizedProjects.reduce((max, project) => {
-        const numericPart = Number(project.numeroProjet.split("-")[1] || "0");
-        return Number.isFinite(numericPart) ? Math.max(max, numericPart) : max;
-      }, 0);
-
-      localStorage.setItem(
-        NEXT_PROJECT_KEY,
-        String(maxExisting > 0 ? maxExisting + 1 : 1)
-      );
-    }
-
     if (!localStorage.getItem(NEXT_INVOICE_KEY)) {
       localStorage.setItem(NEXT_INVOICE_KEY, "500");
     }
 
-    setIsLoaded(true);
+    loadSupabaseProjects().finally(() => setIsLoaded(true));
   }, []);
 
   const persistProjects = (updatedProjects: Project[]) => {
@@ -920,7 +955,7 @@ export default function Home() {
     setNewContactEmail("");
   };
 
-  const addProject = () => {
+  const addProject = async () => {
     if (!loggedInUser) return;
 
     if (
@@ -931,7 +966,11 @@ export default function Home() {
       return;
     }
 
-    const nextNumber = Number(localStorage.getItem(NEXT_PROJECT_KEY) || "1");
+    const maxExisting = projects.reduce((max, project) => {
+      const numericPart = Number(project.numeroProjet.split("-")[1] || "0");
+      return Number.isFinite(numericPart) ? Math.max(max, numericPart) : max;
+    }, 0);
+    const nextNumber = maxExisting + 1;
     const clientName = newProject.client.trim();
 
     const existingClient = clients.find(
@@ -950,26 +989,33 @@ export default function Home() {
       ]);
     }
 
-    const newEntry: Project = {
-      id: Date.now(),
-      numeroProjet: makeProjectNumber(nextNumber),
-      numeroClient: "",
+    const payload = {
+      numero_projet: makeProjectNumber(nextNumber),
+      numero_client: "",
       client: clientName,
-      contactId: "",
-      statut: "À soumissionner",
-      charge: loggedInUser,
       ville: newProject.ville.trim(),
-      endroit: "",
       description: newProject.description.trim(),
-      poNumber: "",
-      documents: [],
-      planRequests: [],
-      soumissions: [],
-      billingBoards: [],
-      createdAt: new Date().toISOString(),
+      charge: loggedInUser,
+      statut: "À soumissionner",
     };
 
-    persistProjects([...projects, newEntry]);
+    const { data, error } = await supabase
+      .from("projects")
+      .insert(payload)
+      .select("*")
+      .single();
+
+    console.log("SUPABASE INSERT DATA:", data);
+    console.log("SUPABASE INSERT ERROR:", error);
+
+    if (error || !data) {
+      alert("Le projet n'a pas été sauvegardé en ligne. Vérifie la console pour le détail.");
+      return;
+    }
+
+    const newEntry = normalizeSupabaseProject(data as SupabaseProjectRow, 0);
+
+    persistProjects([newEntry, ...projects]);
     localStorage.setItem(NEXT_PROJECT_KEY, String(nextNumber + 1));
 
     setShowModal(false);
@@ -1000,8 +1046,28 @@ export default function Home() {
     setViewMode("project");
   };
 
-  const saveProject = () => {
+  const saveProject = async () => {
     if (selectedProjectId === null) return;
+
+    const { error } = await supabase
+      .from("projects")
+      .update({
+        numero_projet: projectForm.numeroProjet,
+        numero_client: projectForm.numeroClient,
+        client: projectForm.client,
+        ville: projectForm.ville,
+        description: projectForm.description,
+        charge: projectForm.charge,
+        statut: projectForm.statut,
+      })
+      .eq("id", selectedProjectId);
+
+    console.log("SUPABASE UPDATE ERROR:", error);
+
+    if (error) {
+      alert("Le projet n'a pas été sauvegardé en ligne. Vérifie la console pour le détail.");
+      return;
+    }
 
     const updatedProjects = projects.map((project) =>
       project.id === selectedProjectId ? projectForm : project
