@@ -160,18 +160,6 @@ type Project = {
   createdAt: string;
 };
 
-type SupabaseProjectRow = {
-  id: number;
-  numero_projet: string | null;
-  numero_client: string | null;
-  client: string | null;
-  ville: string | null;
-  description: string | null;
-  charge: string | null;
-  statut: string | null;
-  created_at: string | null;
-};
-
 type ActiveSection = "projets" | "plans" | "clients" | "facturation";
 type ViewMode = "list" | "project";
 type ProjectPanel = "fiche" | "soumission" | "demandePlan" | "planDetail" | "facturation";
@@ -360,12 +348,12 @@ function normalizeProject(raw: Partial<Project>, index: number): Project {
         planNumber: Number(plan.planNumber) || 1,
         revisionNumber: Number(plan.revisionNumber) || 0,
         code:
-          (plan.code ??
+          plan.code ??
           makePlanCode(
             raw.numeroProjet ?? makeProjectNumber(index + 1),
             Number(plan.planNumber) || 1,
             Number(plan.revisionNumber) || 0
-          )).replace(/_R(\d{2})$/, "_V$1"),
+          ),
         descriptionPlan: plan.descriptionPlan ?? raw.description ?? "",
         statut: plan.statut ?? "",
         planRequisLe: plan.planRequisLe ?? "",
@@ -443,35 +431,8 @@ function getPrivateBlobOpenUrl(pathname: string, fallbackUrl: string) {
   return fallbackUrl;
 }
 
-function isStatusType(value: string): value is StatusType {
-  return ALL_STATUSES.includes(value as StatusType);
-}
-
-function supabaseRowToProject(row: SupabaseProjectRow, index: number): Project {
-  const statut = row.statut && isStatusType(row.statut) ? row.statut : "À soumissionner";
-
-  return {
-    id: Number(row.id) || Date.now() + index,
-    numeroProjet: row.numero_projet ?? makeProjectNumber(index + 1),
-    numeroClient: row.numero_client ?? "",
-    client: row.client ?? "",
-    contactId: "",
-    statut,
-    charge: row.charge ?? "",
-    ville: row.ville ?? "",
-    endroit: "",
-    description: row.description ?? "",
-    poNumber: "",
-    documents: [],
-    planRequests: [],
-    soumissions: [],
-    billingBoards: [],
-    createdAt: row.created_at ?? new Date().toISOString(),
-  };
-}
-
 function makePlanCode(projectNumber: string, planNumber: number, revisionNumber: number) {
-  return `${projectNumber}_P${String(planNumber).padStart(3, "0")}_V${String(revisionNumber).padStart(2, "0")}`;
+  return `${projectNumber}_P${String(planNumber).padStart(3, "0")}_R${String(revisionNumber).padStart(2, "0")}`;
 }
 
 function todayFrCa() {
@@ -620,9 +581,17 @@ export default function Home() {
   const [invoicePdfError, setInvoicePdfError] = useState("");
   const [newBillingMonth, setNewBillingMonth] = useState(String(new Date().getMonth() + 1));
   const [newBillingYear, setNewBillingYear] = useState(String(new Date().getFullYear()));
-  const [invoiceSummaryMonth, setInvoiceSummaryMonth] = useState(String(new Date().getMonth() + 1));
-  const [invoiceSummaryYear, setInvoiceSummaryYear] = useState(String(new Date().getFullYear()));
-  const [invoiceSummarySearch, setInvoiceSummarySearch] = useState("");
+
+  useEffect(() => {
+    const testSupabaseConnection = async () => {
+      const { data, error } = await supabase.from("projects").select("*");
+
+      console.log("SUPABASE DATA:", data);
+      console.log("SUPABASE ERROR:", error);
+    };
+
+    testSupabaseConnection();
+  }, []);
 
   useEffect(() => {
     const savedUser = localStorage.getItem("eric-user");
@@ -712,31 +681,6 @@ export default function Home() {
     setIsLoaded(true);
   }, []);
 
-  useEffect(() => {
-    const loadSupabaseProjects = async () => {
-      const { data, error } = await supabase
-        .from("projects")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      console.log("SUPABASE DATA:", data);
-      console.log("SUPABASE ERROR:", error);
-
-      if (error) {
-        return;
-      }
-
-      const normalizedProjects = (data ?? []).map((row, index) =>
-        supabaseRowToProject(row as SupabaseProjectRow, index)
-      );
-
-      setProjects(normalizedProjects);
-      localStorage.setItem(PROJECTS_KEY, JSON.stringify(normalizedProjects));
-    };
-
-    loadSupabaseProjects();
-  }, []);
-
   const persistProjects = (updatedProjects: Project[]) => {
     setProjects(updatedProjects);
     localStorage.setItem(PROJECTS_KEY, JSON.stringify(updatedProjects));
@@ -789,7 +733,7 @@ export default function Home() {
         if (!plan.statut) return false;
         if (plan.statut === "envoyé" && !showSentPlans) return false;
 
-        const fullPlanNumber = `${plan.code.replace(/_R(\d{2})$/, "_V$1")} ${project.numeroProjet} P${String(plan.planNumber).padStart(3, "0")} V${String(plan.revisionNumber).padStart(2, "0")}`.toLowerCase();
+        const fullPlanNumber = `${plan.code} ${project.numeroProjet} P${String(plan.planNumber).padStart(3, "0")} R${String(plan.revisionNumber).padStart(2, "0")}`.toLowerCase();
 
         const numberOk = fullPlanNumber.includes(planSearchNumber.toLowerCase().trim());
         const villeOk = (plan.ville || project.ville || "")
@@ -828,46 +772,6 @@ export default function Home() {
     planSearchDescription,
     planSearchDessinateur,
   ]);
-
-  const invoiceSummaryRows = useMemo(() => {
-    const selectedMonth = Number(invoiceSummaryMonth);
-    const selectedYear = Number(invoiceSummaryYear);
-    const search = invoiceSummarySearch.toLowerCase().trim();
-
-    return projects
-      .flatMap((project) =>
-        project.billingBoards.flatMap((board) => {
-          const quote = project.soumissions.find((item) => item.id === board.quoteId);
-          return board.months
-            .filter((month) => month.invoice)
-            .map((month) => ({
-              project,
-              quote,
-              month,
-              invoice: month.invoice as GeneratedInvoice,
-            }));
-        })
-      )
-      .filter(({ project, quote, month, invoice }) => {
-        const monthOk = month.month === selectedMonth && month.year === selectedYear;
-        const searchable = [
-          project.numeroProjet,
-          project.numeroClient,
-          project.client,
-          project.ville,
-          project.description,
-          quote?.name ?? "",
-          invoice.invoiceNumber,
-          invoice.name,
-          month.label,
-        ]
-          .join(" ")
-          .toLowerCase();
-
-        return monthOk && (search === "" || searchable.includes(search));
-      })
-      .sort((a, b) => b.invoice.invoiceNumber.localeCompare(a.invoice.invoiceNumber));
-  }, [projects, invoiceSummaryMonth, invoiceSummaryYear, invoiceSummarySearch]);
 
   const filteredClientsForList = useMemo(() => {
     return clients.filter((client) => {
@@ -914,10 +818,6 @@ export default function Home() {
     ) ?? 0;
 
   const preparedBy = getPreparedBy(projectForm.charge || loggedInUser || "");
-  const visibleBillingMonths = (activeBillingBoard?.months ?? [])
-    .slice()
-    .sort((a, b) => (b.year === a.year ? b.month - a.month : b.year - a.year))
-    .slice(0, 3);
 
   const handleLogin = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -1042,8 +942,9 @@ export default function Home() {
       return;
     }
 
-    const nextNumber = Number(localStorage.getItem(NEXT_PROJECT_KEY) || "1");
     const clientName = newProject.client.trim();
+    const nextNumber = Number(localStorage.getItem(NEXT_PROJECT_KEY) || "1");
+    const numeroProjet = makeProjectNumber(nextNumber);
 
     const existingClient = clients.find(
       (client) => client.name.toLowerCase() === clientName.toLowerCase()
@@ -1061,52 +962,34 @@ export default function Home() {
       ]);
     }
 
-    const newEntry: Project = {
-      id: Date.now(),
-      numeroProjet: makeProjectNumber(nextNumber),
-      numeroClient: "",
+    const supabasePayload = {
+      numero_projet: numeroProjet,
+      numero_client: "",
       client: clientName,
-      contactId: "",
-      statut: "À soumissionner",
-      charge: loggedInUser,
       ville: newProject.ville.trim(),
-      endroit: "",
       description: newProject.description.trim(),
-      poNumber: "",
-      documents: [],
-      planRequests: [],
-      soumissions: [],
-      billingBoards: [],
-      createdAt: new Date().toISOString(),
+      charge: loggedInUser,
+      statut: "À soumissionner",
     };
 
     const { data, error } = await supabase
       .from("projects")
-      .insert([
-        {
-          numero_projet: newEntry.numeroProjet,
-          numero_client: newEntry.numeroClient,
-          client: newEntry.client,
-          ville: newEntry.ville,
-          description: newEntry.description,
-          charge: newEntry.charge,
-          statut: newEntry.statut,
-        },
-      ])
+      .insert([supabasePayload])
       .select("*")
       .single();
 
+    console.log("SUPABASE INSERT DATA:", data);
+    console.log("SUPABASE INSERT ERROR:", error);
+
     if (error) {
-      console.error("Erreur Supabase addProject:", error);
-      alert("Erreur Supabase : le projet n'a pas été sauvegardé en ligne.");
+      alert(`Erreur Supabase : ${error.message}`);
       return;
     }
 
-    const savedEntry = data
-      ? supabaseRowToProject(data as SupabaseProjectRow, projects.length)
-      : newEntry;
+    const insertedProject = normalizeSupabaseProject(data as SupabaseProjectRow, 0);
+    const updatedProjects = [insertedProject, ...projects];
 
-    persistProjects([savedEntry, ...projects]);
+    persistProjects(updatedProjects);
     localStorage.setItem(NEXT_PROJECT_KEY, String(nextNumber + 1));
 
     setShowModal(false);
@@ -1796,7 +1679,7 @@ export default function Home() {
           lines: [],
           invoice: null,
         },
-      ].sort((a, b) => (b.year === a.year ? b.month - a.month : b.year - a.year)),
+      ].sort((a, b) => a.year === b.year ? a.month - b.month : a.year - b.year),
     };
 
     persistProjectForm({
@@ -2042,7 +1925,7 @@ export default function Home() {
       <main className="relative h-screen overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-[20%_top]"
-          style={{ backgroundImage: "url('/eric-login-bg.png?v=3')" }}
+          style={{ backgroundImage: "url('/eric-login-bg.png')" }}
         />
         <div className="absolute inset-0 bg-black/70" />
 
@@ -2101,7 +1984,7 @@ export default function Home() {
       <main className="relative min-h-screen overflow-hidden text-white">
         <div
           className="absolute inset-0 bg-cover bg-center"
-          style={{ backgroundImage: "url('/eric-dashboard-bg.png?v=3')" }}
+          style={{ backgroundImage: "url('/eric-dashboard-bg.png')" }}
         />
         <div className="absolute inset-0 bg-black/68" />
 
@@ -2581,7 +2464,7 @@ export default function Home() {
                             <th className="p-3 text-left font-semibold">$ Total soumis</th>
                             <th className="p-3 text-left font-semibold">Qté réelle total</th>
                             <th className="p-3 text-left font-semibold">$ Total réel</th>
-                            {visibleBillingMonths.map((month) => (
+                            {(activeBillingBoard?.months ?? []).map((month) => (
                               <th key={month.id} className="p-3 text-left font-semibold">
                                 <div>{month.label}</div>
                                 <div className="mt-1 text-xs font-normal">Qté réelle / $ total</div>
@@ -2593,7 +2476,7 @@ export default function Home() {
                         <tbody>
                           {activeBillingQuote.lines.length === 0 ? (
                             <tr>
-                              <td colSpan={8 + visibleBillingMonths.length} className="p-6 text-center text-zinc-300">
+                              <td colSpan={8 + (activeBillingBoard?.months.length ?? 0)} className="p-6 text-center text-zinc-300">
                                 Aucun item dans la soumission active.
                               </td>
                             </tr>
@@ -2611,7 +2494,7 @@ export default function Home() {
                                   <td className="p-3 text-zinc-200">{money(line.price * line.quantity)}</td>
                                   <td className="p-3 text-zinc-200">{realQtyTotal}</td>
                                   <td className="p-3 text-zinc-200">{money(realMoneyTotal)}</td>
-                                  {visibleBillingMonths.map((month) => {
+                                  {(activeBillingBoard?.months ?? []).map((month) => {
                                     const monthQty = getMonthLineQuantity(month, line.id);
                                     return (
                                       <td key={`${month.id}-${line.id}`} className="p-3">
@@ -2649,7 +2532,7 @@ export default function Home() {
                               <td className="p-3 text-white">
                                 {money(activeBillingQuote.lines.reduce((total, line) => total + getRealQuantityTotal(line.id) * line.price, 0))}
                               </td>
-                              {visibleBillingMonths.map((month) => {
+                              {(activeBillingBoard?.months ?? []).map((month) => {
                                 const monthTotal = activeBillingQuote.lines.reduce(
                                   (total, line) => total + getMonthLineQuantity(month, line.id) * line.price,
                                   0
@@ -2667,7 +2550,7 @@ export default function Home() {
                     </div>
 
                     <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
-                      {visibleBillingMonths.map((month) => (
+                      {(activeBillingBoard?.months ?? []).map((month) => (
                         <div key={month.id} className="rounded-xl border border-white/10 bg-white/5 p-4">
                           <div className="flex flex-wrap items-center justify-between gap-3">
                             <div>
@@ -2799,7 +2682,7 @@ export default function Home() {
                                   }
                                   className="w-full min-w-[420px] rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
                                 />
-                                <p className="mt-1 text-xs text-zinc-400">{plan.code.replace(/_R(\d{2})$/, "_V$1")}</p>
+                                <p className="mt-1 text-xs text-zinc-400">{plan.code}</p>
                               </td>
 
                               <td className="p-3">
@@ -2879,7 +2762,7 @@ export default function Home() {
                       Demande de plan
                     </h2>
                     <p className="mt-1 text-sm text-zinc-300">
-                      {activePlan.code.replace(/_R(\d{2})$/, "_V$1")}
+                      {activePlan.code}
                     </p>
                   </div>
 
@@ -2891,48 +2774,7 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div className="mb-5 grid grid-cols-1 gap-4 xl:grid-cols-3">
-                  <div className="rounded-xl border border-orange-400/40 bg-orange-500/10 p-4">
-                    <label className="mb-2 block text-sm font-semibold text-orange-200">Statut de la demande</label>
-                    <select
-                      value={activePlan.statut || ""}
-                      onChange={(e) => updateActivePlan({ statut: e.target.value })}
-                      className="w-full rounded border border-orange-400/40 bg-black/30 px-3 py-3 text-lg font-semibold text-white outline-none"
-                    >
-                      <option value="" className="text-black">--</option>
-                      {PLAN_STATUSES.map((status) => (
-                        <option key={status} value={status} className="text-black">{status}</option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="rounded-xl border border-orange-400/40 bg-orange-500/10 p-4">
-                    <label className="mb-2 block text-sm font-semibold text-orange-200">Dessinateur</label>
-                    <select
-                      value={activePlan.dessinateurIngenieur || ""}
-                      onChange={(e) => updateActivePlan({ dessinateurIngenieur: e.target.value })}
-                      className="w-full rounded border border-orange-400/40 bg-black/30 px-3 py-3 text-lg font-semibold text-white outline-none"
-                    >
-                      {DESSINATEURS_PLAN.map((name) => (
-                        <option key={name || "empty"} value={name} className="text-black">
-                          {name || "--"}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="rounded-xl border border-orange-400/40 bg-orange-500/10 p-4">
-                    <label className="mb-2 block text-sm font-semibold text-orange-200">Plan requis le</label>
-                    <input
-                      type="date"
-                      value={activePlan.planRequisLe}
-                      onChange={(e) => updateActivePlan({ planRequisLe: e.target.value })}
-                      className="w-full rounded border border-orange-400/40 bg-black/30 px-3 py-3 text-lg font-semibold text-white outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 gap-6 xl:grid-cols-[2fr_1fr]">
+                <div className="grid grid-cols-1 gap-6 xl:grid-cols-[0.9fr_1.1fr]">
                   <div className="rounded-xl border border-white/10 bg-white/5 p-5">
                     <h3 className="mb-4 text-lg font-semibold text-orange-400">
                       Informations
@@ -2974,13 +2816,54 @@ export default function Home() {
                       />
                     </div>
 
-                    <div className="mb-4">
-                      <label className="mb-2 block text-sm text-zinc-300">Ville</label>
-                      <input
-                        value={activePlan.ville}
-                        onChange={(e) => updateActivePlan({ ville: e.target.value })}
-                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
-                      />
+                    <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div>
+                        <label className="mb-2 block text-sm text-zinc-300">Plan requis le</label>
+                        <input
+                          type="date"
+                          value={activePlan.planRequisLe}
+                          onChange={(e) => updateActivePlan({ planRequisLe: e.target.value })}
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-2 block text-sm text-zinc-300">Statut</label>
+                        <select
+                          value={activePlan.statut || ""}
+                          onChange={(e) => updateActivePlan({ statut: e.target.value })}
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                        >
+                          <option value="" className="text-black">--</option>
+                          {PLAN_STATUSES.map((status) => (
+                            <option key={status} value={status} className="text-black">{status}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                      <div>
+                        <label className="mb-2 block text-sm text-zinc-300">Ville</label>
+                        <input
+                          value={activePlan.ville}
+                          onChange={(e) => updateActivePlan({ ville: e.target.value })}
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="mb-2 block text-sm text-zinc-300">Dessinateur</label>
+                        <select
+                          value={activePlan.dessinateurIngenieur || ""}
+                          onChange={(e) => updateActivePlan({ dessinateurIngenieur: e.target.value })}
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                        >
+                          {DESSINATEURS_PLAN.map((name) => (
+                            <option key={name || "empty"} value={name} className="text-black">
+                              {name || "--"}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
 
                     <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-[0.7fr_1.3fr]">
@@ -3785,7 +3668,7 @@ export default function Home() {
     <main className="relative min-h-screen overflow-hidden text-white">
       <div
         className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: "url('/eric-dashboard-bg.png?v=3')" }}
+        style={{ backgroundImage: "url('/eric-dashboard-bg.png')" }}
       />
       <div className="absolute inset-0 bg-black/55" />
 
@@ -3796,7 +3679,7 @@ export default function Home() {
               <p className="text-sm uppercase tracking-[0.25em] text-zinc-300">
                 ERIC
               </p>
-              <h1 className="mt-1 text-2xl font-semibold">Liste de projets</h1>
+              <h1 className="mt-1 text-2xl font-semibold">Liste de projet</h1>
             </div>
 
             <div className="flex items-center gap-4">
@@ -3812,8 +3695,8 @@ export default function Home() {
 
           <div className="mb-6 flex flex-wrap gap-4">
             {[
-              ["projets", "Projets"],
-              ["plans", "Liste de planss"],
+              ["projets", "Projet"],
+              ["plans", "Liste de plan"],
               ["facturation", "Facturation"],
               ["clients", "Client"],
             ].map(([key, label]) => (
@@ -3917,17 +3800,7 @@ export default function Home() {
               </div>
 
               <div className="overflow-hidden rounded-lg border border-white/10 bg-black/35 shadow-2xl backdrop-blur-sm">
-                <table className="w-full table-fixed text-sm">
-                  <colgroup>
-                    <col className="w-[120px]" />
-                    <col className="w-[150px]" />
-                    <col className="w-[150px]" />
-                    <col className="w-[200px]" />
-                    <col />
-                    <col className="w-[150px]" />
-                    <col className="w-[125px]" />
-                    <col className="w-[125px]" />
-                  </colgroup>
+                <table className="w-full text-sm">
                   <thead className="bg-orange-500 text-black">
                     <tr>
                       <th className="p-3 text-left font-semibold">
@@ -3978,7 +3851,7 @@ export default function Home() {
                           </td>
                           <td className="p-3 text-white">{project.client}</td>
                           <td className="p-3 text-zinc-200">
-                            <div className="truncate" title={project.description}>{project.description}</div>
+                            {project.description}
                           </td>
                           <td className="p-3">
                             <span
@@ -4022,7 +3895,7 @@ export default function Home() {
             <div className="rounded-xl border border-white/10 bg-black/35 p-6 backdrop-blur-sm">
               <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                  <h2 className="text-xl font-semibold">Liste de planss</h2>
+                  <h2 className="text-xl font-semibold">Liste de plan</h2>
                   <p className="mt-1 text-sm text-zinc-300">
                     Plans commandés classés par date requise.
                   </p>
@@ -4034,7 +3907,7 @@ export default function Home() {
                     checked={showSentPlans}
                     onChange={(e) => setShowSentPlans(e.target.checked)}
                   />
-                  Voir envoyés
+                  Voir envoyé
                 </label>
               </div>
 
@@ -4101,20 +3974,7 @@ export default function Home() {
               </div>
 
               <div className="overflow-x-auto rounded-xl border border-white/10">
-                <table className="min-w-[1450px] w-full table-fixed text-sm">
-                  <colgroup>
-                    <col className="w-[110px]" />
-                    <col className="w-[85px]" />
-                    <col className="w-[145px]" />
-                    <col className="w-[180px]" />
-                    <col />
-                    <col className="w-[105px]" />
-                    <col className="w-[75px]" />
-                    <col className="w-[75px]" />
-                    <col className="w-[135px]" />
-                    <col className="w-[130px]" />
-                    <col className="w-[130px]" />
-                  </colgroup>
+                <table className="min-w-[1500px] w-full text-sm">
                   <thead className="bg-orange-500 text-black">
                     <tr>
                       <th className="p-3 text-left font-semibold">No Projet</th>
@@ -4124,7 +3984,7 @@ export default function Home() {
                       <th className="p-3 text-left font-semibold">Description plan</th>
                       <th className="p-3 text-left font-semibold">Demande</th>
                       <th className="p-3 text-left font-semibold"># Plan</th>
-                      <th className="p-3 text-left font-semibold"># Ver.</th>
+                      <th className="p-3 text-left font-semibold"># Rév.</th>
                       <th className="p-3 text-left font-semibold">Plan requis le</th>
                       <th className="p-3 text-left font-semibold">Statut plan</th>
                       <th className="p-3 text-left font-semibold">Dessinateur</th>
@@ -4169,7 +4029,7 @@ export default function Home() {
                             <div className="max-w-[520px] truncate" title={plan.descriptionPlan}>
                               {plan.descriptionPlan}
                             </div>
-                            <p className="mt-1 text-xs text-zinc-400">{plan.code.replace(/_R(\d{2})$/, "_V$1")}</p>
+                            <p className="mt-1 text-xs text-zinc-400">{plan.code}</p>
                           </td>
                           <td className="p-3">
                             <button
@@ -4328,115 +4188,8 @@ export default function Home() {
 
           {activeSection === "facturation" && (
             <div className="rounded-xl border border-white/10 bg-black/35 p-6 backdrop-blur-sm">
-              <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold">Facturation</h2>
-                  <p className="mt-1 text-sm text-zinc-300">
-                    Résumé des factures générées pour la comptabilité.
-                  </p>
-                </div>
-
-                <div className="rounded-lg border border-orange-400/30 bg-orange-500/10 px-4 py-3 text-sm text-orange-100">
-                  {invoiceSummaryRows.length} facture(s) affichée(s)
-                </div>
-              </div>
-
-              <div className="mb-5 grid gap-4 lg:grid-cols-[150px_150px_1fr]">
-                <div>
-                  <label className="mb-2 block text-sm text-zinc-200">Mois</label>
-                  <select
-                    value={invoiceSummaryMonth}
-                    onChange={(e) => setInvoiceSummaryMonth(e.target.value)}
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none"
-                  >
-                    {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
-                      <option key={month} value={month} className="text-black">
-                        {getMonthLabel(month, 2026).split(" ")[0]}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm text-zinc-200">Année</label>
-                  <input
-                    value={invoiceSummaryYear}
-                    onChange={(e) => setInvoiceSummaryYear(e.target.value)}
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm text-zinc-200">Recherche</label>
-                  <input
-                    value={invoiceSummarySearch}
-                    onChange={(e) => setInvoiceSummarySearch(e.target.value)}
-                    placeholder="Numéro facture, projet, client, ville, description..."
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
-                  />
-                </div>
-              </div>
-
-              <div className="overflow-x-auto rounded-xl border border-white/10">
-                <table className="w-full min-w-[1000px] table-fixed text-sm">
-                  <colgroup>
-                    <col className="w-[130px]" />
-                    <col className="w-[160px]" />
-                    <col />
-                    <col className="w-[160px]" />
-                    <col className="w-[150px]" />
-                    <col className="w-[130px]" />
-                  </colgroup>
-                  <thead className="bg-orange-500 text-black">
-                    <tr>
-                      <th className="p-3 text-left font-semibold">No projet</th>
-                      <th className="p-3 text-left font-semibold">No facture</th>
-                      <th className="p-3 text-left font-semibold">Client</th>
-                      <th className="p-3 text-left font-semibold">Mois</th>
-                      <th className="p-3 text-left font-semibold">PDF facture</th>
-                      <th className="p-3 text-left font-semibold">Fiche</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {invoiceSummaryRows.length === 0 ? (
-                      <tr className="border-t border-white/10">
-                        <td colSpan={6} className="p-6 text-center text-zinc-300">
-                          Aucune facture pour ce mois.
-                        </td>
-                      </tr>
-                    ) : (
-                      invoiceSummaryRows.map(({ project, month, invoice }) => (
-                        <tr key={invoice.id} className="border-t border-white/10 bg-black/15">
-                          <td className="p-3 text-white">{project.numeroProjet}</td>
-                          <td className="p-3 font-semibold text-orange-300">{invoice.invoiceNumber}</td>
-                          <td className="p-3 text-zinc-200">
-                            <div className="truncate" title={project.client}>{project.client}</div>
-                          </td>
-                          <td className="p-3 text-zinc-200">{month.label}</td>
-                          <td className="p-3">
-                            <a
-                              href={getPrivateBlobOpenUrl(invoice.pathname, invoice.url)}
-                              target="_blank"
-                              rel="noreferrer"
-                              className="rounded border border-orange-400/60 bg-orange-400/10 px-3 py-1.5 text-xs text-orange-200 hover:bg-orange-400/20"
-                            >
-                              Ouvrir PDF
-                            </a>
-                          </td>
-                          <td className="p-3">
-                            <button
-                              onClick={() => openProject(project)}
-                              className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-white hover:bg-white/20"
-                            >
-                              Ouvrir
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+              <h2 className="text-xl font-semibold">Facturation</h2>
+              <p className="mt-2 text-zinc-300">Section en construction.</p>
             </div>
           )}
         </div>
