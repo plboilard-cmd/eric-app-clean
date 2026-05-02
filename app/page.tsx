@@ -2,7 +2,6 @@
 
 import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
 import jsPDF from "jspdf";
-import { supabase } from "@/lib/supabase";
 
 const allowedUsers = [
   { username: "pierre-luc", code: "0580", name: "Pierre-Luc" },
@@ -178,6 +177,7 @@ const QUOTE_STATUSES: QuoteStatus[] = ["Actif", "Envoyé", "Non-retenu"];
 const PLAN_STATUSES = [
   "commandé",
   "en dessin",
+  "pause",
   "a vérifier",
   "a corriger",
   "envoyé",
@@ -583,17 +583,6 @@ export default function Home() {
   const [newBillingYear, setNewBillingYear] = useState(String(new Date().getFullYear()));
 
   useEffect(() => {
-    const testSupabaseConnection = async () => {
-      const { data, error } = await supabase.from("projects").select("*");
-
-      console.log("SUPABASE DATA:", data);
-      console.log("SUPABASE ERROR:", error);
-    };
-
-    testSupabaseConnection();
-  }, []);
-
-  useEffect(() => {
     const savedUser = localStorage.getItem("eric-user");
     const savedProjects = localStorage.getItem(PROJECTS_KEY);
     const savedClients = localStorage.getItem(CLIENTS_KEY);
@@ -931,7 +920,7 @@ export default function Home() {
     setNewContactEmail("");
   };
 
-  const addProject = async () => {
+  const addProject = () => {
     if (!loggedInUser) return;
 
     if (
@@ -942,9 +931,8 @@ export default function Home() {
       return;
     }
 
-    const clientName = newProject.client.trim();
     const nextNumber = Number(localStorage.getItem(NEXT_PROJECT_KEY) || "1");
-    const numeroProjet = makeProjectNumber(nextNumber);
+    const clientName = newProject.client.trim();
 
     const existingClient = clients.find(
       (client) => client.name.toLowerCase() === clientName.toLowerCase()
@@ -962,34 +950,26 @@ export default function Home() {
       ]);
     }
 
-    const supabasePayload = {
-      numero_projet: numeroProjet,
-      numero_client: "",
+    const newEntry: Project = {
+      id: Date.now(),
+      numeroProjet: makeProjectNumber(nextNumber),
+      numeroClient: "",
       client: clientName,
-      ville: newProject.ville.trim(),
-      description: newProject.description.trim(),
-      charge: loggedInUser,
+      contactId: "",
       statut: "À soumissionner",
+      charge: loggedInUser,
+      ville: newProject.ville.trim(),
+      endroit: "",
+      description: newProject.description.trim(),
+      poNumber: "",
+      documents: [],
+      planRequests: [],
+      soumissions: [],
+      billingBoards: [],
+      createdAt: new Date().toISOString(),
     };
 
-    const { data, error } = await supabase
-      .from("projects")
-      .insert([supabasePayload])
-      .select("*")
-      .single();
-
-    console.log("SUPABASE INSERT DATA:", data);
-    console.log("SUPABASE INSERT ERROR:", error);
-
-    if (error) {
-      alert(`Erreur Supabase : ${error.message}`);
-      return;
-    }
-
-    const insertedProject = normalizeSupabaseProject(data as SupabaseProjectRow, 0);
-    const updatedProjects = [insertedProject, ...projects];
-
-    persistProjects(updatedProjects);
+    persistProjects([...projects, newEntry]);
     localStorage.setItem(NEXT_PROJECT_KEY, String(nextNumber + 1));
 
     setShowModal(false);
@@ -2642,7 +2622,7 @@ export default function Home() {
                         <th className="p-3 text-left font-semibold">Sélection</th>
                         <th className="p-3 text-left font-semibold">Plan</th>
                         <th className="p-3 text-left font-semibold">Accès</th>
-                        <th className="p-3 text-left font-semibold">Statut</th>
+                        <th className="w-[145px] p-3 text-left font-semibold">Statut</th>
                         <th className="p-3 text-left font-semibold">Dessinateur</th>
                       </tr>
                     </thead>
@@ -2706,7 +2686,7 @@ export default function Home() {
                                     className="rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
                                   >
                                     <option value="" className="text-black">--</option>
-                                    {["commandé", "en dessin", "a vérifier", "a corriger", "envoyé", "a réviser", "révisé", "en révision"].map((status) => (
+                                    {["commandé", "en dessin", "pause", "a vérifier", "a corriger", "envoyé", "a réviser", "révisé", "en révision"].map((status) => (
                                       <option key={status} value={status} className="text-black">
                                         {status}
                                       </option>
@@ -3696,9 +3676,9 @@ export default function Home() {
           <div className="mb-6 flex flex-wrap gap-4">
             {[
               ["projets", "Projet"],
-              ["plans", "Liste de plan"],
+              ["plans", "Liste de plans"],
               ["facturation", "Facturation"],
-              ["clients", "Client"],
+              ["clients", "Clients"],
             ].map(([key, label]) => (
               <button
                 key={key}
@@ -3800,23 +3780,23 @@ export default function Home() {
               </div>
 
               <div className="overflow-hidden rounded-lg border border-white/10 bg-black/35 shadow-2xl backdrop-blur-sm">
-                <table className="w-full text-sm">
+                <table className="w-full table-fixed text-sm">
                   <thead className="bg-orange-500 text-black">
                     <tr>
-                      <th className="p-3 text-left font-semibold">
+                      <th className="w-[105px] p-3 text-left font-semibold">
                         Numéro projet
                       </th>
-                      <th className="p-3 text-left font-semibold">
+                      <th className="w-[125px] p-3 text-left font-semibold">
                         Numéro client
                       </th>
-                      <th className="p-3 text-left font-semibold">Ville</th>
-                      <th className="p-3 text-left font-semibold">Client</th>
+                      <th className="w-[135px] p-3 text-left font-semibold">Ville</th>
+                      <th className="w-[175px] p-3 text-left font-semibold">Client</th>
                       <th className="p-3 text-left font-semibold">
                         Description
                       </th>
-                      <th className="p-3 text-left font-semibold">Statut</th>
-                      <th className="p-3 text-left font-semibold">Chargé</th>
-                      <th className="p-3 text-left font-semibold">
+                      <th className="w-[145px] p-3 text-left font-semibold">Statut</th>
+                      <th className="w-[105px] p-3 text-left font-semibold">Chargé</th>
+                      <th className="w-[115px] p-3 text-left font-semibold">
                         Accès projet
                       </th>
                     </tr>
@@ -3851,21 +3831,23 @@ export default function Home() {
                           </td>
                           <td className="p-3 text-white">{project.client}</td>
                           <td className="p-3 text-zinc-200">
-                            {project.description}
+                            <div className="line-clamp-2" title={project.description}>
+                              {project.description}
+                            </div>
                           </td>
-                          <td className="p-3">
+                          <td className="w-[145px] p-3">
                             <span
-                              className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${getStatusBadgeClasses(
+                              className={`inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium ${getStatusBadgeClasses(
                                 project.statut
                               )}`}
                             >
                               {project.statut}
                             </span>
                           </td>
-                          <td className="p-3 text-zinc-200">
+                          <td className="w-[105px] p-3 text-zinc-200">
                             {project.charge}
                           </td>
-                          <td className="p-3">
+                          <td className="w-[115px] p-3">
                             <button
                               onClick={() => openProject(project)}
                               className="rounded-md border border-white/15 bg-white/10 px-3 py-1.5 text-sm text-white transition hover:bg-white/20"
@@ -3895,7 +3877,7 @@ export default function Home() {
             <div className="rounded-xl border border-white/10 bg-black/35 p-6 backdrop-blur-sm">
               <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
-                  <h2 className="text-xl font-semibold">Liste de plan</h2>
+                  <h2 className="text-xl font-semibold">Liste de plans</h2>
                   <p className="mt-1 text-sm text-zinc-300">
                     Plans commandés classés par date requise.
                   </p>
@@ -4002,16 +3984,22 @@ export default function Home() {
                       planListing.map(({ project, plan }) => (
                         <tr
                           key={`${project.id}-${plan.id}`}
-                          className={`border-t border-white/10 ${
-                            plan.statut === "envoyé"
-                              ? "bg-zinc-600/35"
-                              : plan.statut === "commandé"
-                                ? "bg-yellow-500/18"
-                                : plan.statut === "en dessin"
-                                  ? "bg-sky-500/18"
-                                  : plan.statut === "a vérifier" || plan.statut === "a corriger"
-                                    ? "bg-purple-500/18"
-                                    : "bg-black/15"
+                          className={`border-t border-white/10 transition hover:bg-white/10 ${
+                            plan.statut === "en dessin"
+                              ? "bg-sky-500/22"
+                              : plan.statut === "pause"
+                                ? "bg-yellow-500/22"
+                                : plan.statut === "a corriger"
+                                  ? "bg-orange-500/25"
+                                  : plan.statut === "a vérifier"
+                                    ? "bg-purple-500/25"
+                                    : plan.statut === "a réviser"
+                                      ? "bg-red-600/25"
+                                      : plan.statut === "révisé"
+                                        ? "bg-green-600/25"
+                                        : plan.statut === "envoyé"
+                                          ? "bg-zinc-600/30"
+                                          : "bg-black/15"
                           }`}
                         >
                           <td className="p-3 text-white">{project.numeroProjet}</td>
