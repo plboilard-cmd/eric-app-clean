@@ -3482,7 +3482,7 @@ export default function Home() {
                       <label className="mb-2 block text-sm text-slate-700">
                         Chargé de projet
                       </label>
-                      <input
+                      <select
                         value={projectForm.charge}
                         onChange={(e) =>
                           setProjectForm({
@@ -3490,9 +3490,12 @@ export default function Home() {
                             charge: e.target.value,
                           })
                         }
-                        placeholder="Nom du chargé de projet"
                         className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none"
-                      />
+                      >
+                        <option value="">Sélectionner un chargé</option>
+                        <option value="Pierre-Luc">Pierre-Luc</option>
+                        <option value="Véronique">Véronique</option>
+                      </select>
                     </div>
 
                     <div className="mt-5">
@@ -3553,7 +3556,7 @@ export default function Home() {
                     </div>
 
                     <div>
-                      <label className="mb-2 block text-sm text-orange-400">
+                      <label className="mb-2 block text-sm text-slate-700">
                         Client
                       </label>
                       <select
@@ -3565,7 +3568,7 @@ export default function Home() {
                             contactId: "",
                           })
                         }
-                        className="w-full border-b-2 border-orange-400 bg-slate-100 px-2 py-2 text-slate-950 outline-none"
+                        className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none"
                       >
                         <option value="" className="text-slate-950">
                           Sélectionner un client
@@ -3651,7 +3654,7 @@ export default function Home() {
                             })
                           }
                           placeholder="ex: facturation@client.com"
-                          className="w-full border-b-2 border-orange-400 bg-slate-100 px-2 py-2 text-slate-950 outline-none placeholder:text-slate-400"
+                          className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none placeholder:text-slate-400"
                         />
                       </div>
 
@@ -3668,7 +3671,7 @@ export default function Home() {
                             })
                           }
                           placeholder="ex: plan@client.com"
-                          className="w-full border-b-2 border-orange-400 bg-slate-100 px-2 py-2 text-slate-950 outline-none placeholder:text-slate-400"
+                          className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none placeholder:text-slate-400"
                         />
                       </div>
                     </div>
@@ -4005,36 +4008,36 @@ export default function Home() {
                     value={searchNumero}
                     onChange={(e) => setSearchNumero(e.target.value)}
                     placeholder="Ex. 26-0001"
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
                   />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm text-zinc-200">
+                  <label className="mb-2 block text-sm text-slate-700">
                     Recherche client
                   </label>
                   <input
                     value={searchClient}
                     onChange={(e) => setSearchClient(e.target.value)}
                     placeholder="Nom du client"
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
                   />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm text-zinc-200">
+                  <label className="mb-2 block text-sm text-slate-700">
                     Recherche ville
                   </label>
                   <input
                     value={searchVille}
                     onChange={(e) => setSearchVille(e.target.value)}
                     placeholder="Ville"
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
                   />
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm text-zinc-200">
+                  <label className="mb-2 block text-sm text-slate-700">
                     Chargé de projets
                   </label>
                   <select
@@ -4044,7 +4047,7 @@ export default function Home() {
                         e.target.value as "tous" | "mes-projets"
                       )
                     }
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none"
+                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none"
                   >
                     <option value="tous" className="text-black">
                       Tous les projets
