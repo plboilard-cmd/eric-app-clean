@@ -2141,12 +2141,12 @@ export default function Home() {
 
   if (!loggedInUser) {
     return (
-      <main className="relative h-screen overflow-hidden bg-slate-100 text-slate-950">
+      <main className="relative h-screen overflow-hidden">
         <div
           className="absolute inset-0 bg-cover bg-[20%_top]"
           style={{ backgroundImage: "url('/eric-login-bg.png')" }}
         />
-        <div className="absolute inset-0 bg-slate-100/45" />
+        <div className="absolute inset-0 bg-black/45" />
 
         <div className="relative z-10 flex h-full items-center justify-center px-4">
           <form
@@ -2159,7 +2159,7 @@ export default function Home() {
             </p>
 
             <div className="mb-4">
-              <label className="mb-2 block text-sm text-zinc-200">
+              <label className="mb-2 block text-sm text-slate-700">
                 Identifiant
               </label>
               <input
@@ -2172,7 +2172,7 @@ export default function Home() {
             </div>
 
             <div className="mb-4">
-              <label className="mb-2 block text-sm text-zinc-200">
+              <label className="mb-2 block text-sm text-slate-700">
                 Code d’accès
               </label>
               <input
@@ -2200,23 +2200,22 @@ export default function Home() {
 
   if (viewMode === "project") {
     return (
-      <main className="relative min-h-screen overflow-hidden bg-slate-100 text-slate-950">
+      <main className="relative min-h-screen overflow-hidden bg-slate-950 text-white">
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: "url('/eric-dashboard-bg.png')" }}
         />
-        <div className="absolute inset-0 bg-slate-100/45" />
+        <div className="absolute inset-0 bg-black/65" />
 
         <div className="relative z-10 px-6 py-5 md:px-8 xl:px-10">
           <div className="mx-auto max-w-[1700px]">
             <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
-                <p className="text-sm uppercase tracking-[0.25em] text-zinc-300">
+                <p className="text-sm uppercase tracking-[0.25em] text-slate-200">
                   ERIC
                 </p>
-                <h1 className="mt-1 text-2xl font-semibold">Fiche projet</h1>
+                <h1 className="mt-1 text-2xl font-semibold text-white">Fiche projet</h1>
               </div>
-
               <div className="flex gap-3 items-center">
                 <button
                   onClick={() => setViewMode("list")}
@@ -3416,27 +3415,27 @@ export default function Home() {
                 </div>
               </div>
             ) : (
-              <div className="rounded-2xl border border-zinc-300 bg-slate-100/90 p-5 shadow-2xl backdrop-blur-sm">
+              <div className="rounded-2xl border border-white/10 bg-black/30 p-5 shadow-2xl backdrop-blur-sm">
                 <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-                  <div className="rounded-xl border border-orange-400/40 bg-white/90 p-5">
-                    <h2 className="mb-5 text-xl font-semibold text-orange-400">
+                  <div className="rounded-xl border border-white/10 bg-slate-100/80 p-5">
+                    <h2 className="mb-5 text-xl font-semibold text-slate-900">
                       Informations projet
                     </h2>
 
                     <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                       <div>
-                        <label className="mb-2 block text-sm text-orange-400">
+                        <label className="mb-2 block text-sm text-slate-700">
                           Numéro de projet
                         </label>
                         <input
                           value={projectForm.numeroProjet}
                           readOnly
-                          className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
+                          className="w-full border-b-2 border-slate-300 bg-transparent px-2 py-2 text-slate-950 outline-none"
                         />
                       </div>
 
                       <div>
-                        <label className="mb-2 block text-sm text-orange-400">
+                        <label className="mb-2 block text-sm text-slate-700">
                           Numéro client
                         </label>
                         <input
@@ -3448,13 +3447,13 @@ export default function Home() {
                             })
                           }
                           placeholder="Ex. no interne client"
-                          className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none placeholder:text-zinc-500"
+                          className="w-full border-b-2 border-slate-300 bg-transparent px-2 py-2 text-slate-950 outline-none placeholder:text-slate-500"
                         />
                       </div>
                     </div>
 
                     <div className="mt-5">
-                      <label className="mb-2 block text-sm text-orange-400">
+                      <label className="mb-2 block text-sm text-slate-700">
                         Statut
                       </label>
                       <select
@@ -3465,13 +3464,13 @@ export default function Home() {
                             statut: e.target.value as StatusType,
                           })
                         }
-                        className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
+                        className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none"
                       >
                         {ALL_STATUSES.map((status) => (
                           <option
                             key={status}
                             value={status}
-                            className="text-black"
+                            className="text-slate-950"
                           >
                             {status}
                           </option>
@@ -3480,7 +3479,7 @@ export default function Home() {
                     </div>
 
                     <div className="mt-5">
-                      <label className="mb-2 block text-sm text-orange-400">
+                      <label className="mb-2 block text-sm text-slate-700">
                         Chargé de projet
                       </label>
                       <input
@@ -3492,12 +3491,12 @@ export default function Home() {
                           })
                         }
                         placeholder="Nom du chargé de projet"
-                        className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
+                        className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none"
                       />
                     </div>
 
                     <div className="mt-5">
-                      <label className="mb-2 block text-sm text-orange-400">
+                      <label className="mb-2 block text-sm text-slate-700">
                         Ville
                       </label>
                       <input
@@ -3508,12 +3507,12 @@ export default function Home() {
                             ville: e.target.value,
                           })
                         }
-                        className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
+                        className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none"
                       />
                     </div>
 
                     <div className="mt-5">
-                      <label className="mb-2 block text-sm text-orange-400">
+                      <label className="mb-2 block text-sm text-slate-700">
                         Endroit
                       </label>
                       <input
@@ -3524,12 +3523,12 @@ export default function Home() {
                             endroit: e.target.value,
                           })
                         }
-                        className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
+                        className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none"
                       />
                     </div>
 
                     <div className="mt-5">
-                      <label className="mb-2 block text-sm text-orange-400">
+                      <label className="mb-2 block text-sm text-slate-700">
                         Description
                       </label>
                       <textarea
@@ -3541,69 +3540,50 @@ export default function Home() {
                           })
                         }
                         rows={4}
-                        className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
+                        className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none"
                       />
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-orange-400/40 bg-white/90 p-5">
-                    <div className="mb-5 flex items-center justify-between gap-3">
-                      <h2 className="text-xl font-semibold text-orange-400">
+                  <div className="rounded-xl border border-white/10 bg-slate-100/80 p-5">
+                    <div className="mb-5">
+                      <h2 className="text-xl font-semibold text-slate-900">
                         Client et contacts
                       </h2>
-
-                      <button
-                        onClick={() => {
-                          setShowClientModal(true);
-                          setSelectedClientForContact(projectForm.client);
-                        }}
-                        className="rounded border border-orange-400 px-3 py-2 text-orange-400 transition hover:bg-orange-400/10"
-                      >
-                        +
-                      </button>
                     </div>
 
                     <div>
                       <label className="mb-2 block text-sm text-orange-400">
                         Client
                       </label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          list="clients-list-project"
-                          value={projectForm.client}
-                          onChange={(e) =>
-                            setProjectForm({
-                              ...projectForm,
-                              client: e.target.value,
-                              contactId: "",
-                            })
-                          }
-                          placeholder="Commencez à taper le nom du client"
-                          className="flex-1 border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none placeholder:text-zinc-500"
-                        />
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setProjectForm({
-                              ...projectForm,
-                              client: "",
-                              contactId: "",
-                            })
-                          }
-                          className="rounded-lg border border-orange-400/70 bg-orange-400/10 px-3 py-2 text-sm text-orange-200 hover:bg-orange-400/20"
-                        >
-                          Changer
-                        </button>
-                      </div>
-                      <datalist id="clients-list-project">
+                      <select
+                        value={projectForm.client}
+                        onChange={(e) =>
+                          setProjectForm({
+                            ...projectForm,
+                            client: e.target.value,
+                            contactId: "",
+                          })
+                        }
+                        className="w-full border-b-2 border-orange-400 bg-slate-100 px-2 py-2 text-slate-950 outline-none"
+                      >
+                        <option value="" className="text-slate-950">
+                          Sélectionner un client
+                        </option>
                         {clients.map((client) => (
-                          <option key={client.id} value={client.name} />
+                          <option
+                            key={client.id}
+                            value={client.name}
+                            className="text-slate-950"
+                          >
+                            {client.name}
+                          </option>
                         ))}
-                      </datalist>
+                      </select>
                     </div>
 
                     <div className="mt-5">
-                      <label className="mb-2 block text-sm text-orange-400">
+                      <label className="mb-2 block text-sm text-slate-700">
                         Contact
                       </label>
                       <select
@@ -3614,7 +3594,7 @@ export default function Home() {
                             contactId: e.target.value,
                           })
                         }
-                        className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
+                        className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none"
                       >
                         <option value="" className="text-black">
                           Sélectionner un contact
@@ -3633,33 +3613,33 @@ export default function Home() {
 
                     <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2">
                       <div>
-                        <label className="mb-2 block text-sm text-orange-400">
+                        <label className="mb-2 block text-sm text-slate-700">
                           Téléphone
                         </label>
                         <input
                           value={selectedContact?.phone ?? ""}
                           readOnly
                           placeholder="Automatique selon le contact"
-                          className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none placeholder:text-zinc-500"
+                          className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none placeholder:text-slate-400"
                         />
                       </div>
 
                       <div>
-                        <label className="mb-2 block text-sm text-orange-400">
+                        <label className="mb-2 block text-sm text-slate-700">
                           Courriel
                         </label>
                         <input
                           value={selectedContact?.email ?? ""}
                           readOnly
                           placeholder="Automatique selon le contact"
-                          className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none placeholder:text-zinc-500"
+                          className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none placeholder:text-slate-400"
                         />
                       </div>
                     </div>
 
                     <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2">
                       <div>
-                        <label className="mb-2 block text-sm text-orange-400">
+                        <label className="mb-2 block text-sm text-slate-700">
                           Courriel facturation
                         </label>
                         <input
@@ -3671,12 +3651,12 @@ export default function Home() {
                             })
                           }
                           placeholder="ex: facturation@client.com"
-                          className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none placeholder:text-zinc-500"
+                          className="w-full border-b-2 border-orange-400 bg-slate-100 px-2 py-2 text-slate-950 outline-none placeholder:text-slate-400"
                         />
                       </div>
 
                       <div>
-                        <label className="mb-2 block text-sm text-orange-400">
+                        <label className="mb-2 block text-sm text-slate-700">
                           Courriel plan
                         </label>
                         <input
@@ -3688,7 +3668,7 @@ export default function Home() {
                             })
                           }
                           placeholder="ex: plan@client.com"
-                          className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none placeholder:text-zinc-500"
+                          className="w-full border-b-2 border-orange-400 bg-slate-100 px-2 py-2 text-slate-950 outline-none placeholder:text-slate-400"
                         />
                       </div>
                     </div>
@@ -3696,8 +3676,8 @@ export default function Home() {
                 </div>
 
                 <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-                  <div className="rounded-xl border border-orange-400/40 bg-white/90 p-4">
-                    <p className="mb-4 text-xl text-orange-400">PO</p>
+                  <div className="rounded-xl border border-white/10 bg-slate-100/80 p-4">
+                    <p className="mb-4 text-xl text-slate-900">PO</p>
 
                     <div className="mb-4">
                       <label className="mb-2 block text-sm text-zinc-200">
@@ -3712,7 +3692,7 @@ export default function Home() {
                           })
                         }
                         placeholder="Inscrire le numéro de PO"
-                        className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                        className="w-full rounded-lg border border-slate-300 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-400"
                       />
                     </div>
 
@@ -3965,12 +3945,12 @@ export default function Home() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden text-slate-950">
+    <main className="relative min-h-screen overflow-hidden">
       <div
         className="absolute inset-0 bg-cover bg-center"
         style={{ backgroundImage: "url('/eric-dashboard-bg.png')" }}
       />
-      <div className="absolute inset-0 bg-slate-100/75" />
+      <div className="absolute inset-0 bg-black/55" />
 
       <div className="relative z-10 min-h-screen px-6 py-5 md:px-8 xl:px-10">
         <div className="mx-auto w-full max-w-[1700px]">
