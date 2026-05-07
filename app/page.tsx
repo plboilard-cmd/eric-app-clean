@@ -1,6 +1,6 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import jsPDF from "jspdf";
 import { supabase } from "@/lib/supabase";
 
@@ -153,6 +153,8 @@ type Project = {
   endroit: string;
   description: string;
   poNumber: string;
+  billingEmail: string;
+  planEmail: string;
   documents: ProjectDocument[];
   planRequests: PlanRequest[];
   soumissions: Quote[];
@@ -165,11 +167,16 @@ type SupabaseProjectRow = {
   numero_projet: string | null;
   numero_client: string | null;
   client: string | null;
+  contact_id?: string | null;
   ville: string | null;
+  endroit?: string | null;
   description: string | null;
   charge: string | null;
   statut: string | null;
+  po_number?: string | null;
   created_at: string | null;
+  billing_email?: string | null;
+  plan_email?: string | null;
 };
 
 type ActiveSection = "projets" | "plans" | "clients" | "facturation";
@@ -245,6 +252,8 @@ const EMPTY_PROJECT: Project = {
   endroit: "",
   description: "",
   poNumber: "",
+  billingEmail: "",
+  planEmail: "",
   documents: [],
   planRequests: [],
   soumissions: [],
@@ -410,6 +419,8 @@ function normalizeProject(raw: Partial<Project>, index: number): Project {
         generatedPdf: quote.generatedPdf ?? null,
       })) ?? [],
     billingBoards: raw.billingBoards ?? [],
+    billingEmail: raw.billingEmail ?? "",
+    planEmail: raw.planEmail ?? "",
     createdAt: raw.createdAt ?? new Date().toISOString(),
   };
 }
@@ -425,10 +436,15 @@ function normalizeSupabaseProject(raw: SupabaseProjectRow, index: number): Proje
     numeroProjet: raw.numero_projet ?? makeProjectNumber(index + 1),
     numeroClient: raw.numero_client ?? "",
     client: raw.client ?? "",
+    contactId: raw.contact_id ?? "",
     statut: status,
     charge: raw.charge ?? "",
     ville: raw.ville ?? "",
+    endroit: raw.endroit ?? "",
     description: raw.description ?? "",
+    poNumber: raw.po_number ?? "",
+    billingEmail: raw.billing_email ?? "",
+    planEmail: raw.plan_email ?? "",
     createdAt: raw.created_at ?? new Date().toISOString(),
   };
 }
@@ -509,16 +525,25 @@ function createPlanRequest(project: Project, planNumber: number, revisionNumber:
 }
 
 function getPreparedBy(userName: string) {
-  if (userName === "Véronique") {
+  const normalized = userName.trim().toLowerCase();
+
+  if (normalized === "véronique" || normalized === "veronique") {
     return {
       name: "Véronique",
       phone: "819-678-6066",
     };
   }
 
+  if (normalized === "pierre-luc" || normalized === "pierreluc") {
+    return {
+      name: "Pierre-Luc",
+      phone: "819-314-1262",
+    };
+  }
+
   return {
-    name: "Pierre-Luc",
-    phone: "819-314-1262",
+    name: userName || "Pierre-Luc",
+    phone: "",
   };
 }
 
@@ -536,6 +561,43 @@ async function loadImageDataUrl(src: string): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+function getLoggedInUserEmail(username: string | null) {
+  const emailMap: Record<string, string> = {
+    "pierre-luc": "pierre-luc@dynamiqueexpert.ca",
+    veronique: "veronique@dynamiqueexpert.ca",
+  };
+
+  return username ? emailMap[username] ?? "info@dynamiqueexpert.ca" : "info@dynamiqueexpert.ca";
+}
+
+function buildMailtoUrl(
+  to: string,
+  subject: string,
+  body: string,
+  cc?: string
+) {
+  const encodedTo = encodeURIComponent(to);
+  const params: string[] = [];
+
+  if (cc) {
+    params.push(`cc=${encodeURIComponent(cc)}`);
+  }
+  params.push(`subject=${encodeURIComponent(subject)}`);
+  params.push(`body=${encodeURIComponent(body)}`);
+
+  return `mailto:${encodedTo}?${params.join("&")}`;
+}
+
+function openEmailClient(
+  to: string,
+  subject: string,
+  body: string,
+  cc?: string
+) {
+  const mailto = buildMailtoUrl(to, subject, body, cc);
+  window.location.href = mailto;
 }
 
 export default function Home() {
@@ -606,6 +668,7 @@ export default function Home() {
   const [selectedPlan, setSelectedPlan] = useState<PlanRequest | null>(null);
   const [activePlanId, setActivePlanId] = useState<string | null>(null);
   const [newFermetureOption, setNewFermetureOption] = useState("");
+  const autosaveTimerRef = useRef<number | null>(null);
   const [fermetureOptions, setFermetureOptions] = useState<string[]>(DEFAULT_FERMETURES);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isGeneratingInvoicePdf, setIsGeneratingInvoicePdf] = useState(false);
@@ -625,6 +688,11 @@ export default function Home() {
     if (savedUser) setLoggedInUser(savedUser);
 
     const loadSupabaseProjects = async () => {
+      const savedProjectsRaw = localStorage.getItem(PROJECTS_KEY);
+      const savedProjects: Partial<Project>[] = savedProjectsRaw
+        ? JSON.parse(savedProjectsRaw)
+        : [];
+
       const { data, error } = await supabase
         .from("projects")
         .select("*")
@@ -640,9 +708,18 @@ export default function Home() {
         return;
       }
 
-      const normalizedProjects = (data ?? []).map((project, index) =>
-        normalizeSupabaseProject(project as SupabaseProjectRow, index)
-      );
+      const normalizedProjects = (data ?? []).map((project, index) => {
+        const normalized = normalizeSupabaseProject(project as SupabaseProjectRow, index);
+        const saved = savedProjects.find(
+          (savedProject) =>
+            savedProject.id === normalized.id ||
+            savedProject.numeroProjet === normalized.numeroProjet
+        );
+        return {
+          ...normalized,
+          ...saved,
+        };
+      });
 
       setProjects(normalizedProjects);
       localStorage.setItem(PROJECTS_KEY, JSON.stringify(normalizedProjects));
@@ -729,6 +806,97 @@ export default function Home() {
       );
       persistProjects(updatedProjects);
     }
+  };
+
+  useEffect(() => {
+    if (selectedProjectId === null) return;
+
+    if (autosaveTimerRef.current) {
+      window.clearTimeout(autosaveTimerRef.current);
+    }
+
+    autosaveTimerRef.current = window.setTimeout(async () => {
+      if (selectedProjectId === null) return;
+
+      const { error } = await supabase
+        .from("projects")
+        .update({
+          numero_projet: projectForm.numeroProjet,
+          numero_client: projectForm.numeroClient,
+          client: projectForm.client,
+          contact_id: projectForm.contactId,
+          statut: projectForm.statut,
+          charge: projectForm.charge,
+          ville: projectForm.ville,
+          endroit: projectForm.endroit,
+          description: projectForm.description,
+          po_number: projectForm.poNumber,
+          billing_email: projectForm.billingEmail,
+          plan_email: projectForm.planEmail,
+        })
+        .eq("id", selectedProjectId);
+
+      if (error) {
+        console.log("AUTO SAVE SUPABASE ERROR:", error);
+      }
+    }, 900);
+
+    return () => {
+      if (autosaveTimerRef.current) {
+        window.clearTimeout(autosaveTimerRef.current);
+      }
+    };
+  }, [projectForm, selectedProjectId]);
+
+  const getCurrentUserEmail = () => getLoggedInUserEmail(loggedInUser);
+
+  const getBillingRecipientEmail = () =>
+    projectForm.billingEmail.trim() || selectedContact?.email || "";
+
+  const getPlanRecipientEmail = () =>
+    projectForm.planEmail.trim() || selectedContact?.email || "";
+
+  const sendInvoiceEmail = (month: BillingMonth) => {
+    if (!activeBillingQuote) return;
+
+    const recipient = getBillingRecipientEmail();
+    if (!recipient) {
+      alert("Ajoute d'abord un courriel de facturation dans la fiche projet.");
+      return;
+    }
+
+    const invoiceLink = month.invoice
+      ? getPrivateBlobOpenUrl(month.invoice.pathname, month.invoice.url)
+      : "Facture non encore générée. Génère le PDF puis réessaie.";
+
+    const subject = `Facture ${month.invoice?.invoiceNumber ?? ""} - ${projectForm.numeroProjet}`;
+    const body = `Bonjour,\n\nVeuillez trouver ci-joint votre facture pour le projet mentionné en objet.\nComme indiqué sur la facture, le paiement peut être effectué par :\n\nVirement Interac : à l'adresse admin@dynamiqueexpert.ca ;\nDépôt direct : (Informations bancaires jointes à la facture).\nSVP, bien vouloir inscrire le numéro de la facture dans les notes de votre paiement.\n\nAu plaisir et merci de votre confiance !\n\nFacture : ${invoiceLink}\n\nCordialement,\n${getCurrentUserEmail()}`;
+
+    openEmailClient(recipient, subject, body, getCurrentUserEmail());
+  };
+
+  const sendPlanEmail = (plan: PlanRequest) => {
+    const recipient = getPlanRecipientEmail();
+    if (!recipient) {
+      alert("Ajoute d'abord un courriel de plan dans la fiche projet.");
+      return;
+    }
+
+    const attachments: string[] = [];
+    if (plan.materielPdf) {
+      attachments.push(`Matériel : ${getPrivateBlobOpenUrl(plan.materielPdf.pathname, plan.materielPdf.url)}`);
+    }
+    if (plan.supplementairePdf) {
+      attachments.push(`Supplémentaire : ${getPrivateBlobOpenUrl(plan.supplementairePdf.pathname, plan.supplementairePdf.url)}`);
+    }
+    if (plan.dessinateurPdf) {
+      attachments.push(`Dessinateur : ${getPrivateBlobOpenUrl(plan.dessinateurPdf.pathname, plan.dessinateurPdf.url)}`);
+    }
+
+    const subject = `Plan ${plan.code} - ${projectForm.numeroProjet}`;
+    const body = `Bonjour,\n\nTel que demandé, vous trouverez ci-joint le plan de signalisation mentionné en objet.\n\nN'hésitez pas à nous faire part de toute modification requise.\n\nMerci pour votre confiance et au plaisir!\n\n${attachments.length > 0 ? attachments.join('\n') : 'Aucun PDF de plan n’est encore attaché. Veuillez importer le PDF puis réessayer.'}\n\nCordialement,\n${getCurrentUserEmail()}`;
+
+    openEmailClient(recipient, subject, body, getCurrentUserEmail());
   };
 
   const selectedClient = clients.find(
@@ -1055,10 +1223,15 @@ export default function Home() {
         numero_projet: projectForm.numeroProjet,
         numero_client: projectForm.numeroClient,
         client: projectForm.client,
-        ville: projectForm.ville,
-        description: projectForm.description,
-        charge: projectForm.charge,
+        contact_id: projectForm.contactId,
         statut: projectForm.statut,
+        charge: projectForm.charge,
+        ville: projectForm.ville,
+        endroit: projectForm.endroit,
+        description: projectForm.description,
+        po_number: projectForm.poNumber,
+        billing_email: projectForm.billingEmail,
+        plan_email: projectForm.planEmail,
       })
       .eq("id", selectedProjectId);
 
@@ -1968,17 +2141,17 @@ export default function Home() {
 
   if (!loggedInUser) {
     return (
-      <main className="relative h-screen overflow-hidden">
+      <main className="relative h-screen overflow-hidden bg-slate-100 text-slate-950">
         <div
           className="absolute inset-0 bg-cover bg-[20%_top]"
           style={{ backgroundImage: "url('/eric-login-bg.png')" }}
         />
-        <div className="absolute inset-0 bg-black/70" />
+        <div className="absolute inset-0 bg-slate-100/45" />
 
         <div className="relative z-10 flex h-full items-center justify-center px-4">
           <form
             onSubmit={handleLogin}
-            className="w-full max-w-md rounded-2xl border border-white/10 bg-black/80 p-8 text-white shadow-2xl backdrop-blur-md"
+            className="w-full max-w-md rounded-2xl border border-slate-300 bg-white/95 p-8 text-slate-950 shadow-2xl backdrop-blur-md"
           >
             <h1 className="mb-2 text-2xl font-semibold">Connexion à ERIC</h1>
             <p className="mb-6 text-sm text-zinc-300">
@@ -1994,7 +2167,7 @@ export default function Home() {
                 placeholder="Ex. user"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400 focus:border-white/30"
+                className="w-full rounded-lg border border-slate-300 bg-slate-50 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-400 focus:border-slate-400"
               />
             </div>
 
@@ -2007,7 +2180,7 @@ export default function Home() {
                 placeholder="Entrez votre code"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400 focus:border-white/30"
+                className="w-full rounded-lg border border-slate-300 bg-slate-50 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-400 focus:border-slate-400"
               />
             </div>
 
@@ -2027,12 +2200,12 @@ export default function Home() {
 
   if (viewMode === "project") {
     return (
-      <main className="relative min-h-screen overflow-hidden text-white">
+      <main className="relative min-h-screen overflow-hidden bg-slate-100 text-slate-950">
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: "url('/eric-dashboard-bg.png')" }}
         />
-        <div className="absolute inset-0 bg-black/68" />
+        <div className="absolute inset-0 bg-slate-100/45" />
 
         <div className="relative z-10 px-6 py-5 md:px-8 xl:px-10">
           <div className="mx-auto max-w-[1700px]">
@@ -2044,7 +2217,7 @@ export default function Home() {
                 <h1 className="mt-1 text-2xl font-semibold">Fiche projet</h1>
               </div>
 
-              <div className="flex gap-3">
+              <div className="flex gap-3 items-center">
                 <button
                   onClick={() => setViewMode("list")}
                   className="rounded-lg border border-white/15 bg-black/30 px-4 py-2 text-sm text-white transition hover:bg-white/10"
@@ -2052,12 +2225,9 @@ export default function Home() {
                   Retour à la liste
                 </button>
 
-                <button
-                  onClick={saveProject}
-                  className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-orange-400"
-                >
-                  Sauvegarder
-                </button>
+                <span className="rounded-lg border border-orange-500 bg-orange-500/10 px-4 py-2 text-sm text-orange-300">
+                  Enregistrement automatique
+                </span>
               </div>
             </div>
 
@@ -2613,6 +2783,13 @@ export default function Home() {
                                 className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-black hover:bg-zinc-200 disabled:opacity-50"
                               >
                                 {isGeneratingInvoicePdf ? "Génération..." : "Générer PDF facture"}
+                              </button>
+
+                              <button
+                                onClick={() => sendInvoiceEmail(month)}
+                                className="rounded-lg border border-white/15 bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/20"
+                              >
+                                Envoyer facture
                               </button>
 
                               {month.invoice && (
@@ -3226,13 +3403,22 @@ export default function Home() {
                         );
                       })}
                     </div>
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <button
+                        onClick={() => sendPlanEmail(activePlan)}
+                        className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-black hover:bg-zinc-200"
+                      >
+                        Envoyer plan
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="rounded-2xl border border-white/10 bg-black/35 p-5 shadow-2xl backdrop-blur-sm">
+              <div className="rounded-2xl border border-zinc-300 bg-slate-100/90 p-5 shadow-2xl backdrop-blur-sm">
                 <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-                  <div className="rounded-xl border border-orange-400/40 bg-black/20 p-5">
+                  <div className="rounded-xl border border-orange-400/40 bg-white/90 p-5">
                     <h2 className="mb-5 text-xl font-semibold text-orange-400">
                       Informations projet
                     </h2>
@@ -3295,6 +3481,23 @@ export default function Home() {
 
                     <div className="mt-5">
                       <label className="mb-2 block text-sm text-orange-400">
+                        Chargé de projet
+                      </label>
+                      <input
+                        value={projectForm.charge}
+                        onChange={(e) =>
+                          setProjectForm({
+                            ...projectForm,
+                            charge: e.target.value,
+                          })
+                        }
+                        placeholder="Nom du chargé de projet"
+                        className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
+                      />
+                    </div>
+
+                    <div className="mt-5">
+                      <label className="mb-2 block text-sm text-orange-400">
                         Ville
                       </label>
                       <input
@@ -3343,7 +3546,7 @@ export default function Home() {
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-orange-400/40 bg-black/20 p-5">
+                  <div className="rounded-xl border border-orange-400/40 bg-white/90 p-5">
                     <div className="mb-5 flex items-center justify-between gap-3">
                       <h2 className="text-xl font-semibold text-orange-400">
                         Client et contacts
@@ -3364,19 +3567,34 @@ export default function Home() {
                       <label className="mb-2 block text-sm text-orange-400">
                         Client
                       </label>
-                      <input
-                        list="clients-list-project"
-                        value={projectForm.client}
-                        onChange={(e) =>
-                          setProjectForm({
-                            ...projectForm,
-                            client: e.target.value,
-                            contactId: "",
-                          })
-                        }
-                        placeholder="Commencez à taper le nom du client"
-                        className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none placeholder:text-zinc-500"
-                      />
+                      <div className="flex items-center gap-2">
+                        <input
+                          list="clients-list-project"
+                          value={projectForm.client}
+                          onChange={(e) =>
+                            setProjectForm({
+                              ...projectForm,
+                              client: e.target.value,
+                              contactId: "",
+                            })
+                          }
+                          placeholder="Commencez à taper le nom du client"
+                          className="flex-1 border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none placeholder:text-zinc-500"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setProjectForm({
+                              ...projectForm,
+                              client: "",
+                              contactId: "",
+                            })
+                          }
+                          className="rounded-lg border border-orange-400/70 bg-orange-400/10 px-3 py-2 text-sm text-orange-200 hover:bg-orange-400/20"
+                        >
+                          Changer
+                        </button>
+                      </div>
                       <datalist id="clients-list-project">
                         {clients.map((client) => (
                           <option key={client.id} value={client.name} />
@@ -3438,11 +3656,47 @@ export default function Home() {
                         />
                       </div>
                     </div>
+
+                    <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2">
+                      <div>
+                        <label className="mb-2 block text-sm text-orange-400">
+                          Courriel facturation
+                        </label>
+                        <input
+                          value={projectForm.billingEmail}
+                          onChange={(e) =>
+                            setProjectForm({
+                              ...projectForm,
+                              billingEmail: e.target.value,
+                            })
+                          }
+                          placeholder="ex: facturation@client.com"
+                          className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none placeholder:text-zinc-500"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-sm text-orange-400">
+                          Courriel plan
+                        </label>
+                        <input
+                          value={projectForm.planEmail}
+                          onChange={(e) =>
+                            setProjectForm({
+                              ...projectForm,
+                              planEmail: e.target.value,
+                            })
+                          }
+                          placeholder="ex: plan@client.com"
+                          className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none placeholder:text-zinc-500"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
                 <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-                  <div className="rounded-xl border border-orange-400/40 bg-black/20 p-4">
+                  <div className="rounded-xl border border-orange-400/40 bg-white/90 p-4">
                     <p className="mb-4 text-xl text-orange-400">PO</p>
 
                     <div className="mb-4">
@@ -3554,8 +3808,8 @@ export default function Home() {
             )}
 
             {showClientModal && (
-              <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/75 px-4">
-                <div className="w-full max-w-4xl rounded-2xl border border-white/10 bg-black/95 p-6 text-white shadow-2xl">
+              <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-900/65 px-4">
+                <div className="w-full max-w-4xl rounded-2xl border border-white/10 bg-slate-900/95 p-6 text-white shadow-2xl">
                   <div className="mb-6 flex items-center justify-between">
                     <h2 className="text-2xl font-semibold">
                       Gestion clients / contacts
@@ -3711,12 +3965,12 @@ export default function Home() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden text-white">
+    <main className="relative min-h-screen overflow-hidden text-slate-950">
       <div
         className="absolute inset-0 bg-cover bg-center"
         style={{ backgroundImage: "url('/eric-dashboard-bg.png')" }}
       />
-      <div className="absolute inset-0 bg-black/55" />
+      <div className="absolute inset-0 bg-slate-100/75" />
 
       <div className="relative z-10 min-h-screen px-6 py-5 md:px-8 xl:px-10">
         <div className="mx-auto w-full max-w-[1700px]">
@@ -3762,9 +4016,9 @@ export default function Home() {
 
           {activeSection === "projets" && (
             <>
-              <div className="mb-5 grid gap-4 rounded-xl border border-white/10 bg-black/30 p-4 backdrop-blur-sm lg:grid-cols-[0.7fr_1fr_1fr_1fr_1.2fr]">
+              <div className="mb-5 grid gap-4 rounded-xl border border-zinc-300 bg-slate-100/80 p-4 backdrop-blur-sm lg:grid-cols-[0.7fr_1fr_1fr_1fr_1.2fr]">
                 <div>
-                  <label className="mb-2 block text-sm text-zinc-200">
+                  <label className="mb-2 block text-sm text-slate-700">
                     Recherche numéro
                   </label>
                   <input
@@ -3845,7 +4099,7 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="overflow-hidden rounded-lg border border-white/10 bg-black/35 shadow-2xl backdrop-blur-sm">
+              <div className="overflow-hidden rounded-lg border border-zinc-300 bg-white/90 shadow-2xl backdrop-blur-sm">
                 <table className="w-full table-fixed text-sm">
                   <thead className="bg-orange-500 text-black">
                     <tr>
