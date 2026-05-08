@@ -2283,7 +2283,7 @@ export default function Home() {
 
             {projectPanel === "soumission" ? (
               <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-                <div className="rounded-2xl border border-white/10 bg-black/35 p-5 shadow-2xl backdrop-blur-sm">
+                <div className="rounded-2xl border border-slate-200 bg-white/95 p-5 text-slate-950 shadow-2xl backdrop-blur-sm">
                   <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <h2 className="text-2xl font-semibold text-orange-400">
                       Soumission
@@ -2294,7 +2294,7 @@ export default function Home() {
                         value={newQuoteName}
                         onChange={(e) => setNewQuoteName(e.target.value)}
                         placeholder={`${projectForm.numeroProjet}_PLAN`}
-                        className="rounded-lg border border-white/10 bg-white/10 px-4 py-2 text-slate-950 outline-none placeholder:text-zinc-400"
+                        className="rounded-lg border border-slate-200 bg-slate-100 px-4 py-2 text-slate-950 outline-none placeholder:text-slate-500"
                       />
                       <button
                         onClick={createQuote}
@@ -2307,7 +2307,7 @@ export default function Home() {
 
                   <div className="mb-5 flex flex-wrap gap-2">
                     {projectForm.soumissions.length === 0 ? (
-                      <p className="text-sm text-zinc-400">
+                      <p className="text-sm text-slate-500">
                         Aucune soumission pour ce projet.
                       </p>
                     ) : (
@@ -2318,7 +2318,7 @@ export default function Home() {
                           className={`rounded-lg border px-4 py-2 text-left text-sm transition ${
                             quote.id === activeQuoteId
                               ? "border-orange-400 bg-orange-500 text-black"
-                              : "border-white/10 bg-white/5 text-slate-950 hover:bg-white/10"
+                              : "border-slate-200 bg-slate-50 text-slate-950 hover:bg-slate-100"
                           }`}
                         >
                           <div>{quote.name}</div>
@@ -2345,7 +2345,7 @@ export default function Home() {
                               e.target.value as QuoteStatus
                             )
                           }
-                          className="rounded-lg border border-white/10 bg-white/10 px-4 py-2 text-slate-950 outline-none"
+                          className="rounded-lg border border-slate-200 bg-slate-100 px-4 py-2 text-slate-950 outline-none"
                         >
                           {QUOTE_STATUSES.map((status) => (
                             <option
@@ -2361,7 +2361,7 @@ export default function Home() {
                         <button
                           onClick={generateQuotePdf}
                           disabled={isGeneratingPdf}
-                          className="rounded-lg bg-white px-4 py-2 font-medium text-black transition hover:bg-zinc-200 disabled:opacity-50"
+                          className="rounded-lg bg-orange-500 px-4 py-2 font-medium text-black transition hover:bg-orange-400 disabled:opacity-50"
                         >
                           {isGeneratingPdf ? "Génération..." : "Générer PDF"}
                         </button>
@@ -2374,7 +2374,7 @@ export default function Home() {
                             )}
                             target="_blank"
                             rel="noreferrer"
-                            className="rounded-lg border border-white/15 bg-white/10 px-4 py-2 text-sm text-slate-950 transition hover:bg-white/20"
+                            className="rounded-lg border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-950 transition hover:bg-slate-200"
                           >
                             Ouvrir PDF généré
                           </a>
@@ -2547,14 +2547,14 @@ export default function Home() {
                       </div>
                     </>
                   ) : (
-                    <div className="rounded-xl border border-white/10 bg-white/5 p-6 text-zinc-300">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 text-slate-600">
                       Clique sur <strong>+ Nouvelle soumission</strong> pour
                       commencer.
                     </div>
                   )}
                 </div>
 
-                <div className="rounded-2xl border border-white/10 bg-black/35 p-5 shadow-2xl backdrop-blur-sm">
+                <div className="rounded-2xl border border-slate-200 bg-white/95 p-5 text-slate-950 shadow-2xl backdrop-blur-sm">
                   <h2 className="mb-4 text-xl font-semibold text-orange-400">
                     Banque d’items
                   </h2>
@@ -2564,13 +2564,13 @@ export default function Home() {
                       value={newItemName}
                       onChange={(e) => setNewItemName(e.target.value)}
                       placeholder="Nom de l’item"
-                      className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none placeholder:text-zinc-400"
+                      className="w-full rounded-lg border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
                     />
                     <input
                       value={newItemPrice}
                       onChange={(e) => setNewItemPrice(e.target.value)}
                       placeholder="Prix"
-                      className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none placeholder:text-zinc-400"
+                      className="w-full rounded-lg border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
                     />
                     <button
                       onClick={addItemToBank}
@@ -2584,12 +2584,12 @@ export default function Home() {
                     {itemsBank.map((item) => (
                       <div
                         key={item.id}
-                        className="rounded-lg border border-white/10 bg-white/5 p-3"
+                        className="rounded-lg border border-slate-200 bg-slate-50 p-3"
                       >
                         <div className="flex items-center justify-between gap-3">
                           <div>
                             <p className="font-medium">{item.name}</p>
-                            <p className="text-sm text-zinc-300">
+                            <p className="text-sm text-slate-600">
                               {money(item.price)}
                             </p>
                           </div>
@@ -2597,7 +2597,7 @@ export default function Home() {
                           <div className="flex gap-2">
                             <button
                               onClick={() => addLineToQuote(item)}
-                              className="rounded-lg border border-orange-400 px-3 py-2 text-sm text-orange-300 transition hover:bg-orange-400/10"
+                              className="rounded-lg border border-orange-400 px-3 py-2 text-sm text-orange-600 transition hover:bg-orange-400/10"
                             >
                               Ajouter
                             </button>
@@ -2615,35 +2615,35 @@ export default function Home() {
                 </div>
               </div>
             ) : projectPanel === "facturation" ? (
-              <div className="rounded-2xl border border-white/10 bg-black/35 p-5 shadow-2xl backdrop-blur-sm">
+              <div className="rounded-2xl border border-slate-200 bg-white/95 p-5 text-slate-950 shadow-2xl backdrop-blur-sm">
                 <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                   <div>
                     <h2 className="text-2xl font-semibold text-orange-400">Bordereau de facturation</h2>
-                    <p className="mt-1 text-sm text-zinc-300">
+                    <p className="mt-1 text-sm text-slate-600">
                       Les items proviennent de la soumission active du projet.
                     </p>
                   </div>
 
                   {activeBillingQuote && (
-                    <div className="rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-zinc-200">
-                      Soumission active : <span className="font-semibold text-white">{activeBillingQuote.name}</span>
+                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
+                      Soumission active : <span className="font-semibold text-slate-950">{activeBillingQuote.name}</span>
                     </div>
                   )}
                 </div>
 
                 {!activeBillingQuote ? (
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-6 text-zinc-300">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 text-slate-600">
                     Aucune soumission disponible. Crée une soumission active avant de facturer.
                   </div>
                 ) : (
                   <>
-                    <div className="mb-5 flex flex-wrap items-end gap-3 rounded-xl border border-orange-400/30 bg-black/20 p-4">
+                    <div className="mb-5 flex flex-wrap items-end gap-3 rounded-xl border border-orange-300 bg-orange-50 p-4">
                       <div>
-                        <label className="mb-2 block text-sm text-zinc-200">Mois</label>
+                        <label className="mb-2 block text-sm text-slate-700">Mois</label>
                         <select
                           value={newBillingMonth}
                           onChange={(e) => setNewBillingMonth(e.target.value)}
-                          className="rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none"
+                          className="rounded-lg border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none"
                         >
                           {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
                             <option key={month} value={month} className="text-black">
@@ -2654,11 +2654,11 @@ export default function Home() {
                       </div>
 
                       <div>
-                        <label className="mb-2 block text-sm text-zinc-200">Année</label>
+                        <label className="mb-2 block text-sm text-slate-700">Année</label>
                         <input
                           value={newBillingYear}
                           onChange={(e) => setNewBillingYear(e.target.value)}
-                          className="w-28 rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none"
+                          className="w-28 rounded-lg border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none"
                         />
                       </div>
 
@@ -2672,7 +2672,7 @@ export default function Home() {
                       {invoicePdfError && <span className="text-sm text-red-400">{invoicePdfError}</span>}
                     </div>
 
-                    <div className="overflow-x-auto rounded-xl border border-white/10">
+                    <div className="overflow-x-auto rounded-xl border border-slate-200">
                       <table className="min-w-[1400px] w-full text-sm">
                         <thead className="bg-orange-500 text-black">
                           <tr>
@@ -2696,7 +2696,7 @@ export default function Home() {
                         <tbody>
                           {activeBillingQuote.lines.length === 0 ? (
                             <tr>
-                              <td colSpan={8 + (activeBillingBoard?.months.length ?? 0)} className="p-6 text-center text-zinc-300">
+                              <td colSpan={8 + (activeBillingBoard?.months.length ?? 0)} className="p-6 text-center text-slate-600">
                                 Aucun item dans la soumission active.
                               </td>
                             </tr>
@@ -2705,15 +2705,15 @@ export default function Home() {
                               const realQtyTotal = getRealQuantityTotal(line.id);
                               const realMoneyTotal = realQtyTotal * line.price;
                               return (
-                                <tr key={line.id} className="border-t border-white/10 bg-black/15">
-                                  <td className="p-3 text-white">{index + 1}</td>
-                                  <td className="p-3 text-white">{line.name}</td>
-                                  <td className="p-3 text-zinc-200">Unité</td>
-                                  <td className="p-3 text-zinc-200">{money(line.price)}</td>
-                                  <td className="p-3 text-zinc-200">{line.quantity}</td>
-                                  <td className="p-3 text-zinc-200">{money(line.price * line.quantity)}</td>
-                                  <td className="p-3 text-zinc-200">{realQtyTotal}</td>
-                                  <td className="p-3 text-zinc-200">{money(realMoneyTotal)}</td>
+                                <tr key={line.id} className="border-t border-slate-200 bg-slate-50">
+                                  <td className="p-3 text-slate-950">{index + 1}</td>
+                                  <td className="p-3 text-slate-950">{line.name}</td>
+                                  <td className="p-3 text-slate-700">Unité</td>
+                                  <td className="p-3 text-slate-700">{money(line.price)}</td>
+                                  <td className="p-3 text-slate-700">{line.quantity}</td>
+                                  <td className="p-3 text-slate-700">{money(line.price * line.quantity)}</td>
+                                  <td className="p-3 text-slate-700">{realQtyTotal}</td>
+                                  <td className="p-3 text-slate-700">{money(realMoneyTotal)}</td>
                                   {(activeBillingBoard?.months ?? []).map((month) => {
                                     const monthQty = getMonthLineQuantity(month, line.id);
                                     return (
@@ -2726,9 +2726,9 @@ export default function Home() {
                                             onChange={(e) =>
                                               updateBillingMonthQuantity(month.id, line.id, Number(e.target.value))
                                             }
-                                            className="w-20 rounded border border-white/10 bg-white/10 px-2 py-1 text-slate-950 outline-none"
+                                            className="w-20 rounded border border-slate-200 bg-slate-100 px-2 py-1 text-slate-950 outline-none"
                                           />
-                                          <span className="text-zinc-200">{money(monthQty * line.price)}</span>
+                                          <span className="text-slate-700">{money(monthQty * line.price)}</span>
                                         </div>
                                       </td>
                                     );
@@ -2741,15 +2741,15 @@ export default function Home() {
 
                         {activeBillingQuote.lines.length > 0 && (
                           <tfoot>
-                            <tr className="border-t-2 border-orange-400 bg-black/40 font-semibold">
-                              <td colSpan={5} className="p-3 text-right text-white">TOTAL</td>
-                              <td className="p-3 text-white">
+                            <tr className="border-t-2 border-orange-400 bg-slate-100 font-semibold">
+                              <td colSpan={5} className="p-3 text-right text-slate-950">TOTAL</td>
+                              <td className="p-3 text-slate-950">
                                 {money(activeBillingQuote.lines.reduce((total, line) => total + line.price * line.quantity, 0))}
                               </td>
-                              <td className="p-3 text-white">
+                              <td className="p-3 text-slate-950">
                                 {activeBillingQuote.lines.reduce((total, line) => total + getRealQuantityTotal(line.id), 0)}
                               </td>
-                              <td className="p-3 text-white">
+                              <td className="p-3 text-slate-950">
                                 {money(activeBillingQuote.lines.reduce((total, line) => total + getRealQuantityTotal(line.id) * line.price, 0))}
                               </td>
                               {(activeBillingBoard?.months ?? []).map((month) => {
@@ -2758,7 +2758,7 @@ export default function Home() {
                                   0
                                 );
                                 return (
-                                  <td key={`total-${month.id}`} className="p-3 text-white">
+                                  <td key={`total-${month.id}`} className="p-3 text-slate-950">
                                     {money(monthTotal)}
                                   </td>
                                 );
@@ -2771,11 +2771,11 @@ export default function Home() {
 
                     <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
                       {(activeBillingBoard?.months ?? []).map((month) => (
-                        <div key={month.id} className="rounded-xl border border-white/10 bg-white/5 p-4">
+                        <div key={month.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
                           <div className="flex flex-wrap items-center justify-between gap-3">
                             <div>
                               <p className="font-semibold text-orange-400">Facture - {month.label}</p>
-                              <p className="text-sm text-zinc-300">
+                              <p className="text-sm text-slate-600">
                                 Total du mois : {money(activeBillingQuote.lines.reduce((total, line) => total + getMonthLineQuantity(month, line.id) * line.price, 0))}
                               </p>
                             </div>
@@ -2784,14 +2784,14 @@ export default function Home() {
                               <button
                                 onClick={() => generateInvoicePdf(month)}
                                 disabled={isGeneratingInvoicePdf}
-                                className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-black hover:bg-zinc-200 disabled:opacity-50"
+                                className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-medium text-black hover:bg-orange-400 disabled:opacity-50"
                               >
                                 {isGeneratingInvoicePdf ? "Génération..." : "Générer PDF facture"}
                               </button>
 
                               <button
                                 onClick={() => sendInvoiceEmail(month)}
-                                className="rounded-lg border border-white/15 bg-white/10 px-4 py-2 text-sm text-slate-950 hover:bg-white/20"
+                                className="rounded-lg border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-950 hover:bg-slate-200"
                               >
                                 Envoyer facture
                               </button>
@@ -2801,7 +2801,7 @@ export default function Home() {
                                   href={getPrivateBlobOpenUrl(month.invoice.pathname, month.invoice.url)}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="rounded-lg border border-white/15 bg-white/10 px-4 py-2 text-sm text-slate-950 hover:bg-white/20"
+                                  className="rounded-lg border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-950 hover:bg-slate-200"
                                 >
                                   Ouvrir {month.invoice.invoiceNumber}
                                 </a>
@@ -2815,13 +2815,13 @@ export default function Home() {
                 )}
               </div>
             ) : projectPanel === "demandePlan" ? (
-              <div className="rounded-2xl border border-white/10 bg-black/35 p-5 shadow-2xl backdrop-blur-sm">
+              <div className="rounded-2xl border border-slate-200 bg-white/95 p-5 text-slate-950 shadow-2xl backdrop-blur-sm">
                 <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                   <div>
                     <h2 className="text-2xl font-semibold text-orange-400">
                       Demandes de plan
                     </h2>
-                    <p className="mt-1 text-sm text-zinc-300">
+                    <p className="mt-1 text-sm text-slate-600">
                       Liste des plans demandés pour le projet {projectForm.numeroProjet}.
                     </p>
                   </div>
@@ -2862,7 +2862,7 @@ export default function Home() {
                   </div>
                 </div>
 
-                <div className="overflow-x-auto rounded-xl border border-white/10">
+                <div className="overflow-x-auto rounded-xl border border-slate-200">
                   <table className="min-w-[1000px] w-full text-sm">
                     <thead className="bg-orange-500 text-black">
                       <tr>
@@ -2877,7 +2877,7 @@ export default function Home() {
                     <tbody>
                       {projectForm.planRequests.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="p-6 text-center text-zinc-300">
+                          <td colSpan={5} className="p-6 text-center text-slate-600">
                             Aucune demande de plan pour le moment.
                           </td>
                         </tr>
@@ -2889,7 +2889,7 @@ export default function Home() {
                               : b.planNumber - a.planNumber
                           )
                           .map((plan) => (
-                            <tr key={plan.id} className="border-t border-white/10 bg-black/15">
+                            <tr key={plan.id} className="border-t border-slate-200 bg-slate-50">
                               <td className="p-3 text-center">
                                 <input
                                   type="radio"
@@ -2907,15 +2907,15 @@ export default function Home() {
                                       descriptionPlan: e.target.value,
                                     })
                                   }
-                                  className="w-full min-w-[420px] rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
+                                  className="w-full min-w-[420px] rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
                                 />
-                                <p className="mt-1 text-xs text-zinc-400">{plan.code}</p>
+                                <p className="mt-1 text-xs text-slate-500">{plan.code}</p>
                               </td>
 
                               <td className="p-3">
                                 <button
                                   onClick={() => openPlanDemand(plan)}
-                                  className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-slate-950 hover:bg-white/20"
+                                  className="rounded border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs text-slate-950 hover:bg-slate-200"
                                 >
                                   Demande
                                 </button>
@@ -2930,7 +2930,7 @@ export default function Home() {
                                         statut: e.target.value,
                                       })
                                     }
-                                    className="rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
+                                    className="rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
                                   >
                                     <option value="" className="text-black">--</option>
                                     {["commandé", "en dessin", "pause", "a vérifier", "a corriger", "envoyé", "a réviser", "révisé", "en révision"].map((status) => (
@@ -2960,7 +2960,7 @@ export default function Home() {
                                       dessinateurIngenieur: e.target.value,
                                     })
                                   }
-                                  className="rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
+                                  className="rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
                                 >
                                   <option value="" className="text-black">--</option>
                                   <option value="Pierre-Luc" className="text-black">Pierre-Luc</option>
@@ -2976,89 +2976,89 @@ export default function Home() {
                 </div>
               </div>
             ) : projectPanel === "planDetail" && activePlan ? (
-              <div className="rounded-2xl border border-white/10 bg-black/35 p-5 shadow-2xl backdrop-blur-sm">
+              <div className="rounded-2xl border border-slate-200 bg-white/95 p-5 text-slate-950 shadow-2xl backdrop-blur-sm">
                 <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div>
                     <button
                       onClick={() => setProjectPanel("demandePlan")}
-                      className="mb-3 rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm text-slate-950 transition hover:bg-white/10"
+                      className="mb-3 rounded-lg border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-950 transition hover:bg-slate-100"
                     >
                       ← Retour aux demandes
                     </button>
                     <h2 className="text-2xl font-semibold text-orange-400">
                       Demande de plan
                     </h2>
-                    <p className="mt-1 text-sm text-zinc-300">
+                    <p className="mt-1 text-sm text-slate-600">
                       {activePlan.code}
                     </p>
                   </div>
 
-                  <div className="rounded-xl border border-orange-400/30 bg-black/20 p-4 text-right">
-                    <p className="text-sm text-zinc-300">Nom du fichier plan généré</p>
-                    <p className="mt-2 max-w-[700px] break-all text-sm font-semibold text-orange-300">
+                  <div className="rounded-xl border border-orange-300 bg-orange-50 p-4 text-right">
+                    <p className="text-sm text-slate-600">Nom du fichier plan généré</p>
+                    <p className="mt-2 max-w-[700px] break-all text-sm font-semibold text-orange-600">
                       {generatePlanFileName(activePlan)}
                     </p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-                  <div className="rounded-xl border border-white/10 bg-white/5 p-5">
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
                     <h3 className="mb-4 text-lg font-semibold text-orange-400">
                       Informations
                     </h3>
 
                     <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-3">
                       <div>
-                        <label className="mb-2 block text-sm text-zinc-300">Projet</label>
+                        <label className="mb-2 block text-sm text-slate-600">Projet</label>
                         <input
                           value={projectForm.numeroProjet}
                           readOnly
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
+                          className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
                         />
                       </div>
                       <div>
-                        <label className="mb-2 block text-sm text-zinc-300">Plan</label>
+                        <label className="mb-2 block text-sm text-slate-600">Plan</label>
                         <input
                           value={activePlan.planNumber}
                           readOnly
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
+                          className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
                         />
                       </div>
                       <div>
-                        <label className="mb-2 block text-sm text-zinc-300">Version</label>
+                        <label className="mb-2 block text-sm text-slate-600">Version</label>
                         <input
                           value={activePlan.revisionNumber}
                           readOnly
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
+                          className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
                         />
                       </div>
                     </div>
 
                     <div className="mb-4">
-                      <label className="mb-2 block text-sm text-zinc-300">Client</label>
+                      <label className="mb-2 block text-sm text-slate-600">Client</label>
                       <input
                         value={projectForm.client}
                         readOnly
-                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
+                        className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
                       />
                     </div>
 
                     <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                       <div>
-                        <label className="mb-2 block text-sm text-zinc-300">Plan requis le</label>
+                        <label className="mb-2 block text-sm text-slate-600">Plan requis le</label>
                         <input
                           type="date"
                           value={activePlan.planRequisLe}
                           onChange={(e) => updateActivePlan({ planRequisLe: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
+                          className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
                         />
                       </div>
                       <div>
-                        <label className="mb-2 block text-sm text-zinc-300">Statut</label>
+                        <label className="mb-2 block text-sm text-slate-600">Statut</label>
                         <select
                           value={activePlan.statut || ""}
                           onChange={(e) => updateActivePlan({ statut: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
+                          className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
                         >
                           <option value="" className="text-black">--</option>
                           {PLAN_STATUSES.map((status) => (
@@ -3070,19 +3070,19 @@ export default function Home() {
 
                     <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                       <div>
-                        <label className="mb-2 block text-sm text-zinc-300">Ville</label>
+                        <label className="mb-2 block text-sm text-slate-600">Ville</label>
                         <input
                           value={activePlan.ville}
                           onChange={(e) => updateActivePlan({ ville: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
+                          className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
                         />
                       </div>
                       <div>
-                        <label className="mb-2 block text-sm text-zinc-300">Dessinateur</label>
+                        <label className="mb-2 block text-sm text-slate-600">Dessinateur</label>
                         <select
                           value={activePlan.dessinateurIngenieur || ""}
                           onChange={(e) => updateActivePlan({ dessinateurIngenieur: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
+                          className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
                         >
                           {DESSINATEURS_PLAN.map((name) => (
                             <option key={name || "empty"} value={name} className="text-black">
@@ -3095,11 +3095,11 @@ export default function Home() {
 
                     <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-[0.7fr_1.3fr]">
                       <div>
-                        <label className="mb-2 block text-sm text-zinc-300">Tronçon</label>
+                        <label className="mb-2 block text-sm text-slate-600">Tronçon</label>
                         <select
                           value={activePlan.tronconType}
                           onChange={(e) => updateActivePlan({ tronconType: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
+                          className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
                         >
                           {TRONCON_TYPES.map((type) => (
                             <option key={type || "empty"} value={type} className="text-black">
@@ -3109,30 +3109,30 @@ export default function Home() {
                         </select>
                       </div>
                       <div>
-                        <label className="mb-2 block text-sm text-zinc-300">Nom du tronçon</label>
+                        <label className="mb-2 block text-sm text-slate-600">Nom du tronçon</label>
                         <input
                           value={activePlan.tronconNom}
                           onChange={(e) => updateActivePlan({ tronconNom: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
+                          className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
                         />
                       </div>
                     </div>
 
                     <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                       <div>
-                        <label className="mb-2 block text-sm text-zinc-300">Limite de vitesse</label>
+                        <label className="mb-2 block text-sm text-slate-600">Limite de vitesse</label>
                         <input
                           value={activePlan.limiteVitesse}
                           onChange={(e) => updateActivePlan({ limiteVitesse: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
+                          className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
                         />
                       </div>
                       <div>
-                        <label className="mb-2 block text-sm text-zinc-300">Direction</label>
+                        <label className="mb-2 block text-sm text-slate-600">Direction</label>
                         <select
                           value={activePlan.direction}
                           onChange={(e) => updateActivePlan({ direction: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
+                          className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
                         >
                           {DIRECTIONS.map((direction) => (
                             <option key={direction || "empty"} value={direction} className="text-black">
@@ -3144,29 +3144,29 @@ export default function Home() {
                     </div>
 
                     <div className="mb-4">
-                      <label className="mb-2 block text-sm text-zinc-300">Nature des travaux</label>
+                      <label className="mb-2 block text-sm text-slate-600">Nature des travaux</label>
                       <input
                         value={activePlan.natureTravaux}
                         onChange={(e) => updateActivePlan({ natureTravaux: e.target.value })}
-                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
+                        className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
                       />
                     </div>
 
                     <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-3">
                       <div>
-                        <label className="mb-2 block text-sm text-zinc-300">Durée des travaux</label>
+                        <label className="mb-2 block text-sm text-slate-600">Durée des travaux</label>
                         <input
                           value={activePlan.dureeTravaux}
                           onChange={(e) => updateActivePlan({ dureeTravaux: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
+                          className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
                         />
                       </div>
                       <div>
-                        <label className="mb-2 block text-sm text-zinc-300">Référence</label>
+                        <label className="mb-2 block text-sm text-slate-600">Référence</label>
                         <select
                           value={activePlan.referenceType}
                           onChange={(e) => updateActivePlan({ referenceType: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
+                          className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
                         >
                           {REFERENCE_TYPES.map((type) => (
                             <option key={type || "empty"} value={type} className="text-black">
@@ -3176,22 +3176,22 @@ export default function Home() {
                         </select>
                       </div>
                       <div>
-                        <label className="mb-2 block text-sm text-zinc-300">No / texte</label>
+                        <label className="mb-2 block text-sm text-slate-600">No / texte</label>
                         <input
                           value={activePlan.referenceValue}
                           onChange={(e) => updateActivePlan({ referenceValue: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
+                          className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
                         />
                       </div>
                     </div>
 
                     <div className="mb-4">
-                      <label className="mb-2 block text-sm text-zinc-300">Fermeture</label>
+                      <label className="mb-2 block text-sm text-slate-600">Fermeture</label>
                       <div className="flex gap-2">
                         <select
                           value={activePlan.fermeture}
                           onChange={(e) => updateActivePlan({ fermeture: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
+                          className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
                         >
                           <option value="" className="text-black">--</option>
                           {fermetureOptions.map((option) => (
@@ -3206,7 +3206,7 @@ export default function Home() {
                           value={newFermetureOption}
                           onChange={(e) => setNewFermetureOption(e.target.value)}
                           placeholder="Ajouter une option de fermeture"
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none placeholder:text-zinc-400"
+                          className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none placeholder:text-slate-500"
                         />
                         <button
                           onClick={addFermetureOption}
@@ -3218,59 +3218,59 @@ export default function Home() {
                     </div>
 
                     <div className="mb-4">
-                      <label className="mb-2 block text-sm text-zinc-300">Zone des travaux</label>
+                      <label className="mb-2 block text-sm text-slate-600">Zone des travaux</label>
                       <textarea
                         value={activePlan.zoneTravaux}
                         onChange={(e) => updateActivePlan({ zoneTravaux: e.target.value })}
                         rows={3}
-                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
+                        className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
                       />
                     </div>
 
                     <div className="mb-4">
-                      <label className="mb-2 block text-sm text-zinc-300">Détour(s)</label>
+                      <label className="mb-2 block text-sm text-slate-600">Détour(s)</label>
                       <textarea
                         value={activePlan.detours}
                         onChange={(e) => updateActivePlan({ detours: e.target.value })}
                         rows={3}
-                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
+                        className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
                       />
                     </div>
 
                     <div>
-                      <label className="mb-2 block text-sm text-zinc-300">Notes</label>
+                      <label className="mb-2 block text-sm text-slate-600">Notes</label>
                       <textarea
                         value={activePlan.notes}
                         onChange={(e) => updateActivePlan({ notes: e.target.value })}
                         rows={6}
-                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
+                        className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-5">
-                    <div className="rounded-xl border border-white/10 bg-white/5 p-5">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
                       <h3 className="mb-4 text-lg font-semibold text-orange-400">Documents reliés</h3>
 
                       {[
                         ["Liste matériel", "materielPdf", activePlan.materielPdf],
                         ["Document supplémentaire", "supplementairePdf", activePlan.supplementairePdf],
                       ].map(([label, field, attachment]) => (
-                        <div key={String(field)} className="mb-4 rounded-lg border border-white/10 bg-black/20 p-3">
-                          <p className="mb-2 text-sm font-medium text-zinc-200">{String(label)}</p>
+                        <div key={String(field)} className="mb-4 rounded-lg border border-slate-200 bg-orange-50 p-3">
+                          <p className="mb-2 text-sm font-medium text-slate-700">{String(label)}</p>
                           {attachment ? (
                             <div className="flex flex-wrap items-center justify-between gap-2">
-                              <span className="text-sm text-white">{(attachment as PlanAttachment).name}</span>
+                              <span className="text-sm text-slate-950">{(attachment as PlanAttachment).name}</span>
                               <div className="flex gap-2">
                                 <a
                                   href={getPrivateBlobOpenUrl((attachment as PlanAttachment).pathname, (attachment as PlanAttachment).url)}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-slate-950 hover:bg-white/20"
+                                  className="rounded border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs text-slate-950 hover:bg-slate-200"
                                 >
                                   Ouvrir
                                 </a>
-                                <label className="cursor-pointer rounded border border-orange-400/50 bg-orange-400/10 px-3 py-1.5 text-xs text-orange-200 hover:bg-orange-400/20">
+                                <label className="cursor-pointer rounded border border-orange-400/50 bg-orange-400/10 px-3 py-1.5 text-xs text-orange-600 hover:bg-orange-400/20">
                                   Écraser
                                   <input
                                     type="file"
@@ -3288,7 +3288,7 @@ export default function Home() {
                               </div>
                             </div>
                           ) : (
-                            <label className="inline-block cursor-pointer rounded border border-orange-400/50 bg-orange-400/10 px-3 py-2 text-sm text-orange-200 hover:bg-orange-400/20">
+                            <label className="inline-block cursor-pointer rounded border border-orange-400/50 bg-orange-400/10 px-3 py-2 text-sm text-orange-600 hover:bg-orange-400/20">
                               Importer un PDF
                               <input
                                 type="file"
@@ -3302,30 +3302,30 @@ export default function Home() {
                       ))}
                     </div>
 
-                    <div className="rounded-xl border border-white/10 bg-white/5 p-5">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
                       <h3 className="mb-4 text-lg font-semibold text-orange-400">Pour dessinateur</h3>
-                      <label className="mb-2 block text-sm text-zinc-300">Nom du fichier plan (AutoCAD)</label>
+                      <label className="mb-2 block text-sm text-slate-600">Nom du fichier plan (AutoCAD)</label>
                       <input
                         value={generatePlanFileName(activePlan)}
                         readOnly
                         className="mb-4 w-full rounded border border-green-500 bg-green-500/10 px-3 py-2 text-green-100 outline-none"
                       />
 
-                      <div className="rounded-lg border border-white/10 bg-black/20 p-3">
-                        <p className="mb-2 text-sm font-medium text-zinc-200">Fichier / document pour dessinateur</p>
+                      <div className="rounded-lg border border-slate-200 bg-orange-50 p-3">
+                        <p className="mb-2 text-sm font-medium text-slate-700">Fichier / document pour dessinateur</p>
                         {activePlan.dessinateurPdf ? (
                           <div className="flex flex-wrap items-center justify-between gap-2">
-                            <span className="text-sm text-white">{activePlan.dessinateurPdf.name}</span>
+                            <span className="text-sm text-slate-950">{activePlan.dessinateurPdf.name}</span>
                             <div className="flex gap-2">
                               <a
                                 href={getPrivateBlobOpenUrl(activePlan.dessinateurPdf.pathname, activePlan.dessinateurPdf.url)}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-slate-950 hover:bg-white/20"
+                                className="rounded border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs text-slate-950 hover:bg-slate-200"
                               >
                                 Ouvrir
                               </a>
-                              <label className="cursor-pointer rounded border border-orange-400/50 bg-orange-400/10 px-3 py-1.5 text-xs text-orange-200 hover:bg-orange-400/20">
+                              <label className="cursor-pointer rounded border border-orange-400/50 bg-orange-400/10 px-3 py-1.5 text-xs text-orange-600 hover:bg-orange-400/20">
                                 Écraser
                                 <input
                                   type="file"
@@ -3343,7 +3343,7 @@ export default function Home() {
                             </div>
                           </div>
                         ) : (
-                          <label className="inline-block cursor-pointer rounded border border-orange-400/50 bg-orange-400/10 px-3 py-2 text-sm text-orange-200 hover:bg-orange-400/20">
+                          <label className="inline-block cursor-pointer rounded border border-orange-400/50 bg-orange-400/10 px-3 py-2 text-sm text-orange-600 hover:bg-orange-400/20">
                             Importer un PDF
                             <input
                               type="file"
@@ -3356,26 +3356,26 @@ export default function Home() {
                       </div>
                     </div>
 
-                    <div className="rounded-xl border border-white/10 bg-white/5 p-5">
+                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
                       <h3 className="mb-4 text-lg font-semibold text-orange-400">Documents</h3>
                       {[0, 1, 2, 3].map((index) => {
                         const doc = activePlan.documents[index];
                         return (
-                          <div key={index} className="mb-3 rounded-lg border border-white/10 bg-black/20 p-3">
+                          <div key={index} className="mb-3 rounded-lg border border-slate-200 bg-orange-50 p-3">
                             <div className="flex flex-wrap items-center justify-between gap-2">
-                              <p className="text-sm font-medium text-zinc-200">Document {index + 1}</p>
+                              <p className="text-sm font-medium text-slate-700">Document {index + 1}</p>
                               {doc ? (
                                 <div className="flex flex-wrap items-center gap-2">
-                                  <span className="text-sm text-white">{doc.name}</span>
+                                  <span className="text-sm text-slate-950">{doc.name}</span>
                                   <a
                                     href={getPrivateBlobOpenUrl(doc.pathname, doc.url)}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-slate-950 hover:bg-white/20"
+                                    className="rounded border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs text-slate-950 hover:bg-slate-200"
                                   >
                                     Ouvrir
                                   </a>
-                                  <label className="cursor-pointer rounded border border-orange-400/50 bg-orange-400/10 px-3 py-1.5 text-xs text-orange-200 hover:bg-orange-400/20">
+                                  <label className="cursor-pointer rounded border border-orange-400/50 bg-orange-400/10 px-3 py-1.5 text-xs text-orange-600 hover:bg-orange-400/20">
                                     Écraser
                                     <input
                                       type="file"
@@ -3392,7 +3392,7 @@ export default function Home() {
                                   </button>
                                 </div>
                               ) : (
-                                <label className="cursor-pointer rounded border border-orange-400/50 bg-orange-400/10 px-3 py-2 text-sm text-orange-200 hover:bg-orange-400/20">
+                                <label className="cursor-pointer rounded border border-orange-400/50 bg-orange-400/10 px-3 py-2 text-sm text-orange-600 hover:bg-orange-400/20">
                                   Importer un PDF
                                   <input
                                     type="file"
@@ -3411,7 +3411,7 @@ export default function Home() {
                     <div className="mt-4 flex flex-wrap gap-2">
                       <button
                         onClick={() => sendPlanEmail(activePlan)}
-                        className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-black hover:bg-zinc-200"
+                        className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-medium text-black hover:bg-orange-400"
                       >
                         Envoyer plan
                       </button>
