@@ -2842,7 +2842,11 @@ export default function Home() {
                         }
                         copyPlanAsNewPlan(selectedPlan);
                       }}
-                      className="rounded-lg border border-blue-400/60 bg-blue-400/10 px-4 py-2 text-sm font-medium text-blue-200 transition hover:bg-blue-400/20"
+                      className={`rounded-lg border px-4 py-2 text-sm font-semibold transition ${
+                        selectedPlan
+                          ? "border-orange-500 bg-white text-orange-600 hover:bg-orange-50"
+                          : "cursor-not-allowed border-slate-300 bg-slate-100 text-slate-400"
+                      }`}
                     >
                       Copier en nouveau plan
                     </button>
@@ -2855,7 +2859,11 @@ export default function Home() {
                         }
                         copyPlanAsRevision(selectedPlan);
                       }}
-                      className="rounded-lg border border-green-400/60 bg-green-400/10 px-4 py-2 text-sm font-medium text-green-200 transition hover:bg-green-400/20"
+                      className={`rounded-lg border px-4 py-2 text-sm font-semibold transition ${
+                        selectedPlan
+                          ? "border-orange-500 bg-white text-orange-600 hover:bg-orange-50"
+                          : "cursor-not-allowed border-slate-300 bg-slate-100 text-slate-400"
+                      }`}
                     >
                       Copier en nouvelle révision
                     </button>
@@ -2900,15 +2908,12 @@ export default function Home() {
                               </td>
 
                               <td className="p-3">
-                                <input
-                                  value={plan.descriptionPlan}
-                                  onChange={(e) =>
-                                    updatePlanRequest(plan.id, {
-                                      descriptionPlan: e.target.value,
-                                    })
-                                  }
-                                  className="w-full min-w-[420px] rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
-                                />
+                                <div
+                                  title={generatePlanFileName(plan)}
+                                  className="w-full min-w-[420px] truncate rounded border border-slate-200 bg-slate-100 px-3 py-2 font-medium text-slate-950"
+                                >
+                                  {generatePlanFileName(plan)}
+                                </div>
                                 <p className="mt-1 text-xs text-slate-500">{plan.code}</p>
                               </td>
 
@@ -4259,8 +4264,8 @@ export default function Home() {
                           <td className="p-4 text-slate-700">{plan.ville || project.ville}</td>
                           <td className="p-4 text-slate-700">{project.client}</td>
                           <td className="p-4 text-slate-700">
-                            <div className="max-w-[520px] truncate" title={plan.descriptionPlan}>
-                              {plan.descriptionPlan}
+                            <div className="max-w-[520px] truncate" title={generatePlanFileName(plan)}>
+                              {generatePlanFileName(plan)}
                             </div>
                             <p className="mt-1 text-xs text-slate-400">{plan.code}</p>
                           </td>
