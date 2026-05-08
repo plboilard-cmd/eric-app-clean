@@ -4082,7 +4082,7 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="overflow-hidden rounded-lg border border-zinc-300 bg-white/90 shadow-2xl backdrop-blur-sm">
+              <div className="overflow-hidden rounded-lg border border-white/10 bg-slate-100/90 shadow-2xl backdrop-blur-sm">
                 <table className="w-full table-fixed text-sm">
                   <thead className="bg-orange-500 text-black">
                     <tr>
@@ -4177,7 +4177,7 @@ export default function Home() {
           )}
 
           {activeSection === "plans" && (
-            <div className="rounded-xl border border-white/10 bg-black/35 p-6 backdrop-blur-sm">
+            <div className="rounded-xl border border-white/10 bg-slate-900/80 p-6 backdrop-blur-sm">
               <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                   <h2 className="text-xl font-semibold">Liste de plans</h2>
@@ -4205,7 +4205,7 @@ export default function Home() {
                     value={planSearchNumber}
                     onChange={(e) => setPlanSearchNumber(e.target.value)}
                     placeholder="Ex. 26-0001, P001"
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                    className="w-full rounded-lg border border-white/10 bg-slate-100/80 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
                   />
                 </div>
 
@@ -4217,7 +4217,7 @@ export default function Home() {
                     value={planSearchVille}
                     onChange={(e) => setPlanSearchVille(e.target.value)}
                     placeholder="Ville"
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                    className="w-full rounded-lg border border-white/10 bg-slate-100/80 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
                   />
                 </div>
 
@@ -4229,7 +4229,7 @@ export default function Home() {
                     value={planSearchClient}
                     onChange={(e) => setPlanSearchClient(e.target.value)}
                     placeholder="Client"
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                    className="w-full rounded-lg border border-white/10 bg-slate-100/80 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
                   />
                 </div>
 
@@ -4241,7 +4241,7 @@ export default function Home() {
                     value={planSearchDescription}
                     onChange={(e) => setPlanSearchDescription(e.target.value)}
                     placeholder="Description plan"
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                    className="w-full rounded-lg border border-white/10 bg-slate-100/80 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
                   />
                 </div>
 
@@ -4253,7 +4253,7 @@ export default function Home() {
                     value={planSearchDessinateur}
                     onChange={(e) => setPlanSearchDessinateur(e.target.value)}
                     placeholder="Dessinateur"
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                    className="w-full rounded-lg border border-white/10 bg-slate-100/80 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
                   />
                 </div>
               </div>
@@ -4345,7 +4345,7 @@ export default function Home() {
           )}
 
           {activeSection === "clients" && (
-            <div className="rounded-xl border border-white/10 bg-black/35 p-6 backdrop-blur-sm">
+            <div className="rounded-xl border border-white/10 bg-slate-900/80 p-6 backdrop-blur-sm">
               <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                 <h2 className="text-xl font-semibold">Clients / Contacts</h2>
                 <button
@@ -4365,7 +4365,7 @@ export default function Home() {
                     value={clientListSearch}
                     onChange={(e) => setClientListSearch(e.target.value)}
                     placeholder="Nom du client"
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                    className="w-full rounded-lg border border-white/10 bg-slate-100/80 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
                   />
                 </div>
 
@@ -4377,7 +4377,7 @@ export default function Home() {
                     value={contactListSearch}
                     onChange={(e) => setContactListSearch(e.target.value)}
                     placeholder="Nom, téléphone ou courriel"
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                    className="w-full rounded-lg border border-white/10 bg-slate-100/80 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
                   />
                 </div>
 
@@ -4392,7 +4392,7 @@ export default function Home() {
                         e.target.value as "Tous" | ClientStatus
                       )
                     }
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none"
+                    className="w-full rounded-lg border border-white/10 bg-slate-100/80 px-4 py-3 text-slate-950 outline-none"
                   >
                     <option value="Tous" className="text-black">
                       Tous
@@ -4417,7 +4417,7 @@ export default function Home() {
                   {filteredClientsForList.map((client) => (
                     <div
                       key={client.id}
-                      className="rounded-lg border border-white/10 bg-white/5 p-4"
+                      className="rounded-lg border border-white/10 bg-slate-100/80 p-4"
                     >
                       <div className="mb-3 flex items-center justify-between gap-3">
                         <h3 className="text-lg font-semibold text-orange-400">
@@ -4439,7 +4439,7 @@ export default function Home() {
                                 e.target.value as ClientStatus
                               )
                             }
-                            className="rounded border border-white/10 bg-black/40 px-2 py-1 text-sm text-white"
+                            className="rounded border border-white/10 bg-slate-100/80 px-2 py-1 text-sm text-slate-950"
                           >
                             {CLIENT_STATUSES.map((status) => (
                               <option
@@ -4461,7 +4461,7 @@ export default function Home() {
                           {client.contacts.map((contact) => (
                             <div
                               key={contact.id}
-                              className="rounded border border-white/10 bg-black/20 p-3 text-sm"
+                              className="rounded border border-white/10 bg-slate-100/70 p-3 text-sm"
                             >
                               <p className="font-semibold">{contact.name}</p>
                               <p className="text-zinc-300">{contact.phone}</p>
@@ -4478,7 +4478,7 @@ export default function Home() {
           )}
 
           {activeSection === "facturation" && (
-            <div className="rounded-xl border border-white/10 bg-black/35 p-6 backdrop-blur-sm">
+            <div className="rounded-xl border border-white/10 bg-slate-900/80 p-6 backdrop-blur-sm">
               <h2 className="text-xl font-semibold">Facturation</h2>
               <p className="mt-2 text-zinc-300">Section en construction.</p>
             </div>
