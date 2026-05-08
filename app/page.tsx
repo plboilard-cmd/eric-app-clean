@@ -3955,17 +3955,12 @@ export default function Home() {
       <div className="relative z-10 min-h-screen px-6 py-6 md:px-8 xl:px-10">
         <div className="mx-auto w-full max-w-[1700px]">
           <div className="mb-8 rounded-[2rem] border border-slate-200 bg-white/95 p-8 shadow-xl shadow-slate-300/40">
-            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
               <div>
                 <p className="text-sm uppercase tracking-[0.3em] text-orange-500">ERIC</p>
                 <h1 className="mt-3 text-3xl font-semibold text-slate-950">
                   Tableau de bord projet
                 </h1>
-                <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
-                  Un espace clair et lumineux pour vos projets, plans et clients.
-                  Des cartes plus pâles, un contraste plus net et une ambiance
-                  inspirante.
-                </p>
               </div>
 
               <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
@@ -3979,54 +3974,19 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-              <div className="rounded-[1.75rem] border border-slate-200 bg-orange-50 p-5">
-                <p className="text-sm uppercase tracking-[0.25em] text-orange-600">
+            <div className="mt-6 rounded-[2rem] border border-slate-200 bg-white/95 p-6 shadow-sm sm:flex sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-[0.3em] text-orange-500">ERIC</p>
+                <h2 className="mt-3 text-2xl font-semibold text-slate-950">
                   Projets
-                </p>
-                <p className="mt-4 text-3xl font-semibold text-slate-950">
-                  {filteredProjects.length}
-                </p>
-                <p className="mt-2 text-sm text-slate-500">
-                  Projets visibles après application des filtres.
-                </p>
+                </h2>
               </div>
-
-              <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5">
-                <p className="text-sm uppercase tracking-[0.25em] text-slate-500">
-                  Clients
-                </p>
-                <p className="mt-4 text-3xl font-semibold text-slate-950">
-                  {clients.length}
-                </p>
-                <p className="mt-2 text-sm text-slate-500">
-                  Tous les clients enregistrés.
-                </p>
-              </div>
-
-              <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5">
-                <p className="text-sm uppercase tracking-[0.25em] text-slate-500">
-                  Plans
-                </p>
-                <p className="mt-4 text-3xl font-semibold text-slate-950">
-                  {planListing.length}
-                </p>
-                <p className="mt-2 text-sm text-slate-500">
-                  Plans en suivi et en production.
-                </p>
-              </div>
-
-              <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5">
-                <p className="text-sm uppercase tracking-[0.25em] text-slate-500">
-                  Affichés
-                </p>
-                <p className="mt-4 text-3xl font-semibold text-slate-950">
-                  {filteredProjects.length}
-                </p>
-                <p className="mt-2 text-sm text-slate-500">
-                  Projets actuellement affichés.
-                </p>
-              </div>
+              <button
+                onClick={() => setShowModal(true)}
+                className="rounded-full bg-orange-500 px-5 py-3 text-sm font-semibold text-white shadow-md shadow-orange-200/50 transition hover:bg-orange-400"
+              >
+                + Nouveau projet
+              </button>
             </div>
           </div>
 
@@ -4052,180 +4012,133 @@ export default function Home() {
           </div>
 
           {activeSection === "projets" && (
-            <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-              <div className="space-y-6">
-                <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-                  <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                    <div>
-                      <h2 className="text-xl font-semibold text-slate-950">Suivi des projets</h2>
-                      <p className="mt-2 text-sm text-slate-500">
-                        Recherchez, filtrez et accédez rapidement à vos projets.
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => setShowModal(true)}
-                      className="rounded-full bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-orange-400"
-                    >
-                      + Nouveau projet
-                    </button>
-                  </div>
+            <div className="space-y-6">
+              <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="mb-6">
+                  <h2 className="text-xl font-semibold text-slate-950">Projets</h2>
+                  <p className="mt-2 text-sm text-slate-600">
+                    Une interface épurée où la liste prend le dessus, avec une recherche discrète.
+                  </p>
+                </div>
 
-                  <div className="grid gap-4 lg:grid-cols-2">
+                <div className="grid gap-4 lg:grid-cols-[1.4fr_0.6fr]">
+                  <div className="space-y-4">
                     <div>
                       <label className="mb-2 block text-sm font-medium text-slate-700">
-                        Recherche numéro
+                        Recherche
                       </label>
                       <input
                         value={searchNumero}
                         onChange={(e) => setSearchNumero(e.target.value)}
-                        placeholder="Ex. 26-0001"
+                        placeholder="Numéro, client ou ville"
                         className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
                       />
                     </div>
 
-                    <div>
-                      <label className="mb-2 block text-sm font-medium text-slate-700">
-                        Recherche client
-                      </label>
-                      <input
-                        value={searchClient}
-                        onChange={(e) => setSearchClient(e.target.value)}
-                        placeholder="Nom du client"
-                        className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="mb-2 block text-sm font-medium text-slate-700">
-                        Recherche ville
-                      </label>
-                      <input
-                        value={searchVille}
-                        onChange={(e) => setSearchVille(e.target.value)}
-                        placeholder="Ville"
-                        className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="mb-2 block text-sm font-medium text-slate-700">
-                        Chargé de projets
-                      </label>
-                      <select
-                        value={chargeFilter}
-                        onChange={(e) =>
-                          setChargeFilter(
-                            e.target.value as "tous" | "mes-projets"
-                          )
-                        }
-                        className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none"
-                      >
-                        <option value="tous" className="text-slate-950">
-                          Tous les projets
-                        </option>
-                        <option value="mes-projets" className="text-slate-950">
-                          Mes projets
-                        </option>
-                      </select>
-                    </div>
-
-                    <div className="lg:col-span-2">
-                      <label className="mb-2 block text-sm font-medium text-slate-700">
-                        Statuts affichés
-                      </label>
-                      <div className="rounded-3xl border border-slate-200 bg-slate-100 p-4">
-                        <div className="grid grid-cols-2 gap-3 text-sm text-slate-700 lg:grid-cols-3">
-                          {ALL_STATUSES.map((status) => (
-                            <label
-                              key={status}
-                              className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2"
-                            >
-                              <input
-                                type="checkbox"
-                                checked={statusFilters.includes(status)}
-                                onChange={() => toggleStatusFilter(status)}
-                                className="h-4 w-4 rounded border-slate-300 text-orange-500"
-                              />
-                              {status}
-                            </label>
-                          ))}
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <label className="mb-2 block text-sm font-medium text-slate-700">
+                          Chargé de projets
+                        </label>
+                        <select
+                          value={chargeFilter}
+                          onChange={(e) => setChargeFilter(e.target.value as "tous" | "mes-projets")}
+                          className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none"
+                        >
+                          <option value="tous" className="text-slate-950">
+                            Tous les projets
+                          </option>
+                          <option value="mes-projets" className="text-slate-950">
+                            Mes projets
+                          </option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="mb-2 block text-sm font-medium text-slate-700">
+                          Statuts affichés
+                        </label>
+                        <div className="rounded-3xl border border-slate-200 bg-slate-100 p-4">
+                          <div className="grid grid-cols-2 gap-2 text-sm text-slate-700">
+                            {ALL_STATUSES.map((status) => (
+                              <label
+                                key={status}
+                                className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={statusFilters.includes(status)}
+                                  onChange={() => toggleStatusFilter(status)}
+                                  className="h-4 w-4 rounded border-slate-300 text-orange-500"
+                                />
+                                {status}
+                              </label>
+                            ))}
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
-                  <table className="min-w-full text-sm">
-                    <thead className="bg-orange-100 text-slate-900">
-                      <tr>
-                        <th className="w-[105px] p-4 text-left font-semibold">Numéro projet</th>
-                        <th className="w-[125px] p-4 text-left font-semibold">Numéro client</th>
-                        <th className="w-[135px] p-4 text-left font-semibold">Ville</th>
-                        <th className="w-[175px] p-4 text-left font-semibold">Client</th>
-                        <th className="p-4 text-left font-semibold">Description</th>
-                        <th className="w-[145px] p-4 text-left font-semibold">Statut</th>
-                        <th className="w-[105px] p-4 text-left font-semibold">Chargé</th>
-                        <th className="w-[115px] p-4 text-left font-semibold">Accès projet</th>
-                      </tr>
-                    </thead>
-
-                    <tbody>
-                      {filteredProjects.length === 0 ? (
-                        <tr>
-                          <td colSpan={8} className="p-6 text-center text-slate-500">
-                            Aucun projet pour le moment.
-                          </td>
-                        </tr>
-                      ) : (
-                        [...filteredProjects]
-                          .sort((a, b) => b.id - a.id)
-                          .map((project) => (
-                            <tr key={project.id} className="border-t border-slate-200 bg-slate-50 transition hover:bg-slate-100">
-                              <td className="p-4 text-slate-900">{project.numeroProjet}</td>
-                              <td className="p-4 text-slate-700">{project.numeroClient}</td>
-                              <td className="p-4 text-slate-700">{project.ville}</td>
-                              <td className="p-4 text-slate-900">{project.client}</td>
-                              <td className="p-4 text-slate-700">
-                                <div className="line-clamp-2" title={project.description}>
-                                  {project.description}
-                                </div>
-                              </td>
-                              <td className="w-[145px] p-4">
-                                <span
-                                  className={`inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold ${getStatusBadgeClasses(project.statut)}`}
-                                >
-                                  {project.statut}
-                                </span>
-                              </td>
-                              <td className="w-[105px] p-4 text-slate-700">{project.charge}</td>
-                              <td className="w-[115px] p-4">
-                                <button
-                                  onClick={() => openProject(project)}
-                                  className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5 text-sm text-orange-700 transition hover:bg-orange-100"
-                                >
-                                  Ouvrir ↗
-                                </button>
-                              </td>
-                            </tr>
-                          ))
-                      )}
-                    </tbody>
-                  </table>
                 </div>
               </div>
 
-              <div className="space-y-6">
-                <div className="rounded-[2rem] border border-slate-200 bg-orange-50 p-6 shadow-sm">
-                  <p className="text-sm uppercase tracking-[0.2em] text-orange-600">Vue rapide</p>
-                  <p className="mt-4 text-4xl font-semibold text-slate-950">{filteredProjects.length}</p>
-                  <p className="mt-2 text-sm text-slate-600">Projets affichés après filtrage.</p>
-                </div>
-                <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-                  <p className="text-sm uppercase tracking-[0.2em] text-slate-500">Clients actifs</p>
-                  <p className="mt-4 text-4xl font-semibold text-slate-950">{clients.length}</p>
-                  <p className="mt-2 text-sm text-slate-600">Total des clients enregistrés.</p>
-                </div>
+              <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-orange-100 text-slate-900">
+                    <tr>
+                      <th className="w-[105px] p-4 text-left font-semibold">Numéro projet</th>
+                      <th className="w-[125px] p-4 text-left font-semibold">Numéro client</th>
+                      <th className="w-[135px] p-4 text-left font-semibold">Ville</th>
+                      <th className="w-[175px] p-4 text-left font-semibold">Client</th>
+                      <th className="p-4 text-left font-semibold">Description</th>
+                      <th className="w-[145px] p-4 text-left font-semibold">Statut</th>
+                      <th className="w-[105px] p-4 text-left font-semibold">Chargé</th>
+                      <th className="w-[115px] p-4 text-left font-semibold">Accès projet</th>
+                    </tr>
+                  </thead>
+
+                  <tbody>
+                    {filteredProjects.length === 0 ? (
+                      <tr>
+                        <td colSpan={8} className="p-6 text-center text-slate-500">
+                          Aucun projet pour le moment.
+                        </td>
+                      </tr>
+                    ) : (
+                      [...filteredProjects]
+                        .sort((a, b) => b.id - a.id)
+                        .map((project) => (
+                          <tr key={project.id} className="border-t border-slate-200 bg-slate-50 transition hover:bg-slate-100">
+                            <td className="p-4 text-slate-900">{project.numeroProjet}</td>
+                            <td className="p-4 text-slate-700">{project.numeroClient}</td>
+                            <td className="p-4 text-slate-700">{project.ville}</td>
+                            <td className="p-4 text-slate-900">{project.client}</td>
+                            <td className="p-4 text-slate-700">
+                              <div className="line-clamp-2" title={project.description}>
+                                {project.description}
+                              </div>
+                            </td>
+                            <td className="w-[145px] p-4">
+                              <span
+                                className={`inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold ${getStatusBadgeClasses(project.statut)}`}
+                              >
+                                {project.statut}
+                              </span>
+                            </td>
+                            <td className="w-[105px] p-4 text-slate-700">{project.charge}</td>
+                            <td className="w-[115px] p-4">
+                              <button
+                                onClick={() => openProject(project)}
+                                className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5 text-sm text-orange-700 transition hover:bg-orange-100"
+                              >
+                                Ouvrir ↗
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                    )}
+                  </tbody>
+                </table>
               </div>
             </div>
           )}
@@ -4236,9 +4149,6 @@ export default function Home() {
                 <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div>
                     <h2 className="text-xl font-semibold text-slate-950">Liste de plans</h2>
-                    <p className="mt-2 text-sm text-slate-600">
-                      Plans commandés classés par date requise.
-                    </p>
                   </div>
 
                   <label className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700">
