@@ -3948,48 +3948,102 @@ export default function Home() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden">
-      <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: "url('/eric-dashboard-bg.png')" }}
-      />
-      <div className="absolute inset-0 bg-black/55" />
+    <main className="relative min-h-screen bg-slate-50 text-slate-900">
+      <div className="absolute inset-0 bg-[url('/eric-dashboard-bg.png')] bg-cover bg-center opacity-20" />
+      <div className="absolute inset-0 bg-gradient-to-br from-white via-slate-50 to-orange-50 opacity-95" />
 
-      <div className="relative z-10 min-h-screen px-6 py-5 md:px-8 xl:px-10">
+      <div className="relative z-10 min-h-screen px-6 py-6 md:px-8 xl:px-10">
         <div className="mx-auto w-full max-w-[1700px]">
-          <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-sm uppercase tracking-[0.25em] text-zinc-300">
-                ERIC
-              </p>
-              <h1 className="mt-1 text-2xl font-semibold">Liste de projet</h1>
+          <div className="mb-8 rounded-[2rem] border border-slate-200 bg-white/95 p-8 shadow-xl shadow-slate-300/40">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-[0.3em] text-orange-500">ERIC</p>
+                <h1 className="mt-3 text-3xl font-semibold text-slate-950">
+                  Tableau de bord projet
+                </h1>
+                <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600">
+                  Un espace clair et lumineux pour vos projets, plans et clients.
+                  Des cartes plus pâles, un contraste plus net et une ambiance
+                  inspirante.
+                </p>
+              </div>
+
+              <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+                <p className="text-sm text-slate-600">{loggedInUser}</p>
+                <button
+                  onClick={handleLogout}
+                  className="rounded-full bg-orange-500 px-5 py-3 text-sm font-semibold text-white shadow-md shadow-orange-200/50 transition hover:bg-orange-400"
+                >
+                  Déconnexion
+                </button>
+              </div>
             </div>
 
-            <div className="flex items-center gap-4">
-              <p className="text-sm text-zinc-200">{loggedInUser}</p>
-              <button
-                onClick={handleLogout}
-                className="rounded-lg border border-white/15 bg-black/30 px-4 py-2 text-sm text-white transition hover:bg-white/10"
-              >
-                Déconnexion
-              </button>
+            <div className="mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-[1.75rem] border border-slate-200 bg-orange-50 p-5">
+                <p className="text-sm uppercase tracking-[0.25em] text-orange-600">
+                  Projets
+                </p>
+                <p className="mt-4 text-3xl font-semibold text-slate-950">
+                  {filteredProjects.length}
+                </p>
+                <p className="mt-2 text-sm text-slate-500">
+                  Projets visibles après application des filtres.
+                </p>
+              </div>
+
+              <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5">
+                <p className="text-sm uppercase tracking-[0.25em] text-slate-500">
+                  Clients
+                </p>
+                <p className="mt-4 text-3xl font-semibold text-slate-950">
+                  {clients.length}
+                </p>
+                <p className="mt-2 text-sm text-slate-500">
+                  Tous les clients enregistrés.
+                </p>
+              </div>
+
+              <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5">
+                <p className="text-sm uppercase tracking-[0.25em] text-slate-500">
+                  Plans
+                </p>
+                <p className="mt-4 text-3xl font-semibold text-slate-950">
+                  {planListing.length}
+                </p>
+                <p className="mt-2 text-sm text-slate-500">
+                  Plans en suivi et en production.
+                </p>
+              </div>
+
+              <div className="rounded-[1.75rem] border border-slate-200 bg-white p-5">
+                <p className="text-sm uppercase tracking-[0.25em] text-slate-500">
+                  Affichés
+                </p>
+                <p className="mt-4 text-3xl font-semibold text-slate-950">
+                  {filteredProjects.length}
+                </p>
+                <p className="mt-2 text-sm text-slate-500">
+                  Projets actuellement affichés.
+                </p>
+              </div>
             </div>
           </div>
 
-          <div className="mb-6 flex flex-wrap gap-4">
+          <div className="mb-6 flex flex-wrap gap-3">
             {[
-              ["projets", "Projet"],
-              ["plans", "Liste de plans"],
-              ["facturation", "Facturation"],
+              ["projets", "Projets"],
+              ["plans", "Plans"],
               ["clients", "Clients"],
+              ["facturation", "Facturation"],
             ].map(([key, label]) => (
               <button
                 key={key}
                 onClick={() => changeSection(key as ActiveSection)}
-                className={`min-w-[120px] border-2 px-6 py-3 text-left transition ${
+                className={`rounded-full px-5 py-3 text-sm font-semibold transition ${
                   activeSection === key
-                    ? "border-white bg-white text-black"
-                    : "border-white/80 bg-black/20 text-white hover:bg-white/10"
+                    ? "bg-orange-500 text-white shadow-lg shadow-orange-200/50"
+                    : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-orange-50"
                 }`}
               >
                 {label}
@@ -3998,288 +4052,291 @@ export default function Home() {
           </div>
 
           {activeSection === "projets" && (
-            <>
-              <div className="mb-5 grid gap-4 rounded-xl border border-zinc-300 bg-slate-100/80 p-4 backdrop-blur-sm lg:grid-cols-[0.7fr_1fr_1fr_1fr_1.2fr]">
-                <div>
-                  <label className="mb-2 block text-sm text-slate-700">
-                    Recherche numéro
-                  </label>
-                  <input
-                    value={searchNumero}
-                    onChange={(e) => setSearchNumero(e.target.value)}
-                    placeholder="Ex. 26-0001"
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm text-slate-700">
-                    Recherche client
-                  </label>
-                  <input
-                    value={searchClient}
-                    onChange={(e) => setSearchClient(e.target.value)}
-                    placeholder="Nom du client"
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm text-slate-700">
-                    Recherche ville
-                  </label>
-                  <input
-                    value={searchVille}
-                    onChange={(e) => setSearchVille(e.target.value)}
-                    placeholder="Ville"
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm text-slate-700">
-                    Chargé de projets
-                  </label>
-                  <select
-                    value={chargeFilter}
-                    onChange={(e) =>
-                      setChargeFilter(
-                        e.target.value as "tous" | "mes-projets"
-                      )
-                    }
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none"
-                  >
-                    <option value="tous" className="text-black">
-                      Tous les projets
-                    </option>
-                    <option value="mes-projets" className="text-black">
-                      Mes projets
-                    </option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm text-zinc-200">
-                    Statuts affichés
-                  </label>
-                  <div className="rounded-lg border border-white/10 bg-white/10 p-3">
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      {ALL_STATUSES.map((status) => (
-                        <label
-                          key={status}
-                          className="flex items-center gap-2 text-zinc-200"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={statusFilters.includes(status)}
-                            onChange={() => toggleStatusFilter(status)}
-                          />
-                          {status}
-                        </label>
-                      ))}
+            <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+              <div className="space-y-6">
+                <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                  <div className="mb-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div>
+                      <h2 className="text-xl font-semibold text-slate-950">Suivi des projets</h2>
+                      <p className="mt-2 text-sm text-slate-500">
+                        Recherchez, filtrez et accédez rapidement à vos projets.
+                      </p>
                     </div>
+                    <button
+                      onClick={() => setShowModal(true)}
+                      className="rounded-full bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-orange-400"
+                    >
+                      + Nouveau projet
+                    </button>
+                  </div>
+
+                  <div className="grid gap-4 lg:grid-cols-2">
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-slate-700">
+                        Recherche numéro
+                      </label>
+                      <input
+                        value={searchNumero}
+                        onChange={(e) => setSearchNumero(e.target.value)}
+                        placeholder="Ex. 26-0001"
+                        className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-slate-700">
+                        Recherche client
+                      </label>
+                      <input
+                        value={searchClient}
+                        onChange={(e) => setSearchClient(e.target.value)}
+                        placeholder="Nom du client"
+                        className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-slate-700">
+                        Recherche ville
+                      </label>
+                      <input
+                        value={searchVille}
+                        onChange={(e) => setSearchVille(e.target.value)}
+                        placeholder="Ville"
+                        className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-slate-700">
+                        Chargé de projets
+                      </label>
+                      <select
+                        value={chargeFilter}
+                        onChange={(e) =>
+                          setChargeFilter(
+                            e.target.value as "tous" | "mes-projets"
+                          )
+                        }
+                        className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none"
+                      >
+                        <option value="tous" className="text-slate-950">
+                          Tous les projets
+                        </option>
+                        <option value="mes-projets" className="text-slate-950">
+                          Mes projets
+                        </option>
+                      </select>
+                    </div>
+
+                    <div className="lg:col-span-2">
+                      <label className="mb-2 block text-sm font-medium text-slate-700">
+                        Statuts affichés
+                      </label>
+                      <div className="rounded-3xl border border-slate-200 bg-slate-100 p-4">
+                        <div className="grid grid-cols-2 gap-3 text-sm text-slate-700 lg:grid-cols-3">
+                          {ALL_STATUSES.map((status) => (
+                            <label
+                              key={status}
+                              className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={statusFilters.includes(status)}
+                                onChange={() => toggleStatusFilter(status)}
+                                className="h-4 w-4 rounded border-slate-300 text-orange-500"
+                              />
+                              {status}
+                            </label>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+                  <table className="min-w-full text-sm">
+                    <thead className="bg-orange-100 text-slate-900">
+                      <tr>
+                        <th className="w-[105px] p-4 text-left font-semibold">Numéro projet</th>
+                        <th className="w-[125px] p-4 text-left font-semibold">Numéro client</th>
+                        <th className="w-[135px] p-4 text-left font-semibold">Ville</th>
+                        <th className="w-[175px] p-4 text-left font-semibold">Client</th>
+                        <th className="p-4 text-left font-semibold">Description</th>
+                        <th className="w-[145px] p-4 text-left font-semibold">Statut</th>
+                        <th className="w-[105px] p-4 text-left font-semibold">Chargé</th>
+                        <th className="w-[115px] p-4 text-left font-semibold">Accès projet</th>
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {filteredProjects.length === 0 ? (
+                        <tr>
+                          <td colSpan={8} className="p-6 text-center text-slate-500">
+                            Aucun projet pour le moment.
+                          </td>
+                        </tr>
+                      ) : (
+                        [...filteredProjects]
+                          .sort((a, b) => b.id - a.id)
+                          .map((project) => (
+                            <tr key={project.id} className="border-t border-slate-200 bg-slate-50 transition hover:bg-slate-100">
+                              <td className="p-4 text-slate-900">{project.numeroProjet}</td>
+                              <td className="p-4 text-slate-700">{project.numeroClient}</td>
+                              <td className="p-4 text-slate-700">{project.ville}</td>
+                              <td className="p-4 text-slate-900">{project.client}</td>
+                              <td className="p-4 text-slate-700">
+                                <div className="line-clamp-2" title={project.description}>
+                                  {project.description}
+                                </div>
+                              </td>
+                              <td className="w-[145px] p-4">
+                                <span
+                                  className={`inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold ${getStatusBadgeClasses(project.statut)}`}
+                                >
+                                  {project.statut}
+                                </span>
+                              </td>
+                              <td className="w-[105px] p-4 text-slate-700">{project.charge}</td>
+                              <td className="w-[115px] p-4">
+                                <button
+                                  onClick={() => openProject(project)}
+                                  className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5 text-sm text-orange-700 transition hover:bg-orange-100"
+                                >
+                                  Ouvrir ↗
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              <div className="space-y-6">
+                <div className="rounded-[2rem] border border-slate-200 bg-orange-50 p-6 shadow-sm">
+                  <p className="text-sm uppercase tracking-[0.2em] text-orange-600">Vue rapide</p>
+                  <p className="mt-4 text-4xl font-semibold text-slate-950">{filteredProjects.length}</p>
+                  <p className="mt-2 text-sm text-slate-600">Projets affichés après filtrage.</p>
+                </div>
+                <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                  <p className="text-sm uppercase tracking-[0.2em] text-slate-500">Clients actifs</p>
+                  <p className="mt-4 text-4xl font-semibold text-slate-950">{clients.length}</p>
+                  <p className="mt-2 text-sm text-slate-600">Total des clients enregistrés.</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeSection === "plans" && (
+            <div className="space-y-6">
+              <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <h2 className="text-xl font-semibold text-slate-950">Liste de plans</h2>
+                    <p className="mt-2 text-sm text-slate-600">
+                      Plans commandés classés par date requise.
+                    </p>
+                  </div>
+
+                  <label className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={showSentPlans}
+                      onChange={(e) => setShowSentPlans(e.target.checked)}
+                      className="h-4 w-4 accent-orange-500"
+                    />
+                    Voir envoyé
+                  </label>
+                </div>
+
+                <div className="grid gap-4 lg:grid-cols-5">
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                      No projet / plan
+                    </label>
+                    <input
+                      value={planSearchNumber}
+                      onChange={(e) => setPlanSearchNumber(e.target.value)}
+                      placeholder="Ex. 26-0001, P001"
+                      className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                      Ville
+                    </label>
+                    <input
+                      value={planSearchVille}
+                      onChange={(e) => setPlanSearchVille(e.target.value)}
+                      placeholder="Ville"
+                      className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                      Client
+                    </label>
+                    <input
+                      value={planSearchClient}
+                      onChange={(e) => setPlanSearchClient(e.target.value)}
+                      placeholder="Client"
+                      className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                      Description
+                    </label>
+                    <input
+                      value={planSearchDescription}
+                      onChange={(e) => setPlanSearchDescription(e.target.value)}
+                      placeholder="Description plan"
+                      className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                      Dessinateur
+                    </label>
+                    <input
+                      value={planSearchDessinateur}
+                      onChange={(e) => setPlanSearchDessinateur(e.target.value)}
+                      placeholder="Dessinateur"
+                      className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
+                    />
                   </div>
                 </div>
               </div>
 
-              <div className="overflow-hidden rounded-lg border border-white/10 bg-slate-100/90 shadow-2xl backdrop-blur-sm">
-                <table className="w-full table-fixed text-sm">
-                  <thead className="bg-orange-500 text-black">
-                    <tr>
-                      <th className="w-[105px] p-3 text-left font-semibold">
-                        Numéro projet
-                      </th>
-                      <th className="w-[125px] p-3 text-left font-semibold">
-                        Numéro client
-                      </th>
-                      <th className="w-[135px] p-3 text-left font-semibold">Ville</th>
-                      <th className="w-[175px] p-3 text-left font-semibold">Client</th>
-                      <th className="p-3 text-left font-semibold">
-                        Description
-                      </th>
-                      <th className="w-[145px] p-3 text-left font-semibold">Statut</th>
-                      <th className="w-[105px] p-3 text-left font-semibold">Chargé</th>
-                      <th className="w-[115px] p-3 text-left font-semibold">
-                        Accès projet
-                      </th>
-                    </tr>
-                  </thead>
-
-                  <tbody>
-                    {filteredProjects.length === 0 ? (
-                      <tr className="border-t border-white/10">
-                        <td
-                          colSpan={8}
-                          className="p-6 text-center text-zinc-300"
-                        >
-                          Aucun projet pour le moment.
-                        </td>
-                      </tr>
-                    ) : (
-                      [...filteredProjects]
-                        .sort((a, b) => b.id - a.id)
-                        .map((project) => (
-                        <tr
-                          key={project.id}
-                          className="border-t border-white/10 bg-black/15"
-                        >
-                          <td className="p-3 text-white">
-                            {project.numeroProjet}
-                          </td>
-                          <td className="p-3 text-zinc-200">
-                            {project.numeroClient}
-                          </td>
-                          <td className="p-3 text-zinc-200">
-                            {project.ville}
-                          </td>
-                          <td className="p-3 text-white">{project.client}</td>
-                          <td className="p-3 text-zinc-200">
-                            <div className="line-clamp-2" title={project.description}>
-                              {project.description}
-                            </div>
-                          </td>
-                          <td className="w-[145px] p-3">
-                            <span
-                              className={`inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-medium ${getStatusBadgeClasses(
-                                project.statut
-                              )}`}
-                            >
-                              {project.statut}
-                            </span>
-                          </td>
-                          <td className="w-[105px] p-3 text-zinc-200">
-                            {project.charge}
-                          </td>
-                          <td className="w-[115px] p-3">
-                            <button
-                              onClick={() => openProject(project)}
-                              className="rounded-md border border-white/15 bg-white/10 px-3 py-1.5 text-sm text-slate-950 transition hover:bg-white/20"
-                            >
-                              Ouvrir ↗
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-
-              <div className="mt-5">
-                <button
-                  onClick={() => setShowModal(true)}
-                  className="rounded-lg bg-white px-5 py-3 font-medium text-black transition hover:bg-zinc-200"
-                >
-                  + Nouveau projet
-                </button>
-              </div>
-            </>
-          )}
-
-          {activeSection === "plans" && (
-            <div className="rounded-xl border border-white/10 bg-slate-900/80 p-6 backdrop-blur-sm">
-              <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold">Liste de plans</h2>
-                  <p className="mt-1 text-sm text-zinc-300">
-                    Plans commandés classés par date requise.
-                  </p>
-                </div>
-
-                <label className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-zinc-200">
-                  <input
-                    type="checkbox"
-                    checked={showSentPlans}
-                    onChange={(e) => setShowSentPlans(e.target.checked)}
-                  />
-                  Voir envoyé
-                </label>
-              </div>
-
-              <div className="mb-5 grid gap-4 lg:grid-cols-5">
-                <div>
-                  <label className="mb-2 block text-sm text-zinc-200">
-                    No projet / plan
-                  </label>
-                  <input
-                    value={planSearchNumber}
-                    onChange={(e) => setPlanSearchNumber(e.target.value)}
-                    placeholder="Ex. 26-0001, P001"
-                    className="w-full rounded-lg border border-white/10 bg-slate-100/80 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm text-zinc-200">
-                    Ville
-                  </label>
-                  <input
-                    value={planSearchVille}
-                    onChange={(e) => setPlanSearchVille(e.target.value)}
-                    placeholder="Ville"
-                    className="w-full rounded-lg border border-white/10 bg-slate-100/80 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm text-zinc-200">
-                    Client
-                  </label>
-                  <input
-                    value={planSearchClient}
-                    onChange={(e) => setPlanSearchClient(e.target.value)}
-                    placeholder="Client"
-                    className="w-full rounded-lg border border-white/10 bg-slate-100/80 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm text-zinc-200">
-                    Description
-                  </label>
-                  <input
-                    value={planSearchDescription}
-                    onChange={(e) => setPlanSearchDescription(e.target.value)}
-                    placeholder="Description plan"
-                    className="w-full rounded-lg border border-white/10 bg-slate-100/80 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm text-zinc-200">
-                    Dessinateur
-                  </label>
-                  <input
-                    value={planSearchDessinateur}
-                    onChange={(e) => setPlanSearchDessinateur(e.target.value)}
-                    placeholder="Dessinateur"
-                    className="w-full rounded-lg border border-white/10 bg-slate-100/80 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
-                  />
-                </div>
-              </div>
-
-              <div className="overflow-x-auto rounded-xl border border-white/10">
+              <div className="overflow-x-auto rounded-[2rem] border border-slate-200 bg-white shadow-sm">
                 <table className="min-w-[1500px] w-full text-sm">
-                  <thead className="bg-orange-500 text-black">
+                  <thead className="bg-orange-100 text-slate-900">
                     <tr>
-                      <th className="p-3 text-left font-semibold">No Projet</th>
-                      <th className="p-3 text-left font-semibold">Fiche</th>
-                      <th className="p-3 text-left font-semibold">Ville</th>
-                      <th className="p-3 text-left font-semibold">Client</th>
-                      <th className="p-3 text-left font-semibold">Description plan</th>
-                      <th className="p-3 text-left font-semibold">Demande</th>
-                      <th className="p-3 text-left font-semibold"># Plan</th>
-                      <th className="p-3 text-left font-semibold"># Rév.</th>
-                      <th className="p-3 text-left font-semibold">Plan requis le</th>
-                      <th className="p-3 text-left font-semibold">Statut plan</th>
-                      <th className="p-3 text-left font-semibold">Dessinateur</th>
+                      <th className="p-4 text-left font-semibold">No Projet</th>
+                      <th className="p-4 text-left font-semibold">Fiche</th>
+                      <th className="p-4 text-left font-semibold">Ville</th>
+                      <th className="p-4 text-left font-semibold">Client</th>
+                      <th className="p-4 text-left font-semibold">Description plan</th>
+                      <th className="p-4 text-left font-semibold">Demande</th>
+                      <th className="p-4 text-left font-semibold"># Plan</th>
+                      <th className="p-4 text-left font-semibold"># Rév.</th>
+                      <th className="p-4 text-left font-semibold">Plan requis le</th>
+                      <th className="p-4 text-left font-semibold">Statut plan</th>
+                      <th className="p-4 text-left font-semibold">Dessinateur</th>
                     </tr>
                   </thead>
 
                   <tbody>
                     {planListing.length === 0 ? (
                       <tr>
-                        <td colSpan={11} className="p-6 text-center text-zinc-300">
+                        <td colSpan={11} className="p-6 text-center text-slate-500">
                           Aucun plan à afficher.
                         </td>
                       </tr>
@@ -4287,54 +4344,54 @@ export default function Home() {
                       planListing.map(({ project, plan }) => (
                         <tr
                           key={`${project.id}-${plan.id}`}
-                          className={`border-t border-white/10 transition hover:bg-white/10 ${
+                          className={`border-t border-slate-200 transition hover:bg-slate-50 ${
                             plan.statut === "en dessin"
-                              ? "bg-sky-500/22"
+                              ? "bg-sky-50"
                               : plan.statut === "pause"
-                                ? "bg-yellow-500/22"
+                                ? "bg-yellow-50"
                                 : plan.statut === "a corriger"
-                                  ? "bg-orange-500/25"
+                                  ? "bg-orange-50"
                                   : plan.statut === "a vérifier"
-                                    ? "bg-purple-500/25"
+                                    ? "bg-purple-50"
                                     : plan.statut === "a réviser"
-                                      ? "bg-red-600/25"
+                                      ? "bg-red-50"
                                       : plan.statut === "révisé"
-                                        ? "bg-green-600/25"
+                                        ? "bg-emerald-50"
                                         : plan.statut === "envoyé"
-                                          ? "bg-zinc-600/30"
-                                          : "bg-black/15"
+                                          ? "bg-slate-100"
+                                          : "bg-white"
                           }`}
                         >
-                          <td className="p-3 text-white">{project.numeroProjet}</td>
-                          <td className="p-3">
+                          <td className="p-4 text-slate-900">{project.numeroProjet}</td>
+                          <td className="p-4">
                             <button
                               onClick={() => openProject(project)}
-                              className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-slate-950 hover:bg-white/20"
+                              className="rounded-full border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs text-slate-900 transition hover:bg-slate-200"
                             >
                               Fiche
                             </button>
                           </td>
-                          <td className="p-3 text-zinc-200">{plan.ville || project.ville}</td>
-                          <td className="p-3 text-zinc-200">{project.client}</td>
-                          <td className="p-3 text-zinc-100">
+                          <td className="p-4 text-slate-700">{plan.ville || project.ville}</td>
+                          <td className="p-4 text-slate-700">{project.client}</td>
+                          <td className="p-4 text-slate-700">
                             <div className="max-w-[520px] truncate" title={plan.descriptionPlan}>
                               {plan.descriptionPlan}
                             </div>
-                            <p className="mt-1 text-xs text-zinc-400">{plan.code}</p>
+                            <p className="mt-1 text-xs text-slate-400">{plan.code}</p>
                           </td>
-                          <td className="p-3">
+                          <td className="p-4">
                             <button
                               onClick={() => openProjectPlanDetail(project, plan)}
-                              className="rounded border border-orange-400/60 bg-orange-400/10 px-3 py-1.5 text-xs text-orange-200 hover:bg-orange-400/20"
+                              className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs text-orange-700 transition hover:bg-orange-100"
                             >
                               Demande
                             </button>
                           </td>
-                          <td className="p-3 text-zinc-200">{plan.planNumber}</td>
-                          <td className="p-3 text-zinc-200">{plan.revisionNumber}</td>
-                          <td className="p-3 text-zinc-200">{formatDisplayDate(plan.planRequisLe)}</td>
-                          <td className="p-3 text-zinc-200">{plan.statut}</td>
-                          <td className="p-3 text-zinc-200">{plan.dessinateurIngenieur}</td>
+                          <td className="p-4 text-slate-700">{plan.planNumber}</td>
+                          <td className="p-4 text-slate-700">{plan.revisionNumber}</td>
+                          <td className="p-4 text-slate-700">{formatDisplayDate(plan.planRequisLe)}</td>
+                          <td className="p-4 text-slate-700">{plan.statut}</td>
+                          <td className="p-4 text-slate-700">{plan.dessinateurIngenieur}</td>
                         </tr>
                       ))
                     )}
@@ -4345,127 +4402,109 @@ export default function Home() {
           )}
 
           {activeSection === "clients" && (
-            <div className="rounded-xl border border-white/10 bg-slate-900/80 p-6 backdrop-blur-sm">
-              <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <h2 className="text-xl font-semibold">Clients / Contacts</h2>
-                <button
-                  onClick={() => setShowClientModal(true)}
-                  className="rounded-lg bg-orange-500 px-4 py-2 font-medium text-white transition hover:bg-orange-400"
-                >
-                  + Gestion clients
-                </button>
-              </div>
+            <div className="space-y-6">
+              <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <h2 className="text-xl font-semibold text-slate-950">Clients / Contacts</h2>
+                    <p className="mt-2 text-sm text-slate-600">
+                      Gérez vos clients et accédez rapidement aux bons contacts.
+                    </p>
+                  </div>
 
-              <div className="mb-5 grid gap-4 lg:grid-cols-3">
-                <div>
-                  <label className="mb-2 block text-sm text-zinc-200">
-                    Recherche client
-                  </label>
-                  <input
-                    value={clientListSearch}
-                    onChange={(e) => setClientListSearch(e.target.value)}
-                    placeholder="Nom du client"
-                    className="w-full rounded-lg border border-white/10 bg-slate-100/80 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm text-zinc-200">
-                    Recherche contact
-                  </label>
-                  <input
-                    value={contactListSearch}
-                    onChange={(e) => setContactListSearch(e.target.value)}
-                    placeholder="Nom, téléphone ou courriel"
-                    className="w-full rounded-lg border border-white/10 bg-slate-100/80 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm text-zinc-200">
-                    Statut client
-                  </label>
-                  <select
-                    value={clientStatusFilter}
-                    onChange={(e) =>
-                      setClientStatusFilter(
-                        e.target.value as "Tous" | ClientStatus
-                      )
-                    }
-                    className="w-full rounded-lg border border-white/10 bg-slate-100/80 px-4 py-3 text-slate-950 outline-none"
+                  <button
+                    onClick={() => setShowClientModal(true)}
+                    className="rounded-full bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-orange-400"
                   >
-                    <option value="Tous" className="text-black">
-                      Tous
-                    </option>
-                    {CLIENT_STATUSES.map((status) => (
-                      <option
-                        key={status}
-                        value={status}
-                        className="text-black"
-                      >
-                        {status}
+                    + Gestion clients
+                  </button>
+                </div>
+
+                <div className="grid gap-4 lg:grid-cols-3">
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                      Recherche client
+                    </label>
+                    <input
+                      value={clientListSearch}
+                      onChange={(e) => setClientListSearch(e.target.value)}
+                      placeholder="Nom du client"
+                      className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                      Recherche contact
+                    </label>
+                    <input
+                      value={contactListSearch}
+                      onChange={(e) => setContactListSearch(e.target.value)}
+                      placeholder="Nom, téléphone ou courriel"
+                      className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                      Statut client
+                    </label>
+                    <select
+                      value={clientStatusFilter}
+                      onChange={(e) =>
+                        setClientStatusFilter(
+                          e.target.value as "Tous" | ClientStatus
+                        )
+                      }
+                      className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none"
+                    >
+                      <option value="Tous" className="text-slate-950">
+                        Tous
                       </option>
-                    ))}
-                  </select>
+                      {CLIENT_STATUSES.map((status) => (
+                        <option key={status} value={status} className="text-slate-950">
+                          {status}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
 
               {filteredClientsForList.length === 0 ? (
-                <p className="text-zinc-300">Aucun client trouvé.</p>
+                <p className="text-slate-500">Aucun client trouvé.</p>
               ) : (
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                   {filteredClientsForList.map((client) => (
                     <div
                       key={client.id}
-                      className="rounded-lg border border-white/10 bg-slate-100/80 p-4"
+                      className="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-5 shadow-sm"
                     >
-                      <div className="mb-3 flex items-center justify-between gap-3">
-                        <h3 className="text-lg font-semibold text-orange-400">
+                      <div className="mb-4 flex items-center justify-between gap-3">
+                        <h3 className="text-lg font-semibold text-slate-950">
                           {client.name}
                         </h3>
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-medium ${getClientStatusBadgeClasses(
-                              client.status
-                            )}`}
-                          >
-                            {client.status}
-                          </span>
-                          <select
-                            value={client.status}
-                            onChange={(e) =>
-                              updateClientStatus(
-                                client.name,
-                                e.target.value as ClientStatus
-                              )
-                            }
-                            className="rounded border border-white/10 bg-slate-100/80 px-2 py-1 text-sm text-slate-950"
-                          >
-                            {CLIENT_STATUSES.map((status) => (
-                              <option
-                                key={status}
-                                value={status}
-                                className="text-black"
-                              >
-                                {status}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-semibold ${getClientStatusBadgeClasses(
+                            client.status
+                          )}`}
+                        >
+                          {client.status}
+                        </span>
                       </div>
 
                       {client.contacts.length === 0 ? (
-                        <p className="text-sm text-zinc-400">Aucun contact.</p>
+                        <p className="text-sm text-slate-500">Aucun contact.</p>
                       ) : (
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           {client.contacts.map((contact) => (
                             <div
                               key={contact.id}
-                              className="rounded border border-white/10 bg-slate-100/70 p-3 text-sm"
+                              className="rounded-2xl border border-slate-200 bg-white p-4 text-sm"
                             >
-                              <p className="font-semibold">{contact.name}</p>
-                              <p className="text-zinc-300">{contact.phone}</p>
-                              <p className="text-zinc-300">{contact.email}</p>
+                              <p className="font-semibold text-slate-900">{contact.name}</p>
+                              <p className="text-slate-600">{contact.phone}</p>
+                              <p className="text-slate-600">{contact.email}</p>
                             </div>
                           ))}
                         </div>
@@ -4478,28 +4517,32 @@ export default function Home() {
           )}
 
           {activeSection === "facturation" && (
-            <div className="rounded-xl border border-white/10 bg-slate-900/80 p-6 backdrop-blur-sm">
-              <h2 className="text-xl font-semibold">Facturation</h2>
-              <p className="mt-2 text-zinc-300">Section en construction.</p>
+            <div className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
+              <h2 className="text-xl font-semibold text-slate-950">Facturation</h2>
+              <p className="mt-3 text-slate-600">
+                Section en construction, bientôt avec un suivi clair et des
+                tableaux plus précis.
+              </p>
             </div>
           )}
+
         </div>
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/70 px-4">
-          <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-black/90 p-6 text-white shadow-2xl">
-            <h2 className="mb-5 text-xl font-semibold">Nouveau projet</h2>
+        <div className="fixed inset-0 z-20 flex items-center justify-center bg-slate-900/30 px-4">
+          <div className="w-full max-w-lg rounded-[2rem] border border-slate-200 bg-white p-6 text-slate-900 shadow-2xl shadow-slate-300/40">
+            <h2 className="mb-5 text-xl font-semibold text-slate-950">Nouveau projet</h2>
 
             <div className="space-y-4">
               <div>
-                <label className="mb-2 block text-sm text-zinc-200">
+                <label className="mb-2 block text-sm font-medium text-slate-700">
                   Client
                 </label>
                 <input
                   list="clients-list-new-project"
                   placeholder="Commencez à taper le nom du client"
-                  className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none focus:border-white/30"
+                  className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-900 outline-none focus:border-orange-400"
                   value={newProject.client}
                   onChange={(e) =>
                     setNewProject({ ...newProject, client: e.target.value })
@@ -4513,12 +4556,12 @@ export default function Home() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm text-zinc-200">
+                <label className="mb-2 block text-sm font-medium text-slate-700">
                   Ville
                 </label>
                 <input
                   placeholder="Ville du projet"
-                  className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none focus:border-white/30"
+                  className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-900 outline-none focus:border-orange-400"
                   value={newProject.ville}
                   onChange={(e) =>
                     setNewProject({ ...newProject, ville: e.target.value })
@@ -4527,12 +4570,12 @@ export default function Home() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm text-zinc-200">
+                <label className="mb-2 block text-sm font-medium text-slate-700">
                   Description
                 </label>
                 <input
                   placeholder="Description du projet"
-                  className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none focus:border-white/30"
+                  className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-900 outline-none focus:border-orange-400"
                   value={newProject.description}
                   onChange={(e) =>
                     setNewProject({
@@ -4544,17 +4587,17 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="mt-6 flex gap-3">
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
               <button
                 onClick={addProject}
-                className="rounded-lg bg-white px-4 py-3 font-medium text-black transition hover:bg-zinc-200"
+                className="rounded-full bg-orange-500 px-5 py-3 font-semibold text-white transition hover:bg-orange-400"
               >
                 Ajouter
               </button>
 
               <button
                 onClick={() => setShowModal(false)}
-                className="rounded-lg border border-white/15 bg-white/5 px-4 py-3 text-slate-950 transition hover:bg-white/10"
+                className="rounded-full border border-slate-200 bg-slate-100 px-5 py-3 text-slate-900 transition hover:bg-slate-200"
               >
                 Annuler
               </button>
