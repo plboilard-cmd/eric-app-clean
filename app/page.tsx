@@ -2289,7 +2289,7 @@ export default function Home() {
                         value={newQuoteName}
                         onChange={(e) => setNewQuoteName(e.target.value)}
                         placeholder={`${projectForm.numeroProjet}_PLAN`}
-                        className="rounded-lg border border-white/10 bg-white/10 px-4 py-2 text-white outline-none placeholder:text-zinc-400"
+                        className="rounded-lg border border-white/10 bg-white/10 px-4 py-2 text-slate-950 outline-none placeholder:text-zinc-400"
                       />
                       <button
                         onClick={createQuote}
@@ -2313,7 +2313,7 @@ export default function Home() {
                           className={`rounded-lg border px-4 py-2 text-left text-sm transition ${
                             quote.id === activeQuoteId
                               ? "border-orange-400 bg-orange-500 text-black"
-                              : "border-white/10 bg-white/5 text-white hover:bg-white/10"
+                              : "border-white/10 bg-white/5 text-slate-950 hover:bg-white/10"
                           }`}
                         >
                           <div>{quote.name}</div>
@@ -2340,7 +2340,7 @@ export default function Home() {
                               e.target.value as QuoteStatus
                             )
                           }
-                          className="rounded-lg border border-white/10 bg-white/10 px-4 py-2 text-white outline-none"
+                          className="rounded-lg border border-white/10 bg-white/10 px-4 py-2 text-slate-950 outline-none"
                         >
                           {QUOTE_STATUSES.map((status) => (
                             <option
@@ -2369,7 +2369,7 @@ export default function Home() {
                             )}
                             target="_blank"
                             rel="noreferrer"
-                            className="rounded-lg border border-white/15 bg-white/10 px-4 py-2 text-sm text-white transition hover:bg-white/20"
+                            className="rounded-lg border border-white/15 bg-white/10 px-4 py-2 text-sm text-slate-950 transition hover:bg-white/20"
                           >
                             Ouvrir PDF généré
                           </a>
@@ -2559,13 +2559,13 @@ export default function Home() {
                       value={newItemName}
                       onChange={(e) => setNewItemName(e.target.value)}
                       placeholder="Nom de l’item"
-                      className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                      className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none placeholder:text-zinc-400"
                     />
                     <input
                       value={newItemPrice}
                       onChange={(e) => setNewItemPrice(e.target.value)}
                       placeholder="Prix"
-                      className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                      className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none placeholder:text-zinc-400"
                     />
                     <button
                       onClick={addItemToBank}
@@ -2638,7 +2638,7 @@ export default function Home() {
                         <select
                           value={newBillingMonth}
                           onChange={(e) => setNewBillingMonth(e.target.value)}
-                          className="rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none"
+                          className="rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none"
                         >
                           {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
                             <option key={month} value={month} className="text-black">
@@ -2653,7 +2653,7 @@ export default function Home() {
                         <input
                           value={newBillingYear}
                           onChange={(e) => setNewBillingYear(e.target.value)}
-                          className="w-28 rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none"
+                          className="w-28 rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none"
                         />
                       </div>
 
@@ -2721,7 +2721,7 @@ export default function Home() {
                                             onChange={(e) =>
                                               updateBillingMonthQuantity(month.id, line.id, Number(e.target.value))
                                             }
-                                            className="w-20 rounded border border-white/10 bg-white/10 px-2 py-1 text-white outline-none"
+                                            className="w-20 rounded border border-white/10 bg-white/10 px-2 py-1 text-slate-950 outline-none"
                                           />
                                           <span className="text-zinc-200">{money(monthQty * line.price)}</span>
                                         </div>
@@ -2786,7 +2786,7 @@ export default function Home() {
 
                               <button
                                 onClick={() => sendInvoiceEmail(month)}
-                                className="rounded-lg border border-white/15 bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/20"
+                                className="rounded-lg border border-white/15 bg-white/10 px-4 py-2 text-sm text-slate-950 hover:bg-white/20"
                               >
                                 Envoyer facture
                               </button>
@@ -2796,7 +2796,7 @@ export default function Home() {
                                   href={getPrivateBlobOpenUrl(month.invoice.pathname, month.invoice.url)}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="rounded-lg border border-white/15 bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/20"
+                                  className="rounded-lg border border-white/15 bg-white/10 px-4 py-2 text-sm text-slate-950 hover:bg-white/20"
                                 >
                                   Ouvrir {month.invoice.invoiceNumber}
                                 </a>
@@ -2902,7 +2902,7 @@ export default function Home() {
                                       descriptionPlan: e.target.value,
                                     })
                                   }
-                                  className="w-full min-w-[420px] rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                                  className="w-full min-w-[420px] rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                                 />
                                 <p className="mt-1 text-xs text-zinc-400">{plan.code}</p>
                               </td>
@@ -2910,7 +2910,7 @@ export default function Home() {
                               <td className="p-3">
                                 <button
                                   onClick={() => openPlanDemand(plan)}
-                                  className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-white hover:bg-white/20"
+                                  className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-slate-950 hover:bg-white/20"
                                 >
                                   Demande
                                 </button>
@@ -2925,7 +2925,7 @@ export default function Home() {
                                         statut: e.target.value,
                                       })
                                     }
-                                    className="rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                                    className="rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                                   >
                                     <option value="" className="text-black">--</option>
                                     {["commandé", "en dessin", "pause", "a vérifier", "a corriger", "envoyé", "a réviser", "révisé", "en révision"].map((status) => (
@@ -2955,7 +2955,7 @@ export default function Home() {
                                       dessinateurIngenieur: e.target.value,
                                     })
                                   }
-                                  className="rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                                  className="rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                                 >
                                   <option value="" className="text-black">--</option>
                                   <option value="Pierre-Luc" className="text-black">Pierre-Luc</option>
@@ -2976,7 +2976,7 @@ export default function Home() {
                   <div>
                     <button
                       onClick={() => setProjectPanel("demandePlan")}
-                      className="mb-3 rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm text-white transition hover:bg-white/10"
+                      className="mb-3 rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm text-slate-950 transition hover:bg-white/10"
                     >
                       ← Retour aux demandes
                     </button>
@@ -3008,7 +3008,7 @@ export default function Home() {
                         <input
                           value={projectForm.numeroProjet}
                           readOnly
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         />
                       </div>
                       <div>
@@ -3016,7 +3016,7 @@ export default function Home() {
                         <input
                           value={activePlan.planNumber}
                           readOnly
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         />
                       </div>
                       <div>
@@ -3024,7 +3024,7 @@ export default function Home() {
                         <input
                           value={activePlan.revisionNumber}
                           readOnly
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         />
                       </div>
                     </div>
@@ -3034,7 +3034,7 @@ export default function Home() {
                       <input
                         value={projectForm.client}
                         readOnly
-                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                       />
                     </div>
 
@@ -3045,7 +3045,7 @@ export default function Home() {
                           type="date"
                           value={activePlan.planRequisLe}
                           onChange={(e) => updateActivePlan({ planRequisLe: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         />
                       </div>
                       <div>
@@ -3053,7 +3053,7 @@ export default function Home() {
                         <select
                           value={activePlan.statut || ""}
                           onChange={(e) => updateActivePlan({ statut: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         >
                           <option value="" className="text-black">--</option>
                           {PLAN_STATUSES.map((status) => (
@@ -3069,7 +3069,7 @@ export default function Home() {
                         <input
                           value={activePlan.ville}
                           onChange={(e) => updateActivePlan({ ville: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         />
                       </div>
                       <div>
@@ -3077,7 +3077,7 @@ export default function Home() {
                         <select
                           value={activePlan.dessinateurIngenieur || ""}
                           onChange={(e) => updateActivePlan({ dessinateurIngenieur: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         >
                           {DESSINATEURS_PLAN.map((name) => (
                             <option key={name || "empty"} value={name} className="text-black">
@@ -3094,7 +3094,7 @@ export default function Home() {
                         <select
                           value={activePlan.tronconType}
                           onChange={(e) => updateActivePlan({ tronconType: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         >
                           {TRONCON_TYPES.map((type) => (
                             <option key={type || "empty"} value={type} className="text-black">
@@ -3108,7 +3108,7 @@ export default function Home() {
                         <input
                           value={activePlan.tronconNom}
                           onChange={(e) => updateActivePlan({ tronconNom: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         />
                       </div>
                     </div>
@@ -3119,7 +3119,7 @@ export default function Home() {
                         <input
                           value={activePlan.limiteVitesse}
                           onChange={(e) => updateActivePlan({ limiteVitesse: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         />
                       </div>
                       <div>
@@ -3127,7 +3127,7 @@ export default function Home() {
                         <select
                           value={activePlan.direction}
                           onChange={(e) => updateActivePlan({ direction: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         >
                           {DIRECTIONS.map((direction) => (
                             <option key={direction || "empty"} value={direction} className="text-black">
@@ -3143,7 +3143,7 @@ export default function Home() {
                       <input
                         value={activePlan.natureTravaux}
                         onChange={(e) => updateActivePlan({ natureTravaux: e.target.value })}
-                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                       />
                     </div>
 
@@ -3153,7 +3153,7 @@ export default function Home() {
                         <input
                           value={activePlan.dureeTravaux}
                           onChange={(e) => updateActivePlan({ dureeTravaux: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         />
                       </div>
                       <div>
@@ -3161,7 +3161,7 @@ export default function Home() {
                         <select
                           value={activePlan.referenceType}
                           onChange={(e) => updateActivePlan({ referenceType: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         >
                           {REFERENCE_TYPES.map((type) => (
                             <option key={type || "empty"} value={type} className="text-black">
@@ -3175,7 +3175,7 @@ export default function Home() {
                         <input
                           value={activePlan.referenceValue}
                           onChange={(e) => updateActivePlan({ referenceValue: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         />
                       </div>
                     </div>
@@ -3186,7 +3186,7 @@ export default function Home() {
                         <select
                           value={activePlan.fermeture}
                           onChange={(e) => updateActivePlan({ fermeture: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         >
                           <option value="" className="text-black">--</option>
                           {fermetureOptions.map((option) => (
@@ -3201,7 +3201,7 @@ export default function Home() {
                           value={newFermetureOption}
                           onChange={(e) => setNewFermetureOption(e.target.value)}
                           placeholder="Ajouter une option de fermeture"
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none placeholder:text-zinc-400"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none placeholder:text-zinc-400"
                         />
                         <button
                           onClick={addFermetureOption}
@@ -3218,7 +3218,7 @@ export default function Home() {
                         value={activePlan.zoneTravaux}
                         onChange={(e) => updateActivePlan({ zoneTravaux: e.target.value })}
                         rows={3}
-                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                       />
                     </div>
 
@@ -3228,7 +3228,7 @@ export default function Home() {
                         value={activePlan.detours}
                         onChange={(e) => updateActivePlan({ detours: e.target.value })}
                         rows={3}
-                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                       />
                     </div>
 
@@ -3238,7 +3238,7 @@ export default function Home() {
                         value={activePlan.notes}
                         onChange={(e) => updateActivePlan({ notes: e.target.value })}
                         rows={6}
-                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                       />
                     </div>
                   </div>
@@ -3261,7 +3261,7 @@ export default function Home() {
                                   href={getPrivateBlobOpenUrl((attachment as PlanAttachment).pathname, (attachment as PlanAttachment).url)}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-white hover:bg-white/20"
+                                  className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-slate-950 hover:bg-white/20"
                                 >
                                   Ouvrir
                                 </a>
@@ -3316,7 +3316,7 @@ export default function Home() {
                                 href={getPrivateBlobOpenUrl(activePlan.dessinateurPdf.pathname, activePlan.dessinateurPdf.url)}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-white hover:bg-white/20"
+                                className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-slate-950 hover:bg-white/20"
                               >
                                 Ouvrir
                               </a>
@@ -3366,7 +3366,7 @@ export default function Home() {
                                     href={getPrivateBlobOpenUrl(doc.pathname, doc.url)}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-white hover:bg-white/20"
+                                    className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-slate-950 hover:bg-white/20"
                                   >
                                     Ouvrir
                                   </a>
@@ -3748,7 +3748,7 @@ export default function Home() {
                                 )}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm text-white transition hover:bg-white/20"
+                                className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm text-slate-950 transition hover:bg-white/20"
                               >
                                 Ouvrir
                               </a>
@@ -3816,7 +3816,7 @@ export default function Home() {
                         value={newClientName}
                         onChange={(e) => setNewClientName(e.target.value)}
                         placeholder="Nom du client"
-                        className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                        className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none placeholder:text-zinc-400"
                       />
 
                       <select
@@ -3824,7 +3824,7 @@ export default function Home() {
                         onChange={(e) =>
                           setNewClientStatus(e.target.value as ClientStatus)
                         }
-                        className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none"
+                        className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none"
                       >
                         {CLIENT_STATUSES.map((status) => (
                           <option
@@ -3884,7 +3884,7 @@ export default function Home() {
                           setSelectedClientForContact(e.target.value)
                         }
                         placeholder="Commencez à taper le client"
-                        className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                        className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none placeholder:text-zinc-400"
                       />
                       <datalist id="clients-list-contact-modal">
                         {clients.map((client) => (
@@ -3913,21 +3913,21 @@ export default function Home() {
                         value={newContactName}
                         onChange={(e) => setNewContactName(e.target.value)}
                         placeholder="Nom du contact"
-                        className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                        className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none placeholder:text-zinc-400"
                       />
 
                       <input
                         value={newContactPhone}
                         onChange={(e) => setNewContactPhone(e.target.value)}
                         placeholder="Téléphone"
-                        className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                        className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none placeholder:text-zinc-400"
                       />
 
                       <input
                         value={newContactEmail}
                         onChange={(e) => setNewContactEmail(e.target.value)}
                         placeholder="Courriel"
-                        className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                        className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none placeholder:text-zinc-400"
                       />
 
                       <button
@@ -4153,7 +4153,7 @@ export default function Home() {
                           <td className="w-[115px] p-3">
                             <button
                               onClick={() => openProject(project)}
-                              className="rounded-md border border-white/15 bg-white/10 px-3 py-1.5 text-sm text-white transition hover:bg-white/20"
+                              className="rounded-md border border-white/15 bg-white/10 px-3 py-1.5 text-sm text-slate-950 transition hover:bg-white/20"
                             >
                               Ouvrir ↗
                             </button>
@@ -4309,7 +4309,7 @@ export default function Home() {
                           <td className="p-3">
                             <button
                               onClick={() => openProject(project)}
-                              className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-white hover:bg-white/20"
+                              className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-slate-950 hover:bg-white/20"
                             >
                               Fiche
                             </button>
@@ -4499,7 +4499,7 @@ export default function Home() {
                 <input
                   list="clients-list-new-project"
                   placeholder="Commencez à taper le nom du client"
-                  className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/30"
+                  className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none focus:border-white/30"
                   value={newProject.client}
                   onChange={(e) =>
                     setNewProject({ ...newProject, client: e.target.value })
@@ -4518,7 +4518,7 @@ export default function Home() {
                 </label>
                 <input
                   placeholder="Ville du projet"
-                  className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/30"
+                  className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none focus:border-white/30"
                   value={newProject.ville}
                   onChange={(e) =>
                     setNewProject({ ...newProject, ville: e.target.value })
@@ -4532,7 +4532,7 @@ export default function Home() {
                 </label>
                 <input
                   placeholder="Description du projet"
-                  className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/30"
+                  className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none focus:border-white/30"
                   value={newProject.description}
                   onChange={(e) =>
                     setNewProject({
@@ -4554,7 +4554,7 @@ export default function Home() {
 
               <button
                 onClick={() => setShowModal(false)}
-                className="rounded-lg border border-white/15 bg-white/5 px-4 py-3 text-white transition hover:bg-white/10"
+                className="rounded-lg border border-white/15 bg-white/5 px-4 py-3 text-slate-950 transition hover:bg-white/10"
               >
                 Annuler
               </button>
