@@ -2107,16 +2107,15 @@ export default function Home() {
   };
 
   const filteredProjects = useMemo(() => {
-    const globalSearch = searchNumero.toLowerCase().trim();
-
     return projects.filter((project) => {
-      const globalOk =
-        globalSearch === "" ||
-        project.numeroProjet.toLowerCase().includes(globalSearch) ||
-        project.numeroClient.toLowerCase().includes(globalSearch) ||
-        project.client.toLowerCase().includes(globalSearch) ||
-        project.ville.toLowerCase().includes(globalSearch) ||
-        project.description.toLowerCase().includes(globalSearch);
+      const search = searchNumero.toLowerCase().trim();
+      const globalSearchOk =
+        search === "" ||
+        project.numeroProjet.toLowerCase().includes(search) ||
+        project.numeroClient.toLowerCase().includes(search) ||
+        project.client.toLowerCase().includes(search) ||
+        project.ville.toLowerCase().includes(search) ||
+        project.description.toLowerCase().includes(search);
 
       const clientOk = project.client
         .toLowerCase()
@@ -2131,7 +2130,7 @@ export default function Home() {
 
       const statusOk = statusFilters.includes(project.statut);
 
-      return globalOk && clientOk && villeOk && chargeOk && statusOk;
+      return globalSearchOk && clientOk && villeOk && chargeOk && statusOk;
     });
   }, [
     projects,
@@ -3954,47 +3953,52 @@ export default function Home() {
   }
 
   return (
-    <main className="relative min-h-screen bg-slate-50 text-slate-900">
-      <div className="absolute inset-0 bg-[url('/eric-dashboard-bg.png')] bg-cover bg-center opacity-20" />
-      <div className="absolute inset-0 bg-gradient-to-br from-white via-slate-50 to-orange-50 opacity-95" />
+    <main className="relative min-h-screen overflow-hidden bg-slate-950 text-white">
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{ backgroundImage: "url('/eric-dashboard-bg.png')" }}
+      />
+      <div className="absolute inset-0 bg-black/65" />
 
-      <div className="relative z-10 min-h-screen px-6 py-6 md:px-8 xl:px-10">
+      <div className="relative z-10 min-h-screen px-6 py-5 md:px-8 xl:px-10">
         <div className="mx-auto w-full max-w-[1700px]">
-          <div className="mb-4 overflow-hidden rounded-[1.5rem] border border-slate-200 bg-white/90 shadow-lg shadow-slate-300/30">
-            <div className="relative">
-              <div className="absolute inset-0 bg-[url('/eric-dashboard-bg.png')] bg-cover bg-center opacity-15" />
-              <div className="absolute inset-0 bg-white/80" />
-              <div className="relative flex flex-col gap-3 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-                <div>
-                  <p className="text-xs uppercase tracking-[0.3em] text-orange-500">ERIC</p>
-                  <h1 className="mt-1 text-2xl font-semibold text-slate-950">
-                    Tableau de bord projet
-                  </h1>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-3">
-                  <p className="text-sm text-slate-600">{loggedInUser}</p>
-                  <button
-                    onClick={() => setShowModal(true)}
-                    className="rounded-full bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-orange-200/50 transition hover:bg-orange-400"
-                  >
-                    + Nouveau projet
-                  </button>
-                  <button
-                    onClick={handleLogout}
-                    className="rounded-full bg-orange-500 px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-orange-200/50 transition hover:bg-orange-400"
-                  >
-                    Déconnexion
-                  </button>
-                </div>
+          <div className="mb-4 rounded-2xl border border-white/10 bg-black/35 p-4 shadow-2xl backdrop-blur-sm">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-[0.3em] text-orange-400">ERIC</p>
+                <h1 className="mt-1 text-2xl font-semibold text-white">
+                  Tableau de bord projet
+                </h1>
               </div>
+
+              <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+                <p className="text-sm text-slate-200">{loggedInUser}</p>
+                <button
+                  onClick={handleLogout}
+                  className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-orange-900/30 transition hover:bg-orange-400"
+                >
+                  Déconnexion
+                </button>
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-col gap-3 rounded-xl border border-orange-500/40 bg-black/30 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <p className="text-xs uppercase tracking-[0.3em] text-orange-400">ERIC</p>
+                <h2 className="mt-1 text-xl font-semibold text-white">
+                  Projets
+                </h2>
+              </div>
+              <button
+                onClick={() => setShowModal(true)}
+                className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-orange-900/30 transition hover:bg-orange-400"
+              >
+                + Nouveau projet
+              </button>
             </div>
           </div>
 
-          <div className="mb-4 overflow-hidden rounded-full border border-slate-200 bg-white/80 shadow-sm">
-            <div className="relative">
-              <div className="absolute inset-0 bg-[url('/eric-dashboard-bg.png')] bg-cover bg-center opacity-10" />
-              <div className="relative flex flex-wrap gap-2 p-2">
+          <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
             {[
               ["projets", "Projets"],
               ["plans", "Plans"],
@@ -4004,78 +4008,87 @@ export default function Home() {
               <button
                 key={key}
                 onClick={() => changeSection(key as ActiveSection)}
-                className={`rounded-full px-5 py-3 text-sm font-semibold transition ${
+                className={`rounded-xl border-2 px-5 py-4 text-base font-semibold transition ${
                   activeSection === key
-                    ? "bg-orange-500 text-white shadow-lg shadow-orange-200/50"
-                    : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-orange-50"
+                    ? "border-orange-400 bg-orange-500 text-black shadow-lg shadow-orange-950/40"
+                    : "border-orange-400 bg-black/25 text-orange-400 hover:bg-orange-400/10"
                 }`}
               >
                 {label}
               </button>
             ))}
-              </div>
-            </div>
           </div>
 
           {activeSection === "projets" && (
-            <div className="space-y-4">
-              <div className="rounded-[1.5rem] border border-slate-200 bg-white/90 p-4 shadow-sm">
-                <div className="grid gap-3 lg:grid-cols-[1fr_220px_1.3fr] lg:items-end">
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                      Recherche
-                    </label>
-                    <input
-                      value={searchNumero}
-                      onChange={(e) => setSearchNumero(e.target.value)}
-                      placeholder="Numéro, client, ville ou description"
-                      className="w-full rounded-full border border-slate-200 bg-slate-100 px-4 py-2.5 text-sm text-slate-950 outline-none placeholder:text-slate-500"
-                    />
-                  </div>
+            <div className="space-y-6">
+              <div className="rounded-2xl border border-white/10 bg-black/35 p-4 shadow-2xl backdrop-blur-sm">
+                <div className="mb-3 flex items-center justify-between">
+                  <h2 className="text-lg font-semibold text-white">Projets</h2>
+                  <p className="hidden text-xs text-slate-300 sm:block">Recherche et filtres rapides</p>
+                </div>
 
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                      Chargé
-                    </label>
-                    <select
-                      value={chargeFilter}
-                      onChange={(e) => setChargeFilter(e.target.value as "tous" | "mes-projets")}
-                      className="w-full rounded-full border border-slate-200 bg-slate-100 px-4 py-2.5 text-sm text-slate-950 outline-none"
-                    >
-                      <option value="tous" className="text-slate-950">
-                        Tous les projets
-                      </option>
-                      <option value="mes-projets" className="text-slate-950">
-                        Mes projets
-                      </option>
-                    </select>
-                  </div>
+                <div className="grid gap-3 lg:grid-cols-[1.2fr_1fr]">
+                  <div className="space-y-3">
+                    <div>
+                      <label className="mb-1.5 block text-sm font-medium text-slate-200">
+                        Recherche
+                      </label>
+                      <input
+                        value={searchNumero}
+                        onChange={(e) => setSearchNumero(e.target.value)}
+                        placeholder="Numéro, client ou ville"
+                        className="w-full rounded-lg border border-white/10 bg-white/85 px-4 py-2.5 text-slate-950 outline-none placeholder:text-slate-500"
+                      />
+                    </div>
 
-                  <div>
-                    <label className="mb-1 block text-xs font-semibold uppercase tracking-[0.16em] text-slate-500">
-                      Statuts affichés
-                    </label>
-                    <div className="flex flex-wrap gap-2">
-                      {ALL_STATUSES.map((status) => (
-                        <label
-                          key={status}
-                          className="flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-100 px-3 py-2 text-xs font-medium text-slate-700"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={statusFilters.includes(status)}
-                            onChange={() => toggleStatusFilter(status)}
-                            className="h-3.5 w-3.5 rounded border-slate-300 accent-orange-500"
-                          />
-                          {status}
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <label className="mb-1.5 block text-sm font-medium text-slate-200">
+                          Chargé de projets
                         </label>
-                      ))}
+                        <select
+                          value={chargeFilter}
+                          onChange={(e) => setChargeFilter(e.target.value as "tous" | "mes-projets")}
+                          className="w-full rounded-lg border border-white/10 bg-white/85 px-4 py-2.5 text-slate-950 outline-none"
+                        >
+                          <option value="tous" className="text-slate-950">
+                            Tous les projets
+                          </option>
+                          <option value="mes-projets" className="text-slate-950">
+                            Mes projets
+                          </option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="mb-1.5 block text-sm font-medium text-slate-200">
+                          Statuts affichés
+                        </label>
+                        <div className="rounded-lg border border-white/10 bg-white/85 p-2">
+                          <div className="grid grid-cols-2 gap-2 text-xs text-slate-700">
+                            {ALL_STATUSES.map((status) => (
+                              <label
+                                key={status}
+                                className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={statusFilters.includes(status)}
+                                  onChange={() => toggleStatusFilter(status)}
+                                  className="h-4 w-4 rounded border-slate-300 text-orange-500"
+                                />
+                                {status}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
+
                 </div>
               </div>
 
-              <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+              <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/90 shadow-2xl shadow-black/30">
                 <table className="min-w-full text-sm">
                   <thead className="bg-orange-100 text-slate-900">
                     <tr>
@@ -4138,10 +4151,10 @@ export default function Home() {
 
           {activeSection === "plans" && (
             <div className="space-y-6">
-              <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="rounded-2xl border border-white/10 bg-black/35 p-4 shadow-2xl backdrop-blur-sm">
                 <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div>
-                    <h2 className="text-xl font-semibold text-slate-950">Liste de plans</h2>
+                    <h2 className="text-xl font-semibold text-white">Liste de plans</h2>
                   </div>
 
                   <label className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700">
