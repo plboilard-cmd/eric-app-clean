@@ -2164,7 +2164,7 @@ export default function Home() {
             </p>
 
             <div className="mb-4">
-              <label className="mb-2 block text-sm text-slate-700">
+              <label className="mb-1 block text-xs font-medium text-slate-600">
                 Identifiant
               </label>
               <input
@@ -2177,7 +2177,7 @@ export default function Home() {
             </div>
 
             <div className="mb-4">
-              <label className="mb-2 block text-sm text-slate-700">
+              <label className="mb-1 block text-xs font-medium text-slate-600">
                 Code d’accès
               </label>
               <input
@@ -2214,7 +2214,7 @@ export default function Home() {
 
         <div className="relative z-10 px-6 py-5 md:px-8 xl:px-10">
           <div className="mx-auto max-w-[1700px]">
-            <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+            <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-white/10 bg-black/35 p-4 shadow-2xl backdrop-blur-sm md:flex-row md:items-center md:justify-between">
               <div>
                 <p className="text-sm uppercase tracking-[0.25em] text-slate-200">
                   ERIC
@@ -2235,10 +2235,10 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="mb-6 grid grid-cols-1 gap-5 lg:grid-cols-4">
+            <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
               <button
                 onClick={() => setProjectPanel("fiche")}
-                className={`min-h-[90px] rounded-xl border-2 border-orange-400 px-4 text-2xl font-semibold transition ${
+                className={`min-h-[58px] rounded-xl border-2 border-orange-400 px-4 text-lg font-semibold transition ${
                   projectPanel === "fiche"
                     ? "bg-orange-500 text-black"
                     : "bg-transparent text-orange-400 hover:bg-orange-400/10"
@@ -2249,7 +2249,7 @@ export default function Home() {
 
               <button
                 onClick={() => setProjectPanel("soumission")}
-                className={`min-h-[90px] rounded-xl border-2 border-orange-400 px-4 text-2xl font-semibold transition ${
+                className={`min-h-[58px] rounded-xl border-2 border-orange-400 px-4 text-lg font-semibold transition ${
                   projectPanel === "soumission"
                     ? "bg-orange-500 text-black"
                     : "bg-transparent text-orange-400 hover:bg-orange-400/10"
@@ -2260,7 +2260,7 @@ export default function Home() {
 
               <button
                 onClick={() => setProjectPanel("demandePlan")}
-                className={`min-h-[90px] rounded-xl border-2 border-orange-400 px-4 text-2xl font-semibold transition ${
+                className={`min-h-[58px] rounded-xl border-2 border-orange-400 px-4 text-lg font-semibold transition ${
                   projectPanel === "demandePlan"
                     ? "bg-orange-500 text-black"
                     : "bg-transparent text-orange-400 hover:bg-orange-400/10"
@@ -2271,7 +2271,7 @@ export default function Home() {
 
               <button
                 onClick={() => setProjectPanel("facturation")}
-                className={`min-h-[90px] rounded-xl border-2 border-orange-400 px-4 text-2xl font-semibold transition ${
+                className={`min-h-[58px] rounded-xl border-2 border-orange-400 px-4 text-lg font-semibold transition ${
                   projectPanel === "facturation"
                     ? "bg-orange-500 text-black"
                     : "bg-transparent text-orange-400 hover:bg-orange-400/10"
@@ -3420,27 +3420,27 @@ export default function Home() {
                 </div>
               </div>
             ) : (
-              <div className="rounded-2xl border border-white/10 bg-black/30 p-5 shadow-2xl backdrop-blur-sm">
-                <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-                  <div className="rounded-xl border border-white/10 bg-slate-100/80 p-5">
+              <div className="rounded-2xl border border-white/10 bg-black/25 p-4 shadow-2xl backdrop-blur-sm">
+                <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.05fr_0.95fr]">
+                  <div className="rounded-2xl border border-slate-200 bg-white/90 p-4 text-slate-950 shadow-xl">
                     <h2 className="mb-5 text-xl font-semibold text-slate-900">
                       Informations projet
                     </h2>
 
                     <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                       <div>
-                        <label className="mb-2 block text-sm text-slate-700">
+                        <label className="mb-1 block text-xs font-medium text-slate-600">
                           Numéro de projet
                         </label>
                         <input
                           value={projectForm.numeroProjet}
                           readOnly
-                          className="w-full border-b-2 border-slate-300 bg-transparent px-2 py-2 text-slate-950 outline-none"
+                          className="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-950 outline-none focus:border-orange-400"
                         />
                       </div>
 
                       <div>
-                        <label className="mb-2 block text-sm text-slate-700">
+                        <label className="mb-1 block text-xs font-medium text-slate-600">
                           Numéro client
                         </label>
                         <input
@@ -3452,13 +3452,13 @@ export default function Home() {
                             })
                           }
                           placeholder="Ex. no interne client"
-                          className="w-full border-b-2 border-slate-300 bg-transparent px-2 py-2 text-slate-950 outline-none placeholder:text-slate-500"
+                          className="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-950 outline-none placeholder:text-slate-500 focus:border-orange-400"
                         />
                       </div>
                     </div>
 
-                    <div className="mt-5">
-                      <label className="mb-2 block text-sm text-slate-700">
+                    <div className="mt-3">
+                      <label className="mb-1 block text-xs font-medium text-slate-600">
                         Statut
                       </label>
                       <select
@@ -3469,7 +3469,7 @@ export default function Home() {
                             statut: e.target.value as StatusType,
                           })
                         }
-                        className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none"
+                        className="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-950 outline-none focus:border-orange-400"
                       >
                         {ALL_STATUSES.map((status) => (
                           <option
@@ -3483,8 +3483,8 @@ export default function Home() {
                       </select>
                     </div>
 
-                    <div className="mt-5">
-                      <label className="mb-2 block text-sm text-slate-700">
+                    <div className="mt-3">
+                      <label className="mb-1 block text-xs font-medium text-slate-600">
                         Chargé de projet
                       </label>
                       <select
@@ -3495,7 +3495,7 @@ export default function Home() {
                             charge: e.target.value,
                           })
                         }
-                        className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none"
+                        className="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-950 outline-none focus:border-orange-400"
                       >
                         <option value="">Sélectionner un chargé</option>
                         <option value="Pierre-Luc">Pierre-Luc</option>
@@ -3503,8 +3503,8 @@ export default function Home() {
                       </select>
                     </div>
 
-                    <div className="mt-5">
-                      <label className="mb-2 block text-sm text-slate-700">
+                    <div className="mt-3">
+                      <label className="mb-1 block text-xs font-medium text-slate-600">
                         Ville
                       </label>
                       <input
@@ -3515,12 +3515,12 @@ export default function Home() {
                             ville: e.target.value,
                           })
                         }
-                        className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none"
+                        className="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-950 outline-none focus:border-orange-400"
                       />
                     </div>
 
-                    <div className="mt-5">
-                      <label className="mb-2 block text-sm text-slate-700">
+                    <div className="mt-3">
+                      <label className="mb-1 block text-xs font-medium text-slate-600">
                         Endroit
                       </label>
                       <input
@@ -3531,12 +3531,12 @@ export default function Home() {
                             endroit: e.target.value,
                           })
                         }
-                        className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none"
+                        className="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-950 outline-none focus:border-orange-400"
                       />
                     </div>
 
-                    <div className="mt-5">
-                      <label className="mb-2 block text-sm text-slate-700">
+                    <div className="mt-3">
+                      <label className="mb-1 block text-xs font-medium text-slate-600">
                         Description
                       </label>
                       <textarea
@@ -3547,13 +3547,13 @@ export default function Home() {
                             description: e.target.value,
                           })
                         }
-                        rows={4}
-                        className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none"
+                        rows={3}
+                        className="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-950 outline-none focus:border-orange-400"
                       />
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-white/10 bg-slate-100/80 p-5">
+                  <div className="rounded-2xl border border-slate-200 bg-white/90 p-4 text-slate-950 shadow-xl">
                     <div className="mb-5">
                       <h2 className="text-xl font-semibold text-slate-900">
                         Client et contacts
@@ -3561,7 +3561,7 @@ export default function Home() {
                     </div>
 
                     <div>
-                      <label className="mb-2 block text-sm text-slate-700">
+                      <label className="mb-1 block text-xs font-medium text-slate-600">
                         Client
                       </label>
                       <select
@@ -3573,7 +3573,7 @@ export default function Home() {
                             contactId: "",
                           })
                         }
-                        className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none"
+                        className="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-950 outline-none focus:border-orange-400"
                       >
                         <option value="" className="text-slate-950">
                           Sélectionner un client
@@ -3590,8 +3590,8 @@ export default function Home() {
                       </select>
                     </div>
 
-                    <div className="mt-5">
-                      <label className="mb-2 block text-sm text-slate-700">
+                    <div className="mt-3">
+                      <label className="mb-1 block text-xs font-medium text-slate-600">
                         Contact
                       </label>
                       <select
@@ -3602,7 +3602,7 @@ export default function Home() {
                             contactId: e.target.value,
                           })
                         }
-                        className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none"
+                        className="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-950 outline-none focus:border-orange-400"
                       >
                         <option value="" className="text-black">
                           Sélectionner un contact
@@ -3621,7 +3621,7 @@ export default function Home() {
 
                     <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2">
                       <div>
-                        <label className="mb-2 block text-sm text-slate-700">
+                        <label className="mb-1 block text-xs font-medium text-slate-600">
                           Téléphone
                         </label>
                         <input
@@ -3633,7 +3633,7 @@ export default function Home() {
                       </div>
 
                       <div>
-                        <label className="mb-2 block text-sm text-slate-700">
+                        <label className="mb-1 block text-xs font-medium text-slate-600">
                           Courriel
                         </label>
                         <input
@@ -3647,7 +3647,7 @@ export default function Home() {
 
                     <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2">
                       <div>
-                        <label className="mb-2 block text-sm text-slate-700">
+                        <label className="mb-1 block text-xs font-medium text-slate-600">
                           Courriel facturation
                         </label>
                         <input
@@ -3664,7 +3664,7 @@ export default function Home() {
                       </div>
 
                       <div>
-                        <label className="mb-2 block text-sm text-slate-700">
+                        <label className="mb-1 block text-xs font-medium text-slate-600">
                           Courriel plan
                         </label>
                         <input
@@ -3962,43 +3962,40 @@ export default function Home() {
 
       <div className="relative z-10 min-h-screen px-6 py-5 md:px-8 xl:px-10">
         <div className="mx-auto w-full max-w-[1700px]">
-          <div className="mb-4 rounded-2xl border border-white/10 bg-black/35 p-4 shadow-2xl backdrop-blur-sm">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div className="mb-3 rounded-2xl border border-white/10 bg-black/45 px-4 py-3 shadow-2xl backdrop-blur-sm">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <p className="text-sm uppercase tracking-[0.3em] text-orange-400">ERIC</p>
-                <h1 className="mt-1 text-2xl font-semibold text-white">
+                <p className="text-xs uppercase tracking-[0.35em] text-orange-400">ERIC</p>
+                <h1 className="mt-0.5 text-2xl font-semibold text-white">
                   Tableau de bord projet
                 </h1>
               </div>
 
-              <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="rounded-xl border border-orange-500/35 bg-black/35 px-4 py-2">
+                  <p className="text-[10px] uppercase tracking-[0.3em] text-orange-400">Section</p>
+                  <p className="text-sm font-semibold text-white">
+                    {activeSection === "projets" ? "Projets" : activeSection === "plans" ? "Plans" : activeSection === "clients" ? "Clients" : "Facturation"}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowModal(true)}
+                  className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-orange-900/30 transition hover:bg-orange-400"
+                >
+                  + Nouveau projet
+                </button>
                 <p className="text-sm text-slate-200">{loggedInUser}</p>
                 <button
                   onClick={handleLogout}
-                  className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-orange-900/30 transition hover:bg-orange-400"
+                  className="rounded-lg border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20"
                 >
                   Déconnexion
                 </button>
               </div>
             </div>
-
-            <div className="mt-4 flex flex-col gap-3 rounded-xl border border-orange-500/40 bg-black/30 p-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-xs uppercase tracking-[0.3em] text-orange-400">ERIC</p>
-                <h2 className="mt-1 text-xl font-semibold text-white">
-                  Projets
-                </h2>
-              </div>
-              <button
-                onClick={() => setShowModal(true)}
-                className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-orange-900/30 transition hover:bg-orange-400"
-              >
-                + Nouveau projet
-              </button>
-            </div>
           </div>
 
-          <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="mb-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
             {[
               ["projets", "Projets"],
               ["plans", "Plans"],
@@ -4008,7 +4005,7 @@ export default function Home() {
               <button
                 key={key}
                 onClick={() => changeSection(key as ActiveSection)}
-                className={`rounded-xl border-2 px-5 py-4 text-base font-semibold transition ${
+                className={`rounded-xl border-2 px-5 py-3 text-sm font-semibold transition ${
                   activeSection === key
                     ? "border-orange-400 bg-orange-500 text-black shadow-lg shadow-orange-950/40"
                     : "border-orange-400 bg-black/25 text-orange-400 hover:bg-orange-400/10"
@@ -4020,75 +4017,47 @@ export default function Home() {
           </div>
 
           {activeSection === "projets" && (
-            <div className="space-y-6">
-              <div className="rounded-2xl border border-white/10 bg-black/35 p-4 shadow-2xl backdrop-blur-sm">
-                <div className="mb-3 flex items-center justify-between">
-                  <h2 className="text-lg font-semibold text-white">Projets</h2>
-                  <p className="hidden text-xs text-slate-300 sm:block">Recherche et filtres rapides</p>
-                </div>
-
-                <div className="grid gap-3 lg:grid-cols-[1.2fr_1fr]">
-                  <div className="space-y-3">
-                    <div>
-                      <label className="mb-1.5 block text-sm font-medium text-slate-200">
-                        Recherche
-                      </label>
-                      <input
-                        value={searchNumero}
-                        onChange={(e) => setSearchNumero(e.target.value)}
-                        placeholder="Numéro, client ou ville"
-                        className="w-full rounded-lg border border-white/10 bg-white/85 px-4 py-2.5 text-slate-950 outline-none placeholder:text-slate-500"
-                      />
-                    </div>
-
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div>
-                        <label className="mb-1.5 block text-sm font-medium text-slate-200">
-                          Chargé de projets
-                        </label>
-                        <select
-                          value={chargeFilter}
-                          onChange={(e) => setChargeFilter(e.target.value as "tous" | "mes-projets")}
-                          className="w-full rounded-lg border border-white/10 bg-white/85 px-4 py-2.5 text-slate-950 outline-none"
-                        >
-                          <option value="tous" className="text-slate-950">
-                            Tous les projets
-                          </option>
-                          <option value="mes-projets" className="text-slate-950">
-                            Mes projets
-                          </option>
-                        </select>
-                      </div>
-                      <div>
-                        <label className="mb-1.5 block text-sm font-medium text-slate-200">
-                          Statuts affichés
-                        </label>
-                        <div className="rounded-lg border border-white/10 bg-white/85 p-2">
-                          <div className="grid grid-cols-2 gap-2 text-xs text-slate-700">
-                            {ALL_STATUSES.map((status) => (
-                              <label
-                                key={status}
-                                className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-1.5"
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={statusFilters.includes(status)}
-                                  onChange={() => toggleStatusFilter(status)}
-                                  className="h-4 w-4 rounded border-slate-300 text-orange-500"
-                                />
-                                {status}
-                              </label>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+            <div className="space-y-3">
+              <div className="rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 text-slate-950 shadow-2xl shadow-black/30">
+                <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                  <div className="flex min-w-0 flex-1 items-center gap-3">
+                    <h2 className="shrink-0 text-lg font-semibold text-slate-950">Projets</h2>
+                    <input
+                      value={searchNumero}
+                      onChange={(e) => setSearchNumero(e.target.value)}
+                      placeholder="Recherche: numéro, client, ville ou description"
+                      className="w-full rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-950 outline-none placeholder:text-slate-500 focus:border-orange-400"
+                    />
                   </div>
 
+                  <div className="flex flex-wrap items-center gap-2">
+                    <select
+                      value={chargeFilter}
+                      onChange={(e) => setChargeFilter(e.target.value as "tous" | "mes-projets")}
+                      className="rounded-full border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-950 outline-none"
+                    >
+                      <option value="tous" className="text-slate-950">Tous les projets</option>
+                      <option value="mes-projets" className="text-slate-950">Mes projets</option>
+                    </select>
+
+                    {ALL_STATUSES.map((status) => (
+                      <button
+                        key={status}
+                        onClick={() => toggleStatusFilter(status)}
+                        className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
+                          statusFilters.includes(status)
+                            ? "border-orange-300 bg-orange-50 text-orange-700"
+                            : "border-slate-200 bg-slate-100 text-slate-400"
+                        }`}
+                      >
+                        {status}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/90 shadow-2xl shadow-black/30">
+              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white/95 shadow-2xl shadow-black/30">
                 <table className="min-w-full text-sm">
                   <thead className="bg-orange-100 text-slate-900">
                     <tr>
@@ -4152,7 +4121,7 @@ export default function Home() {
           {activeSection === "plans" && (
             <div className="space-y-6">
               <div className="rounded-2xl border border-white/10 bg-black/35 p-4 shadow-2xl backdrop-blur-sm">
-                <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                   <div>
                     <h2 className="text-xl font-semibold text-white">Liste de plans</h2>
                   </div>
@@ -4177,7 +4146,7 @@ export default function Home() {
                       value={planSearchNumber}
                       onChange={(e) => setPlanSearchNumber(e.target.value)}
                       placeholder="Ex. 26-0001, P001"
-                      className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
+                      className="w-full rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-950 outline-none placeholder:text-slate-500"
                     />
                   </div>
 
@@ -4189,7 +4158,7 @@ export default function Home() {
                       value={planSearchVille}
                       onChange={(e) => setPlanSearchVille(e.target.value)}
                       placeholder="Ville"
-                      className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
+                      className="w-full rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-950 outline-none placeholder:text-slate-500"
                     />
                   </div>
 
@@ -4201,7 +4170,7 @@ export default function Home() {
                       value={planSearchClient}
                       onChange={(e) => setPlanSearchClient(e.target.value)}
                       placeholder="Client"
-                      className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
+                      className="w-full rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-950 outline-none placeholder:text-slate-500"
                     />
                   </div>
 
@@ -4213,7 +4182,7 @@ export default function Home() {
                       value={planSearchDescription}
                       onChange={(e) => setPlanSearchDescription(e.target.value)}
                       placeholder="Description plan"
-                      className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
+                      className="w-full rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-950 outline-none placeholder:text-slate-500"
                     />
                   </div>
 
@@ -4225,7 +4194,7 @@ export default function Home() {
                       value={planSearchDessinateur}
                       onChange={(e) => setPlanSearchDessinateur(e.target.value)}
                       placeholder="Dessinateur"
-                      className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
+                      className="w-full rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-950 outline-none placeholder:text-slate-500"
                     />
                   </div>
                 </div>
@@ -4319,8 +4288,8 @@ export default function Home() {
 
           {activeSection === "clients" && (
             <div className="space-y-6">
-              <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
-                <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-2xl shadow-black/30">
+                <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                   <div>
                     <h2 className="text-xl font-semibold text-slate-950">Clients / Contacts</h2>
                     <p className="mt-2 text-sm text-slate-600">
@@ -4345,7 +4314,7 @@ export default function Home() {
                       value={clientListSearch}
                       onChange={(e) => setClientListSearch(e.target.value)}
                       placeholder="Nom du client"
-                      className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
+                      className="w-full rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-950 outline-none placeholder:text-slate-500"
                     />
                   </div>
 
@@ -4357,7 +4326,7 @@ export default function Home() {
                       value={contactListSearch}
                       onChange={(e) => setContactListSearch(e.target.value)}
                       placeholder="Nom, téléphone ou courriel"
-                      className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
+                      className="w-full rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-950 outline-none placeholder:text-slate-500"
                     />
                   </div>
 
@@ -4372,7 +4341,7 @@ export default function Home() {
                           e.target.value as "Tous" | ClientStatus
                         )
                       }
-                      className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none"
+                      className="w-full rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-950 outline-none"
                     >
                       <option value="Tous" className="text-slate-950">
                         Tous
