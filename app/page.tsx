@@ -1,7 +1,8 @@
 "use client";
 
-import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from "react";
+import { ChangeEvent, FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import jsPDF from "jspdf";
+import { supabase } from "@/lib/supabase";
 
 const allowedUsers = [
   { username: "pierre-luc", code: "0580", name: "Pierre-Luc" },
@@ -152,11 +153,30 @@ type Project = {
   endroit: string;
   description: string;
   poNumber: string;
+  billingEmail: string;
+  planEmail: string;
   documents: ProjectDocument[];
   planRequests: PlanRequest[];
   soumissions: Quote[];
   billingBoards: BillingBoard[];
   createdAt: string;
+};
+
+type SupabaseProjectRow = {
+  id: number;
+  numero_projet: string | null;
+  numero_client: string | null;
+  client: string | null;
+  contact_id?: string | null;
+  ville: string | null;
+  endroit?: string | null;
+  description: string | null;
+  charge: string | null;
+  statut: string | null;
+  po_number?: string | null;
+  created_at: string | null;
+  billing_email?: string | null;
+  plan_email?: string | null;
 };
 
 type ActiveSection = "projets" | "plans" | "clients" | "facturation";
@@ -177,6 +197,7 @@ const QUOTE_STATUSES: QuoteStatus[] = ["Actif", "Envoyé", "Non-retenu"];
 const PLAN_STATUSES = [
   "commandé",
   "en dessin",
+  "pause",
   "a vérifier",
   "a corriger",
   "envoyé",
@@ -231,6 +252,8 @@ const EMPTY_PROJECT: Project = {
   endroit: "",
   description: "",
   poNumber: "",
+  billingEmail: "",
+  planEmail: "",
   documents: [],
   planRequests: [],
   soumissions: [],
@@ -396,7 +419,33 @@ function normalizeProject(raw: Partial<Project>, index: number): Project {
         generatedPdf: quote.generatedPdf ?? null,
       })) ?? [],
     billingBoards: raw.billingBoards ?? [],
+    billingEmail: raw.billingEmail ?? "",
+    planEmail: raw.planEmail ?? "",
     createdAt: raw.createdAt ?? new Date().toISOString(),
+  };
+}
+
+function normalizeSupabaseProject(raw: SupabaseProjectRow, index: number): Project {
+  const status = ALL_STATUSES.includes(raw.statut as StatusType)
+    ? (raw.statut as StatusType)
+    : "À soumissionner";
+
+  return {
+    ...EMPTY_PROJECT,
+    id: raw.id ?? Date.now() + index,
+    numeroProjet: raw.numero_projet ?? makeProjectNumber(index + 1),
+    numeroClient: raw.numero_client ?? "",
+    client: raw.client ?? "",
+    contactId: raw.contact_id ?? "",
+    statut: status,
+    charge: raw.charge ?? "",
+    ville: raw.ville ?? "",
+    endroit: raw.endroit ?? "",
+    description: raw.description ?? "",
+    poNumber: raw.po_number ?? "",
+    billingEmail: raw.billing_email ?? "",
+    planEmail: raw.plan_email ?? "",
+    createdAt: raw.created_at ?? new Date().toISOString(),
   };
 }
 
@@ -476,16 +525,25 @@ function createPlanRequest(project: Project, planNumber: number, revisionNumber:
 }
 
 function getPreparedBy(userName: string) {
-  if (userName === "Véronique") {
+  const normalized = userName.trim().toLowerCase();
+
+  if (normalized === "véronique" || normalized === "veronique") {
     return {
       name: "Véronique",
       phone: "819-678-6066",
     };
   }
 
+  if (normalized === "pierre-luc" || normalized === "pierreluc") {
+    return {
+      name: "Pierre-Luc",
+      phone: "819-314-1262",
+    };
+  }
+
   return {
-    name: "Pierre-Luc",
-    phone: "819-314-1262",
+    name: userName || "Pierre-Luc",
+    phone: "",
   };
 }
 
@@ -503,6 +561,43 @@ async function loadImageDataUrl(src: string): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+function getLoggedInUserEmail(username: string | null) {
+  const emailMap: Record<string, string> = {
+    "pierre-luc": "pierre-luc@dynamiqueexpert.ca",
+    veronique: "veronique@dynamiqueexpert.ca",
+  };
+
+  return username ? emailMap[username] ?? "info@dynamiqueexpert.ca" : "info@dynamiqueexpert.ca";
+}
+
+function buildMailtoUrl(
+  to: string,
+  subject: string,
+  body: string,
+  cc?: string
+) {
+  const encodedTo = encodeURIComponent(to);
+  const params: string[] = [];
+
+  if (cc) {
+    params.push(`cc=${encodeURIComponent(cc)}`);
+  }
+  params.push(`subject=${encodeURIComponent(subject)}`);
+  params.push(`body=${encodeURIComponent(body)}`);
+
+  return `mailto:${encodedTo}?${params.join("&")}`;
+}
+
+function openEmailClient(
+  to: string,
+  subject: string,
+  body: string,
+  cc?: string
+) {
+  const mailto = buildMailtoUrl(to, subject, body, cc);
+  window.location.href = mailto;
 }
 
 export default function Home() {
@@ -573,6 +668,7 @@ export default function Home() {
   const [selectedPlan, setSelectedPlan] = useState<PlanRequest | null>(null);
   const [activePlanId, setActivePlanId] = useState<string | null>(null);
   const [newFermetureOption, setNewFermetureOption] = useState("");
+  const autosaveTimerRef = useRef<number | null>(null);
   const [fermetureOptions, setFermetureOptions] = useState<string[]>(DEFAULT_FERMETURES);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const [isGeneratingInvoicePdf, setIsGeneratingInvoicePdf] = useState(false);
@@ -583,7 +679,6 @@ export default function Home() {
 
   useEffect(() => {
     const savedUser = localStorage.getItem("eric-user");
-    const savedProjects = localStorage.getItem(PROJECTS_KEY);
     const savedClients = localStorage.getItem(CLIENTS_KEY);
     const savedItems = localStorage.getItem(ITEMS_BANK_KEY);
     const savedSection = localStorage.getItem("eric-section") as
@@ -592,20 +687,50 @@ export default function Home() {
 
     if (savedUser) setLoggedInUser(savedUser);
 
-    let normalizedProjects: Project[] = [];
+    const loadSupabaseProjects = async () => {
+      const savedProjectsRaw = localStorage.getItem(PROJECTS_KEY);
+      const savedProjects: Partial<Project>[] = savedProjectsRaw
+        ? JSON.parse(savedProjectsRaw)
+        : [];
 
-    if (savedProjects) {
-      try {
-        const parsed = JSON.parse(savedProjects) as Partial<Project>[];
-        normalizedProjects = parsed.map((project, index) =>
-          normalizeProject(project, index)
-        );
-        setProjects(normalizedProjects);
-        localStorage.setItem(PROJECTS_KEY, JSON.stringify(normalizedProjects));
-      } catch {
+      const { data, error } = await supabase
+        .from("projects")
+        .select("*")
+        .order("id", { ascending: false });
+
+      console.log("SUPABASE DATA:", data);
+      console.log("SUPABASE ERROR:", error);
+
+      if (error) {
         setProjects([]);
+        localStorage.setItem(PROJECTS_KEY, JSON.stringify([]));
+        localStorage.setItem(NEXT_PROJECT_KEY, "1");
+        return;
       }
-    }
+
+      const normalizedProjects = (data ?? []).map((project, index) => {
+        const normalized = normalizeSupabaseProject(project as SupabaseProjectRow, index);
+        const saved = savedProjects.find(
+          (savedProject) =>
+            savedProject.id === normalized.id ||
+            savedProject.numeroProjet === normalized.numeroProjet
+        );
+        return {
+          ...normalized,
+          ...saved,
+        };
+      });
+
+      setProjects(normalizedProjects);
+      localStorage.setItem(PROJECTS_KEY, JSON.stringify(normalizedProjects));
+
+      const maxExisting = normalizedProjects.reduce((max, project) => {
+        const numericPart = Number(project.numeroProjet.split("-")[1] || "0");
+        return Number.isFinite(numericPart) ? Math.max(max, numericPart) : max;
+      }, 0);
+
+      localStorage.setItem(NEXT_PROJECT_KEY, String(maxExisting + 1));
+    };
 
     if (savedClients) {
       try {
@@ -650,23 +775,11 @@ export default function Home() {
       setActiveSection(savedSection);
     }
 
-    if (!localStorage.getItem(NEXT_PROJECT_KEY)) {
-      const maxExisting = normalizedProjects.reduce((max, project) => {
-        const numericPart = Number(project.numeroProjet.split("-")[1] || "0");
-        return Number.isFinite(numericPart) ? Math.max(max, numericPart) : max;
-      }, 0);
-
-      localStorage.setItem(
-        NEXT_PROJECT_KEY,
-        String(maxExisting > 0 ? maxExisting + 1 : 1)
-      );
-    }
-
     if (!localStorage.getItem(NEXT_INVOICE_KEY)) {
       localStorage.setItem(NEXT_INVOICE_KEY, "500");
     }
 
-    setIsLoaded(true);
+    loadSupabaseProjects().finally(() => setIsLoaded(true));
   }, []);
 
   const persistProjects = (updatedProjects: Project[]) => {
@@ -693,6 +806,97 @@ export default function Home() {
       );
       persistProjects(updatedProjects);
     }
+  };
+
+  useEffect(() => {
+    if (selectedProjectId === null) return;
+
+    if (autosaveTimerRef.current) {
+      window.clearTimeout(autosaveTimerRef.current);
+    }
+
+    autosaveTimerRef.current = window.setTimeout(async () => {
+      if (selectedProjectId === null) return;
+
+      const { error } = await supabase
+        .from("projects")
+        .update({
+          numero_projet: projectForm.numeroProjet,
+          numero_client: projectForm.numeroClient,
+          client: projectForm.client,
+          contact_id: projectForm.contactId,
+          statut: projectForm.statut,
+          charge: projectForm.charge,
+          ville: projectForm.ville,
+          endroit: projectForm.endroit,
+          description: projectForm.description,
+          po_number: projectForm.poNumber,
+          billing_email: projectForm.billingEmail,
+          plan_email: projectForm.planEmail,
+        })
+        .eq("id", selectedProjectId);
+
+      if (error) {
+        console.log("AUTO SAVE SUPABASE ERROR:", error);
+      }
+    }, 900);
+
+    return () => {
+      if (autosaveTimerRef.current) {
+        window.clearTimeout(autosaveTimerRef.current);
+      }
+    };
+  }, [projectForm, selectedProjectId]);
+
+  const getCurrentUserEmail = () => getLoggedInUserEmail(loggedInUser);
+
+  const getBillingRecipientEmail = () =>
+    projectForm.billingEmail.trim() || selectedContact?.email || "";
+
+  const getPlanRecipientEmail = () =>
+    projectForm.planEmail.trim() || selectedContact?.email || "";
+
+  const sendInvoiceEmail = (month: BillingMonth) => {
+    if (!activeBillingQuote) return;
+
+    const recipient = getBillingRecipientEmail();
+    if (!recipient) {
+      alert("Ajoute d'abord un courriel de facturation dans la fiche projet.");
+      return;
+    }
+
+    const invoiceLink = month.invoice
+      ? getPrivateBlobOpenUrl(month.invoice.pathname, month.invoice.url)
+      : "Facture non encore générée. Génère le PDF puis réessaie.";
+
+    const subject = `Facture ${month.invoice?.invoiceNumber ?? ""} - ${projectForm.numeroProjet}`;
+    const body = `Bonjour,\n\nVeuillez trouver ci-joint votre facture pour le projet mentionné en objet.\nComme indiqué sur la facture, le paiement peut être effectué par :\n\nVirement Interac : à l'adresse admin@dynamiqueexpert.ca ;\nDépôt direct : (Informations bancaires jointes à la facture).\nSVP, bien vouloir inscrire le numéro de la facture dans les notes de votre paiement.\n\nAu plaisir et merci de votre confiance !\n\nFacture : ${invoiceLink}\n\nCordialement,\n${getCurrentUserEmail()}`;
+
+    openEmailClient(recipient, subject, body, getCurrentUserEmail());
+  };
+
+  const sendPlanEmail = (plan: PlanRequest) => {
+    const recipient = getPlanRecipientEmail();
+    if (!recipient) {
+      alert("Ajoute d'abord un courriel de plan dans la fiche projet.");
+      return;
+    }
+
+    const attachments: string[] = [];
+    if (plan.materielPdf) {
+      attachments.push(`Matériel : ${getPrivateBlobOpenUrl(plan.materielPdf.pathname, plan.materielPdf.url)}`);
+    }
+    if (plan.supplementairePdf) {
+      attachments.push(`Supplémentaire : ${getPrivateBlobOpenUrl(plan.supplementairePdf.pathname, plan.supplementairePdf.url)}`);
+    }
+    if (plan.dessinateurPdf) {
+      attachments.push(`Dessinateur : ${getPrivateBlobOpenUrl(plan.dessinateurPdf.pathname, plan.dessinateurPdf.url)}`);
+    }
+
+    const subject = `Plan ${plan.code} - ${projectForm.numeroProjet}`;
+    const body = `Bonjour,\n\nTel que demandé, vous trouverez ci-joint le plan de signalisation mentionné en objet.\n\nN'hésitez pas à nous faire part de toute modification requise.\n\nMerci pour votre confiance et au plaisir!\n\n${attachments.length > 0 ? attachments.join('\n') : 'Aucun PDF de plan n’est encore attaché. Veuillez importer le PDF puis réessayer.'}\n\nCordialement,\n${getCurrentUserEmail()}`;
+
+    openEmailClient(recipient, subject, body, getCurrentUserEmail());
   };
 
   const selectedClient = clients.find(
@@ -919,7 +1123,7 @@ export default function Home() {
     setNewContactEmail("");
   };
 
-  const addProject = () => {
+  const addProject = async () => {
     if (!loggedInUser) return;
 
     if (
@@ -930,7 +1134,11 @@ export default function Home() {
       return;
     }
 
-    const nextNumber = Number(localStorage.getItem(NEXT_PROJECT_KEY) || "1");
+    const maxExisting = projects.reduce((max, project) => {
+      const numericPart = Number(project.numeroProjet.split("-")[1] || "0");
+      return Number.isFinite(numericPart) ? Math.max(max, numericPart) : max;
+    }, 0);
+    const nextNumber = maxExisting + 1;
     const clientName = newProject.client.trim();
 
     const existingClient = clients.find(
@@ -949,26 +1157,33 @@ export default function Home() {
       ]);
     }
 
-    const newEntry: Project = {
-      id: Date.now(),
-      numeroProjet: makeProjectNumber(nextNumber),
-      numeroClient: "",
+    const payload = {
+      numero_projet: makeProjectNumber(nextNumber),
+      numero_client: "",
       client: clientName,
-      contactId: "",
-      statut: "À soumissionner",
-      charge: loggedInUser,
       ville: newProject.ville.trim(),
-      endroit: "",
       description: newProject.description.trim(),
-      poNumber: "",
-      documents: [],
-      planRequests: [],
-      soumissions: [],
-      billingBoards: [],
-      createdAt: new Date().toISOString(),
+      charge: loggedInUser,
+      statut: "À soumissionner",
     };
 
-    persistProjects([...projects, newEntry]);
+    const { data, error } = await supabase
+      .from("projects")
+      .insert(payload)
+      .select("*")
+      .single();
+
+    console.log("SUPABASE INSERT DATA:", data);
+    console.log("SUPABASE INSERT ERROR:", error);
+
+    if (error || !data) {
+      alert("Le projet n'a pas été sauvegardé en ligne. Vérifie la console pour le détail.");
+      return;
+    }
+
+    const newEntry = normalizeSupabaseProject(data as SupabaseProjectRow, 0);
+
+    persistProjects([newEntry, ...projects]);
     localStorage.setItem(NEXT_PROJECT_KEY, String(nextNumber + 1));
 
     setShowModal(false);
@@ -999,8 +1214,33 @@ export default function Home() {
     setViewMode("project");
   };
 
-  const saveProject = () => {
+  const saveProject = async () => {
     if (selectedProjectId === null) return;
+
+    const { error } = await supabase
+      .from("projects")
+      .update({
+        numero_projet: projectForm.numeroProjet,
+        numero_client: projectForm.numeroClient,
+        client: projectForm.client,
+        contact_id: projectForm.contactId,
+        statut: projectForm.statut,
+        charge: projectForm.charge,
+        ville: projectForm.ville,
+        endroit: projectForm.endroit,
+        description: projectForm.description,
+        po_number: projectForm.poNumber,
+        billing_email: projectForm.billingEmail,
+        plan_email: projectForm.planEmail,
+      })
+      .eq("id", selectedProjectId);
+
+    console.log("SUPABASE UPDATE ERROR:", error);
+
+    if (error) {
+      alert("Le projet n'a pas été sauvegardé en ligne. Vérifie la console pour le détail.");
+      return;
+    }
 
     const updatedProjects = projects.map((project) =>
       project.id === selectedProjectId ? projectForm : project
@@ -1906,12 +2146,12 @@ export default function Home() {
           className="absolute inset-0 bg-cover bg-[20%_top]"
           style={{ backgroundImage: "url('/eric-login-bg.png')" }}
         />
-        <div className="absolute inset-0 bg-black/70" />
+        <div className="absolute inset-0 bg-black/45" />
 
         <div className="relative z-10 flex h-full items-center justify-center px-4">
           <form
             onSubmit={handleLogin}
-            className="w-full max-w-md rounded-2xl border border-white/10 bg-black/80 p-8 text-white shadow-2xl backdrop-blur-md"
+            className="w-full max-w-md rounded-2xl border border-slate-300 bg-white/95 p-8 text-slate-950 shadow-2xl backdrop-blur-md"
           >
             <h1 className="mb-2 text-2xl font-semibold">Connexion à ERIC</h1>
             <p className="mb-6 text-sm text-zinc-300">
@@ -1919,7 +2159,7 @@ export default function Home() {
             </p>
 
             <div className="mb-4">
-              <label className="mb-2 block text-sm text-zinc-200">
+              <label className="mb-2 block text-sm text-slate-700">
                 Identifiant
               </label>
               <input
@@ -1927,12 +2167,12 @@ export default function Home() {
                 placeholder="Ex. user"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400 focus:border-white/30"
+                className="w-full rounded-lg border border-slate-300 bg-slate-50 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-400 focus:border-slate-400"
               />
             </div>
 
             <div className="mb-4">
-              <label className="mb-2 block text-sm text-zinc-200">
+              <label className="mb-2 block text-sm text-slate-700">
                 Code d’accès
               </label>
               <input
@@ -1940,7 +2180,7 @@ export default function Home() {
                 placeholder="Entrez votre code"
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400 focus:border-white/30"
+                className="w-full rounded-lg border border-slate-300 bg-slate-50 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-400 focus:border-slate-400"
               />
             </div>
 
@@ -1960,36 +2200,28 @@ export default function Home() {
 
   if (viewMode === "project") {
     return (
-      <main className="relative min-h-screen overflow-hidden text-white">
+      <main className="relative min-h-screen overflow-hidden bg-slate-950 text-white">
         <div
           className="absolute inset-0 bg-cover bg-center"
           style={{ backgroundImage: "url('/eric-dashboard-bg.png')" }}
         />
-        <div className="absolute inset-0 bg-black/68" />
+        <div className="absolute inset-0 bg-black/65" />
 
         <div className="relative z-10 px-6 py-5 md:px-8 xl:px-10">
           <div className="mx-auto max-w-[1700px]">
             <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
-                <p className="text-sm uppercase tracking-[0.25em] text-zinc-300">
+                <p className="text-sm uppercase tracking-[0.25em] text-slate-200">
                   ERIC
                 </p>
-                <h1 className="mt-1 text-2xl font-semibold">Fiche projet</h1>
+                <h1 className="mt-1 text-2xl font-semibold text-white">Fiche projet</h1>
               </div>
-
-              <div className="flex gap-3">
+              <div className="flex gap-3 items-center">
                 <button
                   onClick={() => setViewMode("list")}
                   className="rounded-lg border border-white/15 bg-black/30 px-4 py-2 text-sm text-white transition hover:bg-white/10"
                 >
                   Retour à la liste
-                </button>
-
-                <button
-                  onClick={saveProject}
-                  className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-orange-400"
-                >
-                  Sauvegarder
                 </button>
               </div>
             </div>
@@ -1997,7 +2229,7 @@ export default function Home() {
             <div className="mb-6 grid grid-cols-1 gap-5 lg:grid-cols-4">
               <button
                 onClick={() => setProjectPanel("fiche")}
-                className={`min-h-[90px] rounded-xl border-2 border-orange-400 px-4 text-2xl font-semibold transition ${
+                className={`min-h-[54px] rounded-xl border border-orange-400 px-4 text-base font-semibold transition ${
                   projectPanel === "fiche"
                     ? "bg-orange-500 text-black"
                     : "bg-transparent text-orange-400 hover:bg-orange-400/10"
@@ -2008,7 +2240,7 @@ export default function Home() {
 
               <button
                 onClick={() => setProjectPanel("soumission")}
-                className={`min-h-[90px] rounded-xl border-2 border-orange-400 px-4 text-2xl font-semibold transition ${
+                className={`min-h-[54px] rounded-xl border border-orange-400 px-4 text-base font-semibold transition ${
                   projectPanel === "soumission"
                     ? "bg-orange-500 text-black"
                     : "bg-transparent text-orange-400 hover:bg-orange-400/10"
@@ -2019,7 +2251,7 @@ export default function Home() {
 
               <button
                 onClick={() => setProjectPanel("demandePlan")}
-                className={`min-h-[90px] rounded-xl border-2 border-orange-400 px-4 text-2xl font-semibold transition ${
+                className={`min-h-[54px] rounded-xl border border-orange-400 px-4 text-base font-semibold transition ${
                   projectPanel === "demandePlan"
                     ? "bg-orange-500 text-black"
                     : "bg-transparent text-orange-400 hover:bg-orange-400/10"
@@ -2030,7 +2262,7 @@ export default function Home() {
 
               <button
                 onClick={() => setProjectPanel("facturation")}
-                className={`min-h-[90px] rounded-xl border-2 border-orange-400 px-4 text-2xl font-semibold transition ${
+                className={`min-h-[54px] rounded-xl border border-orange-400 px-4 text-base font-semibold transition ${
                   projectPanel === "facturation"
                     ? "bg-orange-500 text-black"
                     : "bg-transparent text-orange-400 hover:bg-orange-400/10"
@@ -2053,7 +2285,7 @@ export default function Home() {
                         value={newQuoteName}
                         onChange={(e) => setNewQuoteName(e.target.value)}
                         placeholder={`${projectForm.numeroProjet}_PLAN`}
-                        className="rounded-lg border border-white/10 bg-white/10 px-4 py-2 text-white outline-none placeholder:text-zinc-400"
+                        className="rounded-lg border border-white/10 bg-white/10 px-4 py-2 text-slate-950 outline-none placeholder:text-zinc-400"
                       />
                       <button
                         onClick={createQuote}
@@ -2077,7 +2309,7 @@ export default function Home() {
                           className={`rounded-lg border px-4 py-2 text-left text-sm transition ${
                             quote.id === activeQuoteId
                               ? "border-orange-400 bg-orange-500 text-black"
-                              : "border-white/10 bg-white/5 text-white hover:bg-white/10"
+                              : "border-white/10 bg-white/5 text-slate-950 hover:bg-white/10"
                           }`}
                         >
                           <div>{quote.name}</div>
@@ -2104,7 +2336,7 @@ export default function Home() {
                               e.target.value as QuoteStatus
                             )
                           }
-                          className="rounded-lg border border-white/10 bg-white/10 px-4 py-2 text-white outline-none"
+                          className="rounded-lg border border-white/10 bg-white/10 px-4 py-2 text-slate-950 outline-none"
                         >
                           {QUOTE_STATUSES.map((status) => (
                             <option
@@ -2133,7 +2365,7 @@ export default function Home() {
                             )}
                             target="_blank"
                             rel="noreferrer"
-                            className="rounded-lg border border-white/15 bg-white/10 px-4 py-2 text-sm text-white transition hover:bg-white/20"
+                            className="rounded-lg border border-white/15 bg-white/10 px-4 py-2 text-sm text-slate-950 transition hover:bg-white/20"
                           >
                             Ouvrir PDF généré
                           </a>
@@ -2323,13 +2555,13 @@ export default function Home() {
                       value={newItemName}
                       onChange={(e) => setNewItemName(e.target.value)}
                       placeholder="Nom de l’item"
-                      className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                      className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none placeholder:text-zinc-400"
                     />
                     <input
                       value={newItemPrice}
                       onChange={(e) => setNewItemPrice(e.target.value)}
                       placeholder="Prix"
-                      className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                      className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none placeholder:text-zinc-400"
                     />
                     <button
                       onClick={addItemToBank}
@@ -2402,7 +2634,7 @@ export default function Home() {
                         <select
                           value={newBillingMonth}
                           onChange={(e) => setNewBillingMonth(e.target.value)}
-                          className="rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none"
+                          className="rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none"
                         >
                           {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
                             <option key={month} value={month} className="text-black">
@@ -2417,7 +2649,7 @@ export default function Home() {
                         <input
                           value={newBillingYear}
                           onChange={(e) => setNewBillingYear(e.target.value)}
-                          className="w-28 rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none"
+                          className="w-28 rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none"
                         />
                       </div>
 
@@ -2485,7 +2717,7 @@ export default function Home() {
                                             onChange={(e) =>
                                               updateBillingMonthQuantity(month.id, line.id, Number(e.target.value))
                                             }
-                                            className="w-20 rounded border border-white/10 bg-white/10 px-2 py-1 text-white outline-none"
+                                            className="w-20 rounded border border-white/10 bg-white/10 px-2 py-1 text-slate-950 outline-none"
                                           />
                                           <span className="text-zinc-200">{money(monthQty * line.price)}</span>
                                         </div>
@@ -2548,12 +2780,19 @@ export default function Home() {
                                 {isGeneratingInvoicePdf ? "Génération..." : "Générer PDF facture"}
                               </button>
 
+                              <button
+                                onClick={() => sendInvoiceEmail(month)}
+                                className="rounded-lg border border-white/15 bg-white/10 px-4 py-2 text-sm text-slate-950 hover:bg-white/20"
+                              >
+                                Envoyer facture
+                              </button>
+
                               {month.invoice && (
                                 <a
                                   href={getPrivateBlobOpenUrl(month.invoice.pathname, month.invoice.url)}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="rounded-lg border border-white/15 bg-white/10 px-4 py-2 text-sm text-white hover:bg-white/20"
+                                  className="rounded-lg border border-white/15 bg-white/10 px-4 py-2 text-sm text-slate-950 hover:bg-white/20"
                                 >
                                   Ouvrir {month.invoice.invoiceNumber}
                                 </a>
@@ -2621,7 +2860,7 @@ export default function Home() {
                         <th className="p-3 text-left font-semibold">Sélection</th>
                         <th className="p-3 text-left font-semibold">Plan</th>
                         <th className="p-3 text-left font-semibold">Accès</th>
-                        <th className="p-3 text-left font-semibold">Statut</th>
+                        <th className="w-[145px] p-3 text-left font-semibold">Statut</th>
                         <th className="p-3 text-left font-semibold">Dessinateur</th>
                       </tr>
                     </thead>
@@ -2659,7 +2898,7 @@ export default function Home() {
                                       descriptionPlan: e.target.value,
                                     })
                                   }
-                                  className="w-full min-w-[420px] rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                                  className="w-full min-w-[420px] rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                                 />
                                 <p className="mt-1 text-xs text-zinc-400">{plan.code}</p>
                               </td>
@@ -2667,7 +2906,7 @@ export default function Home() {
                               <td className="p-3">
                                 <button
                                   onClick={() => openPlanDemand(plan)}
-                                  className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-white hover:bg-white/20"
+                                  className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-slate-950 hover:bg-white/20"
                                 >
                                   Demande
                                 </button>
@@ -2682,10 +2921,10 @@ export default function Home() {
                                         statut: e.target.value,
                                       })
                                     }
-                                    className="rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                                    className="rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                                   >
                                     <option value="" className="text-black">--</option>
-                                    {["commandé", "en dessin", "a vérifier", "a corriger", "envoyé", "a réviser", "révisé", "en révision"].map((status) => (
+                                    {["commandé", "en dessin", "pause", "a vérifier", "a corriger", "envoyé", "a réviser", "révisé", "en révision"].map((status) => (
                                       <option key={status} value={status} className="text-black">
                                         {status}
                                       </option>
@@ -2712,7 +2951,7 @@ export default function Home() {
                                       dessinateurIngenieur: e.target.value,
                                     })
                                   }
-                                  className="rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                                  className="rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                                 >
                                   <option value="" className="text-black">--</option>
                                   <option value="Pierre-Luc" className="text-black">Pierre-Luc</option>
@@ -2733,7 +2972,7 @@ export default function Home() {
                   <div>
                     <button
                       onClick={() => setProjectPanel("demandePlan")}
-                      className="mb-3 rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm text-white transition hover:bg-white/10"
+                      className="mb-3 rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm text-slate-950 transition hover:bg-white/10"
                     >
                       ← Retour aux demandes
                     </button>
@@ -2765,7 +3004,7 @@ export default function Home() {
                         <input
                           value={projectForm.numeroProjet}
                           readOnly
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         />
                       </div>
                       <div>
@@ -2773,7 +3012,7 @@ export default function Home() {
                         <input
                           value={activePlan.planNumber}
                           readOnly
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         />
                       </div>
                       <div>
@@ -2781,7 +3020,7 @@ export default function Home() {
                         <input
                           value={activePlan.revisionNumber}
                           readOnly
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         />
                       </div>
                     </div>
@@ -2791,7 +3030,7 @@ export default function Home() {
                       <input
                         value={projectForm.client}
                         readOnly
-                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                       />
                     </div>
 
@@ -2802,7 +3041,7 @@ export default function Home() {
                           type="date"
                           value={activePlan.planRequisLe}
                           onChange={(e) => updateActivePlan({ planRequisLe: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         />
                       </div>
                       <div>
@@ -2810,7 +3049,7 @@ export default function Home() {
                         <select
                           value={activePlan.statut || ""}
                           onChange={(e) => updateActivePlan({ statut: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         >
                           <option value="" className="text-black">--</option>
                           {PLAN_STATUSES.map((status) => (
@@ -2826,7 +3065,7 @@ export default function Home() {
                         <input
                           value={activePlan.ville}
                           onChange={(e) => updateActivePlan({ ville: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         />
                       </div>
                       <div>
@@ -2834,7 +3073,7 @@ export default function Home() {
                         <select
                           value={activePlan.dessinateurIngenieur || ""}
                           onChange={(e) => updateActivePlan({ dessinateurIngenieur: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         >
                           {DESSINATEURS_PLAN.map((name) => (
                             <option key={name || "empty"} value={name} className="text-black">
@@ -2851,7 +3090,7 @@ export default function Home() {
                         <select
                           value={activePlan.tronconType}
                           onChange={(e) => updateActivePlan({ tronconType: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         >
                           {TRONCON_TYPES.map((type) => (
                             <option key={type || "empty"} value={type} className="text-black">
@@ -2865,7 +3104,7 @@ export default function Home() {
                         <input
                           value={activePlan.tronconNom}
                           onChange={(e) => updateActivePlan({ tronconNom: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         />
                       </div>
                     </div>
@@ -2876,7 +3115,7 @@ export default function Home() {
                         <input
                           value={activePlan.limiteVitesse}
                           onChange={(e) => updateActivePlan({ limiteVitesse: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         />
                       </div>
                       <div>
@@ -2884,7 +3123,7 @@ export default function Home() {
                         <select
                           value={activePlan.direction}
                           onChange={(e) => updateActivePlan({ direction: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         >
                           {DIRECTIONS.map((direction) => (
                             <option key={direction || "empty"} value={direction} className="text-black">
@@ -2900,7 +3139,7 @@ export default function Home() {
                       <input
                         value={activePlan.natureTravaux}
                         onChange={(e) => updateActivePlan({ natureTravaux: e.target.value })}
-                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                       />
                     </div>
 
@@ -2910,7 +3149,7 @@ export default function Home() {
                         <input
                           value={activePlan.dureeTravaux}
                           onChange={(e) => updateActivePlan({ dureeTravaux: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         />
                       </div>
                       <div>
@@ -2918,7 +3157,7 @@ export default function Home() {
                         <select
                           value={activePlan.referenceType}
                           onChange={(e) => updateActivePlan({ referenceType: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         >
                           {REFERENCE_TYPES.map((type) => (
                             <option key={type || "empty"} value={type} className="text-black">
@@ -2932,7 +3171,7 @@ export default function Home() {
                         <input
                           value={activePlan.referenceValue}
                           onChange={(e) => updateActivePlan({ referenceValue: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         />
                       </div>
                     </div>
@@ -2943,7 +3182,7 @@ export default function Home() {
                         <select
                           value={activePlan.fermeture}
                           onChange={(e) => updateActivePlan({ fermeture: e.target.value })}
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         >
                           <option value="" className="text-black">--</option>
                           {fermetureOptions.map((option) => (
@@ -2958,7 +3197,7 @@ export default function Home() {
                           value={newFermetureOption}
                           onChange={(e) => setNewFermetureOption(e.target.value)}
                           placeholder="Ajouter une option de fermeture"
-                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none placeholder:text-zinc-400"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none placeholder:text-zinc-400"
                         />
                         <button
                           onClick={addFermetureOption}
@@ -2975,7 +3214,7 @@ export default function Home() {
                         value={activePlan.zoneTravaux}
                         onChange={(e) => updateActivePlan({ zoneTravaux: e.target.value })}
                         rows={3}
-                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                       />
                     </div>
 
@@ -2985,7 +3224,7 @@ export default function Home() {
                         value={activePlan.detours}
                         onChange={(e) => updateActivePlan({ detours: e.target.value })}
                         rows={3}
-                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                       />
                     </div>
 
@@ -2995,7 +3234,7 @@ export default function Home() {
                         value={activePlan.notes}
                         onChange={(e) => updateActivePlan({ notes: e.target.value })}
                         rows={6}
-                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-white outline-none"
+                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                       />
                     </div>
                   </div>
@@ -3018,7 +3257,7 @@ export default function Home() {
                                   href={getPrivateBlobOpenUrl((attachment as PlanAttachment).pathname, (attachment as PlanAttachment).url)}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-white hover:bg-white/20"
+                                  className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-slate-950 hover:bg-white/20"
                                 >
                                   Ouvrir
                                 </a>
@@ -3073,7 +3312,7 @@ export default function Home() {
                                 href={getPrivateBlobOpenUrl(activePlan.dessinateurPdf.pathname, activePlan.dessinateurPdf.url)}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-white hover:bg-white/20"
+                                className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-slate-950 hover:bg-white/20"
                               >
                                 Ouvrir
                               </a>
@@ -3123,7 +3362,7 @@ export default function Home() {
                                     href={getPrivateBlobOpenUrl(doc.pathname, doc.url)}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-white hover:bg-white/20"
+                                    className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-slate-950 hover:bg-white/20"
                                   >
                                     Ouvrir
                                   </a>
@@ -3159,66 +3398,75 @@ export default function Home() {
                         );
                       })}
                     </div>
+
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      <button
+                        onClick={() => sendPlanEmail(activePlan)}
+                        className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-black hover:bg-zinc-200"
+                      >
+                        Envoyer plan
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="rounded-2xl border border-white/10 bg-black/35 p-5 shadow-2xl backdrop-blur-sm">
+              <div className="rounded-2xl border border-white/10 bg-black/30 p-5 shadow-2xl backdrop-blur-sm">
                 <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
-                  <div className="rounded-xl border border-orange-400/40 bg-black/20 p-5">
-                    <h2 className="mb-5 text-xl font-semibold text-orange-400">
+                  <div className="rounded-xl border border-white/10 bg-slate-100/80 p-5">
+                    <h2 className="mb-5 text-xl font-semibold text-slate-900">
                       Informations projet
                     </h2>
 
                     <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                       <div>
-                        <label className="mb-2 block text-sm text-orange-400">
+                        <label className="mb-2 block text-sm text-slate-700">
                           Numéro de projet
                         </label>
                         <input
                           value={projectForm.numeroProjet}
                           readOnly
-                          className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
+                          className="w-full border-b-2 border-slate-300 bg-transparent px-2 py-2 text-slate-950 outline-none"
                         />
                       </div>
 
                       <div>
-                        <label className="mb-2 block text-sm text-orange-400">
+                        <label className="mb-2 block text-sm text-slate-700">
                           Numéro client
                         </label>
                         <input
                           value={projectForm.numeroClient}
                           onChange={(e) =>
-                            setProjectForm({
+                            persistProjectForm({
                               ...projectForm,
                               numeroClient: e.target.value,
                             })
                           }
                           placeholder="Ex. no interne client"
-                          className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none placeholder:text-zinc-500"
+                          className="w-full border-b-2 border-slate-300 bg-transparent px-2 py-2 text-slate-950 outline-none placeholder:text-slate-500"
                         />
                       </div>
                     </div>
 
                     <div className="mt-5">
-                      <label className="mb-2 block text-sm text-orange-400">
+                      <label className="mb-2 block text-sm text-slate-700">
                         Statut
                       </label>
                       <select
                         value={projectForm.statut}
                         onChange={(e) =>
-                          setProjectForm({
+                          persistProjectForm({
                             ...projectForm,
                             statut: e.target.value as StatusType,
                           })
                         }
-                        className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
+                        className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none"
                       >
                         {ALL_STATUSES.map((status) => (
                           <option
                             key={status}
                             value={status}
-                            className="text-black"
+                            className="text-slate-950"
                           >
                             {status}
                           </option>
@@ -3227,109 +3475,125 @@ export default function Home() {
                     </div>
 
                     <div className="mt-5">
-                      <label className="mb-2 block text-sm text-orange-400">
+                      <label className="mb-2 block text-sm text-slate-700">
+                        Chargé de projet
+                      </label>
+                      <select
+                        value={projectForm.charge}
+                        onChange={(e) =>
+                          persistProjectForm({
+                            ...projectForm,
+                            charge: e.target.value,
+                          })
+                        }
+                        className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none"
+                      >
+                        <option value="">Sélectionner un chargé</option>
+                        <option value="Pierre-Luc">Pierre-Luc</option>
+                        <option value="Véronique">Véronique</option>
+                      </select>
+                    </div>
+
+                    <div className="mt-5">
+                      <label className="mb-2 block text-sm text-slate-700">
                         Ville
                       </label>
                       <input
                         value={projectForm.ville}
                         onChange={(e) =>
-                          setProjectForm({
+                          persistProjectForm({
                             ...projectForm,
                             ville: e.target.value,
                           })
                         }
-                        className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
+                        className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none"
                       />
                     </div>
 
                     <div className="mt-5">
-                      <label className="mb-2 block text-sm text-orange-400">
+                      <label className="mb-2 block text-sm text-slate-700">
                         Endroit
                       </label>
                       <input
                         value={projectForm.endroit}
                         onChange={(e) =>
-                          setProjectForm({
+                          persistProjectForm({
                             ...projectForm,
                             endroit: e.target.value,
                           })
                         }
-                        className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
+                        className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none"
                       />
                     </div>
 
                     <div className="mt-5">
-                      <label className="mb-2 block text-sm text-orange-400">
+                      <label className="mb-2 block text-sm text-slate-700">
                         Description
                       </label>
                       <textarea
                         value={projectForm.description}
                         onChange={(e) =>
-                          setProjectForm({
+                          persistProjectForm({
                             ...projectForm,
                             description: e.target.value,
                           })
                         }
                         rows={4}
-                        className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
+                        className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none"
                       />
                     </div>
                   </div>
 
-                  <div className="rounded-xl border border-orange-400/40 bg-black/20 p-5">
-                    <div className="mb-5 flex items-center justify-between gap-3">
-                      <h2 className="text-xl font-semibold text-orange-400">
+                  <div className="rounded-xl border border-white/10 bg-slate-100/80 p-5">
+                    <div className="mb-5">
+                      <h2 className="text-xl font-semibold text-slate-900">
                         Client et contacts
                       </h2>
-
-                      <button
-                        onClick={() => {
-                          setShowClientModal(true);
-                          setSelectedClientForContact(projectForm.client);
-                        }}
-                        className="rounded border border-orange-400 px-3 py-2 text-orange-400 transition hover:bg-orange-400/10"
-                      >
-                        +
-                      </button>
                     </div>
 
                     <div>
-                      <label className="mb-2 block text-sm text-orange-400">
+                      <label className="mb-2 block text-sm text-slate-700">
                         Client
                       </label>
-                      <input
-                        list="clients-list-project"
+                      <select
                         value={projectForm.client}
                         onChange={(e) =>
-                          setProjectForm({
+                          persistProjectForm({
                             ...projectForm,
                             client: e.target.value,
                             contactId: "",
                           })
                         }
-                        placeholder="Commencez à taper le nom du client"
-                        className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none placeholder:text-zinc-500"
-                      />
-                      <datalist id="clients-list-project">
+                        className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none"
+                      >
+                        <option value="" className="text-slate-950">
+                          Sélectionner un client
+                        </option>
                         {clients.map((client) => (
-                          <option key={client.id} value={client.name} />
+                          <option
+                            key={client.id}
+                            value={client.name}
+                            className="text-slate-950"
+                          >
+                            {client.name}
+                          </option>
                         ))}
-                      </datalist>
+                      </select>
                     </div>
 
                     <div className="mt-5">
-                      <label className="mb-2 block text-sm text-orange-400">
+                      <label className="mb-2 block text-sm text-slate-700">
                         Contact
                       </label>
                       <select
                         value={projectForm.contactId}
                         onChange={(e) =>
-                          setProjectForm({
+                          persistProjectForm({
                             ...projectForm,
                             contactId: e.target.value,
                           })
                         }
-                        className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none"
+                        className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none"
                       >
                         <option value="" className="text-black">
                           Sélectionner un contact
@@ -3348,26 +3612,62 @@ export default function Home() {
 
                     <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2">
                       <div>
-                        <label className="mb-2 block text-sm text-orange-400">
+                        <label className="mb-2 block text-sm text-slate-700">
                           Téléphone
                         </label>
                         <input
                           value={selectedContact?.phone ?? ""}
                           readOnly
                           placeholder="Automatique selon le contact"
-                          className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none placeholder:text-zinc-500"
+                          className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none placeholder:text-slate-400"
                         />
                       </div>
 
                       <div>
-                        <label className="mb-2 block text-sm text-orange-400">
+                        <label className="mb-2 block text-sm text-slate-700">
                           Courriel
                         </label>
                         <input
                           value={selectedContact?.email ?? ""}
                           readOnly
                           placeholder="Automatique selon le contact"
-                          className="w-full border-b-2 border-orange-400 bg-transparent px-2 py-2 text-white outline-none placeholder:text-zinc-500"
+                          className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none placeholder:text-slate-400"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2">
+                      <div>
+                        <label className="mb-2 block text-sm text-slate-700">
+                          Courriel facturation
+                        </label>
+                        <input
+                          value={projectForm.billingEmail}
+                          onChange={(e) =>
+                            persistProjectForm({
+                              ...projectForm,
+                              billingEmail: e.target.value,
+                            })
+                          }
+                          placeholder="ex: facturation@client.com"
+                          className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none placeholder:text-slate-400"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="mb-2 block text-sm text-slate-700">
+                          Courriel plan
+                        </label>
+                        <input
+                          value={projectForm.planEmail}
+                          onChange={(e) =>
+                            persistProjectForm({
+                              ...projectForm,
+                              planEmail: e.target.value,
+                            })
+                          }
+                          placeholder="ex: plan@client.com"
+                          className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none placeholder:text-slate-400"
                         />
                       </div>
                     </div>
@@ -3375,8 +3675,8 @@ export default function Home() {
                 </div>
 
                 <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-                  <div className="rounded-xl border border-orange-400/40 bg-black/20 p-4">
-                    <p className="mb-4 text-xl text-orange-400">PO</p>
+                  <div className="rounded-xl border border-white/10 bg-slate-100/80 p-4">
+                    <p className="mb-4 text-xl text-slate-900">PO</p>
 
                     <div className="mb-4">
                       <label className="mb-2 block text-sm text-zinc-200">
@@ -3385,13 +3685,13 @@ export default function Home() {
                       <input
                         value={projectForm.poNumber}
                         onChange={(e) =>
-                          setProjectForm({
+                          persistProjectForm({
                             ...projectForm,
                             poNumber: e.target.value,
                           })
                         }
                         placeholder="Inscrire le numéro de PO"
-                        className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                        className="w-full rounded-lg border border-slate-300 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-400"
                       />
                     </div>
 
@@ -3444,7 +3744,7 @@ export default function Home() {
                                 )}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm text-white transition hover:bg-white/20"
+                                className="rounded-lg border border-white/15 bg-white/10 px-3 py-2 text-sm text-slate-950 transition hover:bg-white/20"
                               >
                                 Ouvrir
                               </a>
@@ -3487,8 +3787,8 @@ export default function Home() {
             )}
 
             {showClientModal && (
-              <div className="fixed inset-0 z-30 flex items-center justify-center bg-black/75 px-4">
-                <div className="w-full max-w-4xl rounded-2xl border border-white/10 bg-black/95 p-6 text-white shadow-2xl">
+              <div className="fixed inset-0 z-30 flex items-center justify-center bg-slate-900/65 px-4">
+                <div className="w-full max-w-4xl rounded-2xl border border-white/10 bg-slate-900/95 p-6 text-white shadow-2xl">
                   <div className="mb-6 flex items-center justify-between">
                     <h2 className="text-2xl font-semibold">
                       Gestion clients / contacts
@@ -3512,7 +3812,7 @@ export default function Home() {
                         value={newClientName}
                         onChange={(e) => setNewClientName(e.target.value)}
                         placeholder="Nom du client"
-                        className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                        className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none placeholder:text-zinc-400"
                       />
 
                       <select
@@ -3520,7 +3820,7 @@ export default function Home() {
                         onChange={(e) =>
                           setNewClientStatus(e.target.value as ClientStatus)
                         }
-                        className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none"
+                        className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none"
                       >
                         {CLIENT_STATUSES.map((status) => (
                           <option
@@ -3580,7 +3880,7 @@ export default function Home() {
                           setSelectedClientForContact(e.target.value)
                         }
                         placeholder="Commencez à taper le client"
-                        className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                        className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none placeholder:text-zinc-400"
                       />
                       <datalist id="clients-list-contact-modal">
                         {clients.map((client) => (
@@ -3609,21 +3909,21 @@ export default function Home() {
                         value={newContactName}
                         onChange={(e) => setNewContactName(e.target.value)}
                         placeholder="Nom du contact"
-                        className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                        className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none placeholder:text-zinc-400"
                       />
 
                       <input
                         value={newContactPhone}
                         onChange={(e) => setNewContactPhone(e.target.value)}
                         placeholder="Téléphone"
-                        className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                        className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none placeholder:text-zinc-400"
                       />
 
                       <input
                         value={newContactEmail}
                         onChange={(e) => setNewContactEmail(e.target.value)}
                         placeholder="Courriel"
-                        className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
+                        className="mb-3 w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none placeholder:text-zinc-400"
                       />
 
                       <button
@@ -3644,48 +3944,62 @@ export default function Home() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden text-white">
-      <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: "url('/eric-dashboard-bg.png')" }}
-      />
-      <div className="absolute inset-0 bg-black/55" />
+    <main className="relative min-h-screen bg-slate-50 text-slate-900">
+      <div className="absolute inset-0 bg-[url('/eric-dashboard-bg.png')] bg-cover bg-center opacity-20" />
+      <div className="absolute inset-0 bg-gradient-to-br from-white via-slate-50 to-orange-50 opacity-95" />
 
-      <div className="relative z-10 min-h-screen px-6 py-5 md:px-8 xl:px-10">
+      <div className="relative z-10 min-h-screen px-6 py-6 md:px-8 xl:px-10">
         <div className="mx-auto w-full max-w-[1700px]">
-          <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-            <div>
-              <p className="text-sm uppercase tracking-[0.25em] text-zinc-300">
-                ERIC
-              </p>
-              <h1 className="mt-1 text-2xl font-semibold">Liste de projet</h1>
+          <div className="mb-8 rounded-[2rem] border border-slate-200 bg-white/95 p-8 shadow-xl shadow-slate-300/40">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-[0.3em] text-orange-500">ERIC</p>
+                <h1 className="mt-3 text-3xl font-semibold text-slate-950">
+                  Tableau de bord projet
+                </h1>
+              </div>
+
+              <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+                <p className="text-sm text-slate-600">{loggedInUser}</p>
+                <button
+                  onClick={handleLogout}
+                  className="rounded-full bg-orange-500 px-5 py-3 text-sm font-semibold text-white shadow-md shadow-orange-200/50 transition hover:bg-orange-400"
+                >
+                  Déconnexion
+                </button>
+              </div>
             </div>
 
-            <div className="flex items-center gap-4">
-              <p className="text-sm text-zinc-200">{loggedInUser}</p>
+            <div className="mt-6 rounded-[2rem] border border-slate-200 bg-white/95 p-6 shadow-sm sm:flex sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-[0.3em] text-orange-500">ERIC</p>
+                <h2 className="mt-3 text-2xl font-semibold text-slate-950">
+                  Projets
+                </h2>
+              </div>
               <button
-                onClick={handleLogout}
-                className="rounded-lg border border-white/15 bg-black/30 px-4 py-2 text-sm text-white transition hover:bg-white/10"
+                onClick={() => setShowModal(true)}
+                className="rounded-full bg-orange-500 px-5 py-3 text-sm font-semibold text-white shadow-md shadow-orange-200/50 transition hover:bg-orange-400"
               >
-                Déconnexion
+                + Nouveau projet
               </button>
             </div>
           </div>
 
-          <div className="mb-6 flex flex-wrap gap-4">
+          <div className="mb-6 flex flex-wrap gap-3">
             {[
-              ["projets", "Projet"],
-              ["plans", "Liste de plan"],
+              ["projets", "Projets"],
+              ["plans", "Plans"],
+              ["clients", "Clients"],
               ["facturation", "Facturation"],
-              ["clients", "Client"],
             ].map(([key, label]) => (
               <button
                 key={key}
                 onClick={() => changeSection(key as ActiveSection)}
-                className={`min-w-[120px] border-2 px-6 py-3 text-left transition ${
+                className={`rounded-full px-5 py-3 text-sm font-semibold transition ${
                   activeSection === key
-                    ? "border-white bg-white text-black"
-                    : "border-white/80 bg-black/20 text-white hover:bg-white/10"
+                    ? "bg-orange-500 text-white shadow-lg shadow-orange-200/50"
+                    : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-orange-50"
                 }`}
               >
                 {label}
@@ -3694,120 +4008,95 @@ export default function Home() {
           </div>
 
           {activeSection === "projets" && (
-            <>
-              <div className="mb-5 grid gap-4 rounded-xl border border-white/10 bg-black/30 p-4 backdrop-blur-sm lg:grid-cols-[0.7fr_1fr_1fr_1fr_1.2fr]">
-                <div>
-                  <label className="mb-2 block text-sm text-zinc-200">
-                    Recherche numéro
-                  </label>
-                  <input
-                    value={searchNumero}
-                    onChange={(e) => setSearchNumero(e.target.value)}
-                    placeholder="Ex. 26-0001"
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
-                  />
+            <div className="space-y-6">
+              <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="mb-6">
+                  <h2 className="text-xl font-semibold text-slate-950">Projets</h2>
+                  <p className="mt-2 text-sm text-slate-600">
+                    Une interface épurée où la liste prend le dessus, avec une recherche discrète.
+                  </p>
                 </div>
 
-                <div>
-                  <label className="mb-2 block text-sm text-zinc-200">
-                    Recherche client
-                  </label>
-                  <input
-                    value={searchClient}
-                    onChange={(e) => setSearchClient(e.target.value)}
-                    placeholder="Nom du client"
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
-                  />
-                </div>
+                <div className="grid gap-4 lg:grid-cols-[1.4fr_0.6fr]">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-slate-700">
+                        Recherche
+                      </label>
+                      <input
+                        value={searchNumero}
+                        onChange={(e) => setSearchNumero(e.target.value)}
+                        placeholder="Numéro, client ou ville"
+                        className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
+                      />
+                    </div>
 
-                <div>
-                  <label className="mb-2 block text-sm text-zinc-200">
-                    Recherche ville
-                  </label>
-                  <input
-                    value={searchVille}
-                    onChange={(e) => setSearchVille(e.target.value)}
-                    placeholder="Ville"
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm text-zinc-200">
-                    Chargé de projets
-                  </label>
-                  <select
-                    value={chargeFilter}
-                    onChange={(e) =>
-                      setChargeFilter(
-                        e.target.value as "tous" | "mes-projets"
-                      )
-                    }
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none"
-                  >
-                    <option value="tous" className="text-black">
-                      Tous les projets
-                    </option>
-                    <option value="mes-projets" className="text-black">
-                      Mes projets
-                    </option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm text-zinc-200">
-                    Statuts affichés
-                  </label>
-                  <div className="rounded-lg border border-white/10 bg-white/10 p-3">
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      {ALL_STATUSES.map((status) => (
-                        <label
-                          key={status}
-                          className="flex items-center gap-2 text-zinc-200"
-                        >
-                          <input
-                            type="checkbox"
-                            checked={statusFilters.includes(status)}
-                            onChange={() => toggleStatusFilter(status)}
-                          />
-                          {status}
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <label className="mb-2 block text-sm font-medium text-slate-700">
+                          Chargé de projets
                         </label>
-                      ))}
+                        <select
+                          value={chargeFilter}
+                          onChange={(e) => setChargeFilter(e.target.value as "tous" | "mes-projets")}
+                          className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none"
+                        >
+                          <option value="tous" className="text-slate-950">
+                            Tous les projets
+                          </option>
+                          <option value="mes-projets" className="text-slate-950">
+                            Mes projets
+                          </option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="mb-2 block text-sm font-medium text-slate-700">
+                          Statuts affichés
+                        </label>
+                        <div className="rounded-3xl border border-slate-200 bg-slate-100 p-4">
+                          <div className="grid grid-cols-2 gap-2 text-sm text-slate-700">
+                            {ALL_STATUSES.map((status) => (
+                              <label
+                                key={status}
+                                className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={statusFilters.includes(status)}
+                                  onChange={() => toggleStatusFilter(status)}
+                                  className="h-4 w-4 rounded border-slate-300 text-orange-500"
+                                />
+                                {status}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
                     </div>
                   </div>
+
                 </div>
               </div>
 
-              <div className="overflow-hidden rounded-lg border border-white/10 bg-black/35 shadow-2xl backdrop-blur-sm">
-                <table className="w-full text-sm">
-                  <thead className="bg-orange-500 text-black">
+              <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
+                <table className="min-w-full text-sm">
+                  <thead className="bg-orange-100 text-slate-900">
                     <tr>
-                      <th className="p-3 text-left font-semibold">
-                        Numéro projet
-                      </th>
-                      <th className="p-3 text-left font-semibold">
-                        Numéro client
-                      </th>
-                      <th className="p-3 text-left font-semibold">Ville</th>
-                      <th className="p-3 text-left font-semibold">Client</th>
-                      <th className="p-3 text-left font-semibold">
-                        Description
-                      </th>
-                      <th className="p-3 text-left font-semibold">Statut</th>
-                      <th className="p-3 text-left font-semibold">Chargé</th>
-                      <th className="p-3 text-left font-semibold">
-                        Accès projet
-                      </th>
+                      <th className="w-[105px] p-4 text-left font-semibold">Numéro projet</th>
+                      <th className="w-[125px] p-4 text-left font-semibold">Numéro client</th>
+                      <th className="w-[135px] p-4 text-left font-semibold">Ville</th>
+                      <th className="w-[175px] p-4 text-left font-semibold">Client</th>
+                      <th className="p-4 text-left font-semibold">Description</th>
+                      <th className="w-[145px] p-4 text-left font-semibold">Statut</th>
+                      <th className="w-[105px] p-4 text-left font-semibold">Chargé</th>
+                      <th className="w-[115px] p-4 text-left font-semibold">Accès projet</th>
                     </tr>
                   </thead>
 
                   <tbody>
                     {filteredProjects.length === 0 ? (
-                      <tr className="border-t border-white/10">
-                        <td
-                          colSpan={8}
-                          className="p-6 text-center text-zinc-300"
-                        >
+                      <tr>
+                        <td colSpan={8} className="p-6 text-center text-slate-500">
                           Aucun projet pour le moment.
                         </td>
                       </tr>
@@ -3815,165 +4104,145 @@ export default function Home() {
                       [...filteredProjects]
                         .sort((a, b) => b.id - a.id)
                         .map((project) => (
-                        <tr
-                          key={project.id}
-                          className="border-t border-white/10 bg-black/15"
-                        >
-                          <td className="p-3 text-white">
-                            {project.numeroProjet}
-                          </td>
-                          <td className="p-3 text-zinc-200">
-                            {project.numeroClient}
-                          </td>
-                          <td className="p-3 text-zinc-200">
-                            {project.ville}
-                          </td>
-                          <td className="p-3 text-white">{project.client}</td>
-                          <td className="p-3 text-zinc-200">
-                            {project.description}
-                          </td>
-                          <td className="p-3">
-                            <span
-                              className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${getStatusBadgeClasses(
-                                project.statut
-                              )}`}
-                            >
-                              {project.statut}
-                            </span>
-                          </td>
-                          <td className="p-3 text-zinc-200">
-                            {project.charge}
-                          </td>
-                          <td className="p-3">
-                            <button
-                              onClick={() => openProject(project)}
-                              className="rounded-md border border-white/15 bg-white/10 px-3 py-1.5 text-sm text-white transition hover:bg-white/20"
-                            >
-                              Ouvrir ↗
-                            </button>
-                          </td>
-                        </tr>
-                      ))
+                          <tr key={project.id} className="border-t border-slate-200 bg-slate-50 transition hover:bg-slate-100">
+                            <td className="p-4 text-slate-900">{project.numeroProjet}</td>
+                            <td className="p-4 text-slate-700">{project.numeroClient}</td>
+                            <td className="p-4 text-slate-700">{project.ville}</td>
+                            <td className="p-4 text-slate-900">{project.client}</td>
+                            <td className="p-4 text-slate-700">
+                              <div className="line-clamp-2" title={project.description}>
+                                {project.description}
+                              </div>
+                            </td>
+                            <td className="w-[145px] p-4">
+                              <span
+                                className={`inline-flex whitespace-nowrap rounded-full px-3 py-1 text-xs font-semibold ${getStatusBadgeClasses(project.statut)}`}
+                              >
+                                {project.statut}
+                              </span>
+                            </td>
+                            <td className="w-[105px] p-4 text-slate-700">{project.charge}</td>
+                            <td className="w-[115px] p-4">
+                              <button
+                                onClick={() => openProject(project)}
+                                className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5 text-sm text-orange-700 transition hover:bg-orange-100"
+                              >
+                                Ouvrir ↗
+                              </button>
+                            </td>
+                          </tr>
+                        ))
                     )}
                   </tbody>
                 </table>
               </div>
-
-              <div className="mt-5">
-                <button
-                  onClick={() => setShowModal(true)}
-                  className="rounded-lg bg-white px-5 py-3 font-medium text-black transition hover:bg-zinc-200"
-                >
-                  + Nouveau projet
-                </button>
-              </div>
-            </>
+            </div>
           )}
 
           {activeSection === "plans" && (
-            <div className="rounded-xl border border-white/10 bg-black/35 p-6 backdrop-blur-sm">
-              <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div>
-                  <h2 className="text-xl font-semibold">Liste de plan</h2>
-                  <p className="mt-1 text-sm text-zinc-300">
-                    Plans commandés classés par date requise.
-                  </p>
+            <div className="space-y-6">
+              <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <h2 className="text-xl font-semibold text-slate-950">Liste de plans</h2>
+                  </div>
+
+                  <label className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700">
+                    <input
+                      type="checkbox"
+                      checked={showSentPlans}
+                      onChange={(e) => setShowSentPlans(e.target.checked)}
+                      className="h-4 w-4 accent-orange-500"
+                    />
+                    Voir envoyé
+                  </label>
                 </div>
 
-                <label className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-zinc-200">
-                  <input
-                    type="checkbox"
-                    checked={showSentPlans}
-                    onChange={(e) => setShowSentPlans(e.target.checked)}
-                  />
-                  Voir envoyé
-                </label>
+                <div className="grid gap-4 lg:grid-cols-5">
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                      No projet / plan
+                    </label>
+                    <input
+                      value={planSearchNumber}
+                      onChange={(e) => setPlanSearchNumber(e.target.value)}
+                      placeholder="Ex. 26-0001, P001"
+                      className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                      Ville
+                    </label>
+                    <input
+                      value={planSearchVille}
+                      onChange={(e) => setPlanSearchVille(e.target.value)}
+                      placeholder="Ville"
+                      className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                      Client
+                    </label>
+                    <input
+                      value={planSearchClient}
+                      onChange={(e) => setPlanSearchClient(e.target.value)}
+                      placeholder="Client"
+                      className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                      Description
+                    </label>
+                    <input
+                      value={planSearchDescription}
+                      onChange={(e) => setPlanSearchDescription(e.target.value)}
+                      placeholder="Description plan"
+                      className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                      Dessinateur
+                    </label>
+                    <input
+                      value={planSearchDessinateur}
+                      onChange={(e) => setPlanSearchDessinateur(e.target.value)}
+                      placeholder="Dessinateur"
+                      className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
+                    />
+                  </div>
+                </div>
               </div>
 
-              <div className="mb-5 grid gap-4 lg:grid-cols-5">
-                <div>
-                  <label className="mb-2 block text-sm text-zinc-200">
-                    No projet / plan
-                  </label>
-                  <input
-                    value={planSearchNumber}
-                    onChange={(e) => setPlanSearchNumber(e.target.value)}
-                    placeholder="Ex. 26-0001, P001"
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm text-zinc-200">
-                    Ville
-                  </label>
-                  <input
-                    value={planSearchVille}
-                    onChange={(e) => setPlanSearchVille(e.target.value)}
-                    placeholder="Ville"
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm text-zinc-200">
-                    Client
-                  </label>
-                  <input
-                    value={planSearchClient}
-                    onChange={(e) => setPlanSearchClient(e.target.value)}
-                    placeholder="Client"
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm text-zinc-200">
-                    Description
-                  </label>
-                  <input
-                    value={planSearchDescription}
-                    onChange={(e) => setPlanSearchDescription(e.target.value)}
-                    placeholder="Description plan"
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm text-zinc-200">
-                    Dessinateur
-                  </label>
-                  <input
-                    value={planSearchDessinateur}
-                    onChange={(e) => setPlanSearchDessinateur(e.target.value)}
-                    placeholder="Dessinateur"
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
-                  />
-                </div>
-              </div>
-
-              <div className="overflow-x-auto rounded-xl border border-white/10">
+              <div className="overflow-x-auto rounded-[2rem] border border-slate-200 bg-white shadow-sm">
                 <table className="min-w-[1500px] w-full text-sm">
-                  <thead className="bg-orange-500 text-black">
+                  <thead className="bg-orange-100 text-slate-900">
                     <tr>
-                      <th className="p-3 text-left font-semibold">No Projet</th>
-                      <th className="p-3 text-left font-semibold">Fiche</th>
-                      <th className="p-3 text-left font-semibold">Ville</th>
-                      <th className="p-3 text-left font-semibold">Client</th>
-                      <th className="p-3 text-left font-semibold">Description plan</th>
-                      <th className="p-3 text-left font-semibold">Demande</th>
-                      <th className="p-3 text-left font-semibold"># Plan</th>
-                      <th className="p-3 text-left font-semibold"># Rév.</th>
-                      <th className="p-3 text-left font-semibold">Plan requis le</th>
-                      <th className="p-3 text-left font-semibold">Statut plan</th>
-                      <th className="p-3 text-left font-semibold">Dessinateur</th>
+                      <th className="p-4 text-left font-semibold">No Projet</th>
+                      <th className="p-4 text-left font-semibold">Fiche</th>
+                      <th className="p-4 text-left font-semibold">Ville</th>
+                      <th className="p-4 text-left font-semibold">Client</th>
+                      <th className="p-4 text-left font-semibold">Description plan</th>
+                      <th className="p-4 text-left font-semibold">Demande</th>
+                      <th className="p-4 text-left font-semibold"># Plan</th>
+                      <th className="p-4 text-left font-semibold"># Rév.</th>
+                      <th className="p-4 text-left font-semibold">Plan requis le</th>
+                      <th className="p-4 text-left font-semibold">Statut plan</th>
+                      <th className="p-4 text-left font-semibold">Dessinateur</th>
                     </tr>
                   </thead>
 
                   <tbody>
                     {planListing.length === 0 ? (
                       <tr>
-                        <td colSpan={11} className="p-6 text-center text-zinc-300">
+                        <td colSpan={11} className="p-6 text-center text-slate-500">
                           Aucun plan à afficher.
                         </td>
                       </tr>
@@ -3981,48 +4250,54 @@ export default function Home() {
                       planListing.map(({ project, plan }) => (
                         <tr
                           key={`${project.id}-${plan.id}`}
-                          className={`border-t border-white/10 ${
-                            plan.statut === "envoyé"
-                              ? "bg-zinc-600/35"
-                              : plan.statut === "commandé"
-                                ? "bg-yellow-500/18"
-                                : plan.statut === "en dessin"
-                                  ? "bg-sky-500/18"
-                                  : plan.statut === "a vérifier" || plan.statut === "a corriger"
-                                    ? "bg-purple-500/18"
-                                    : "bg-black/15"
+                          className={`border-t border-slate-200 transition hover:bg-slate-50 ${
+                            plan.statut === "en dessin"
+                              ? "bg-sky-50"
+                              : plan.statut === "pause"
+                                ? "bg-yellow-50"
+                                : plan.statut === "a corriger"
+                                  ? "bg-orange-50"
+                                  : plan.statut === "a vérifier"
+                                    ? "bg-purple-50"
+                                    : plan.statut === "a réviser"
+                                      ? "bg-red-50"
+                                      : plan.statut === "révisé"
+                                        ? "bg-emerald-50"
+                                        : plan.statut === "envoyé"
+                                          ? "bg-slate-100"
+                                          : "bg-white"
                           }`}
                         >
-                          <td className="p-3 text-white">{project.numeroProjet}</td>
-                          <td className="p-3">
+                          <td className="p-4 text-slate-900">{project.numeroProjet}</td>
+                          <td className="p-4">
                             <button
                               onClick={() => openProject(project)}
-                              className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-white hover:bg-white/20"
+                              className="rounded-full border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs text-slate-900 transition hover:bg-slate-200"
                             >
                               Fiche
                             </button>
                           </td>
-                          <td className="p-3 text-zinc-200">{plan.ville || project.ville}</td>
-                          <td className="p-3 text-zinc-200">{project.client}</td>
-                          <td className="p-3 text-zinc-100">
+                          <td className="p-4 text-slate-700">{plan.ville || project.ville}</td>
+                          <td className="p-4 text-slate-700">{project.client}</td>
+                          <td className="p-4 text-slate-700">
                             <div className="max-w-[520px] truncate" title={plan.descriptionPlan}>
                               {plan.descriptionPlan}
                             </div>
-                            <p className="mt-1 text-xs text-zinc-400">{plan.code}</p>
+                            <p className="mt-1 text-xs text-slate-400">{plan.code}</p>
                           </td>
-                          <td className="p-3">
+                          <td className="p-4">
                             <button
                               onClick={() => openProjectPlanDetail(project, plan)}
-                              className="rounded border border-orange-400/60 bg-orange-400/10 px-3 py-1.5 text-xs text-orange-200 hover:bg-orange-400/20"
+                              className="rounded-full border border-orange-200 bg-orange-50 px-3 py-1.5 text-xs text-orange-700 transition hover:bg-orange-100"
                             >
                               Demande
                             </button>
                           </td>
-                          <td className="p-3 text-zinc-200">{plan.planNumber}</td>
-                          <td className="p-3 text-zinc-200">{plan.revisionNumber}</td>
-                          <td className="p-3 text-zinc-200">{formatDisplayDate(plan.planRequisLe)}</td>
-                          <td className="p-3 text-zinc-200">{plan.statut}</td>
-                          <td className="p-3 text-zinc-200">{plan.dessinateurIngenieur}</td>
+                          <td className="p-4 text-slate-700">{plan.planNumber}</td>
+                          <td className="p-4 text-slate-700">{plan.revisionNumber}</td>
+                          <td className="p-4 text-slate-700">{formatDisplayDate(plan.planRequisLe)}</td>
+                          <td className="p-4 text-slate-700">{plan.statut}</td>
+                          <td className="p-4 text-slate-700">{plan.dessinateurIngenieur}</td>
                         </tr>
                       ))
                     )}
@@ -4033,127 +4308,109 @@ export default function Home() {
           )}
 
           {activeSection === "clients" && (
-            <div className="rounded-xl border border-white/10 bg-black/35 p-6 backdrop-blur-sm">
-              <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <h2 className="text-xl font-semibold">Clients / Contacts</h2>
-                <button
-                  onClick={() => setShowClientModal(true)}
-                  className="rounded-lg bg-orange-500 px-4 py-2 font-medium text-white transition hover:bg-orange-400"
-                >
-                  + Gestion clients
-                </button>
-              </div>
+            <div className="space-y-6">
+              <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                  <div>
+                    <h2 className="text-xl font-semibold text-slate-950">Clients / Contacts</h2>
+                    <p className="mt-2 text-sm text-slate-600">
+                      Gérez vos clients et accédez rapidement aux bons contacts.
+                    </p>
+                  </div>
 
-              <div className="mb-5 grid gap-4 lg:grid-cols-3">
-                <div>
-                  <label className="mb-2 block text-sm text-zinc-200">
-                    Recherche client
-                  </label>
-                  <input
-                    value={clientListSearch}
-                    onChange={(e) => setClientListSearch(e.target.value)}
-                    placeholder="Nom du client"
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm text-zinc-200">
-                    Recherche contact
-                  </label>
-                  <input
-                    value={contactListSearch}
-                    onChange={(e) => setContactListSearch(e.target.value)}
-                    placeholder="Nom, téléphone ou courriel"
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none placeholder:text-zinc-400"
-                  />
-                </div>
-
-                <div>
-                  <label className="mb-2 block text-sm text-zinc-200">
-                    Statut client
-                  </label>
-                  <select
-                    value={clientStatusFilter}
-                    onChange={(e) =>
-                      setClientStatusFilter(
-                        e.target.value as "Tous" | ClientStatus
-                      )
-                    }
-                    className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none"
+                  <button
+                    onClick={() => setShowClientModal(true)}
+                    className="rounded-full bg-orange-500 px-5 py-3 text-sm font-semibold text-white transition hover:bg-orange-400"
                   >
-                    <option value="Tous" className="text-black">
-                      Tous
-                    </option>
-                    {CLIENT_STATUSES.map((status) => (
-                      <option
-                        key={status}
-                        value={status}
-                        className="text-black"
-                      >
-                        {status}
+                    + Gestion clients
+                  </button>
+                </div>
+
+                <div className="grid gap-4 lg:grid-cols-3">
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                      Recherche client
+                    </label>
+                    <input
+                      value={clientListSearch}
+                      onChange={(e) => setClientListSearch(e.target.value)}
+                      placeholder="Nom du client"
+                      className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                      Recherche contact
+                    </label>
+                    <input
+                      value={contactListSearch}
+                      onChange={(e) => setContactListSearch(e.target.value)}
+                      placeholder="Nom, téléphone ou courriel"
+                      className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-slate-700">
+                      Statut client
+                    </label>
+                    <select
+                      value={clientStatusFilter}
+                      onChange={(e) =>
+                        setClientStatusFilter(
+                          e.target.value as "Tous" | ClientStatus
+                        )
+                      }
+                      className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none"
+                    >
+                      <option value="Tous" className="text-slate-950">
+                        Tous
                       </option>
-                    ))}
-                  </select>
+                      {CLIENT_STATUSES.map((status) => (
+                        <option key={status} value={status} className="text-slate-950">
+                          {status}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
                 </div>
               </div>
 
               {filteredClientsForList.length === 0 ? (
-                <p className="text-zinc-300">Aucun client trouvé.</p>
+                <p className="text-slate-500">Aucun client trouvé.</p>
               ) : (
                 <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
                   {filteredClientsForList.map((client) => (
                     <div
                       key={client.id}
-                      className="rounded-lg border border-white/10 bg-white/5 p-4"
+                      className="rounded-[1.75rem] border border-slate-200 bg-slate-50 p-5 shadow-sm"
                     >
-                      <div className="mb-3 flex items-center justify-between gap-3">
-                        <h3 className="text-lg font-semibold text-orange-400">
+                      <div className="mb-4 flex items-center justify-between gap-3">
+                        <h3 className="text-lg font-semibold text-slate-950">
                           {client.name}
                         </h3>
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`rounded-full px-3 py-1 text-xs font-medium ${getClientStatusBadgeClasses(
-                              client.status
-                            )}`}
-                          >
-                            {client.status}
-                          </span>
-                          <select
-                            value={client.status}
-                            onChange={(e) =>
-                              updateClientStatus(
-                                client.name,
-                                e.target.value as ClientStatus
-                              )
-                            }
-                            className="rounded border border-white/10 bg-black/40 px-2 py-1 text-sm text-white"
-                          >
-                            {CLIENT_STATUSES.map((status) => (
-                              <option
-                                key={status}
-                                value={status}
-                                className="text-black"
-                              >
-                                {status}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-semibold ${getClientStatusBadgeClasses(
+                            client.status
+                          )}`}
+                        >
+                          {client.status}
+                        </span>
                       </div>
 
                       {client.contacts.length === 0 ? (
-                        <p className="text-sm text-zinc-400">Aucun contact.</p>
+                        <p className="text-sm text-slate-500">Aucun contact.</p>
                       ) : (
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           {client.contacts.map((contact) => (
                             <div
                               key={contact.id}
-                              className="rounded border border-white/10 bg-black/20 p-3 text-sm"
+                              className="rounded-2xl border border-slate-200 bg-white p-4 text-sm"
                             >
-                              <p className="font-semibold">{contact.name}</p>
-                              <p className="text-zinc-300">{contact.phone}</p>
-                              <p className="text-zinc-300">{contact.email}</p>
+                              <p className="font-semibold text-slate-900">{contact.name}</p>
+                              <p className="text-slate-600">{contact.phone}</p>
+                              <p className="text-slate-600">{contact.email}</p>
                             </div>
                           ))}
                         </div>
@@ -4166,28 +4423,32 @@ export default function Home() {
           )}
 
           {activeSection === "facturation" && (
-            <div className="rounded-xl border border-white/10 bg-black/35 p-6 backdrop-blur-sm">
-              <h2 className="text-xl font-semibold">Facturation</h2>
-              <p className="mt-2 text-zinc-300">Section en construction.</p>
+            <div className="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-sm">
+              <h2 className="text-xl font-semibold text-slate-950">Facturation</h2>
+              <p className="mt-3 text-slate-600">
+                Section en construction, bientôt avec un suivi clair et des
+                tableaux plus précis.
+              </p>
             </div>
           )}
+
         </div>
       </div>
 
       {showModal && (
-        <div className="fixed inset-0 z-20 flex items-center justify-center bg-black/70 px-4">
-          <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-black/90 p-6 text-white shadow-2xl">
-            <h2 className="mb-5 text-xl font-semibold">Nouveau projet</h2>
+        <div className="fixed inset-0 z-20 flex items-center justify-center bg-slate-900/30 px-4">
+          <div className="w-full max-w-lg rounded-[2rem] border border-slate-200 bg-white p-6 text-slate-900 shadow-2xl shadow-slate-300/40">
+            <h2 className="mb-5 text-xl font-semibold text-slate-950">Nouveau projet</h2>
 
             <div className="space-y-4">
               <div>
-                <label className="mb-2 block text-sm text-zinc-200">
+                <label className="mb-2 block text-sm font-medium text-slate-700">
                   Client
                 </label>
                 <input
                   list="clients-list-new-project"
                   placeholder="Commencez à taper le nom du client"
-                  className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/30"
+                  className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-900 outline-none focus:border-orange-400"
                   value={newProject.client}
                   onChange={(e) =>
                     setNewProject({ ...newProject, client: e.target.value })
@@ -4201,12 +4462,12 @@ export default function Home() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm text-zinc-200">
+                <label className="mb-2 block text-sm font-medium text-slate-700">
                   Ville
                 </label>
                 <input
                   placeholder="Ville du projet"
-                  className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/30"
+                  className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-900 outline-none focus:border-orange-400"
                   value={newProject.ville}
                   onChange={(e) =>
                     setNewProject({ ...newProject, ville: e.target.value })
@@ -4215,12 +4476,12 @@ export default function Home() {
               </div>
 
               <div>
-                <label className="mb-2 block text-sm text-zinc-200">
+                <label className="mb-2 block text-sm font-medium text-slate-700">
                   Description
                 </label>
                 <input
                   placeholder="Description du projet"
-                  className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-white outline-none focus:border-white/30"
+                  className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-900 outline-none focus:border-orange-400"
                   value={newProject.description}
                   onChange={(e) =>
                     setNewProject({
@@ -4232,17 +4493,17 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="mt-6 flex gap-3">
+            <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
               <button
                 onClick={addProject}
-                className="rounded-lg bg-white px-4 py-3 font-medium text-black transition hover:bg-zinc-200"
+                className="rounded-full bg-orange-500 px-5 py-3 font-semibold text-white transition hover:bg-orange-400"
               >
                 Ajouter
               </button>
 
               <button
                 onClick={() => setShowModal(false)}
-                className="rounded-lg border border-white/15 bg-white/5 px-4 py-3 text-white transition hover:bg-white/10"
+                className="rounded-full border border-slate-200 bg-slate-100 px-5 py-3 text-slate-900 transition hover:bg-slate-200"
               >
                 Annuler
               </button>
