@@ -2108,14 +2108,9 @@ export default function Home() {
 
   const filteredProjects = useMemo(() => {
     return projects.filter((project) => {
-      const search = searchNumero.toLowerCase().trim();
-      const globalSearchOk =
-        search === "" ||
-        project.numeroProjet.toLowerCase().includes(search) ||
-        project.numeroClient.toLowerCase().includes(search) ||
-        project.client.toLowerCase().includes(search) ||
-        project.ville.toLowerCase().includes(search) ||
-        project.description.toLowerCase().includes(search);
+      const numeroOk = project.numeroProjet
+        .toLowerCase()
+        .includes(searchNumero.toLowerCase().trim());
 
       const clientOk = project.client
         .toLowerCase()
@@ -2130,7 +2125,7 @@ export default function Home() {
 
       const statusOk = statusFilters.includes(project.statut);
 
-      return globalSearchOk && clientOk && villeOk && chargeOk && statusOk;
+      return numeroOk && clientOk && villeOk && chargeOk && statusOk;
     });
   }, [
     projects,
@@ -2164,7 +2159,7 @@ export default function Home() {
             </p>
 
             <div className="mb-4">
-              <label className="mb-1 block text-xs font-medium text-slate-600">
+              <label className="mb-2 block text-sm text-slate-700">
                 Identifiant
               </label>
               <input
@@ -2177,7 +2172,7 @@ export default function Home() {
             </div>
 
             <div className="mb-4">
-              <label className="mb-1 block text-xs font-medium text-slate-600">
+              <label className="mb-2 block text-sm text-slate-700">
                 Code d’accès
               </label>
               <input
@@ -2214,7 +2209,7 @@ export default function Home() {
 
         <div className="relative z-10 px-6 py-5 md:px-8 xl:px-10">
           <div className="mx-auto max-w-[1700px]">
-            <div className="mb-4 flex flex-col gap-3 rounded-2xl border border-white/10 bg-black/35 p-4 shadow-2xl backdrop-blur-sm md:flex-row md:items-center md:justify-between">
+            <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
               <div>
                 <p className="text-sm uppercase tracking-[0.25em] text-slate-200">
                   ERIC
@@ -2228,17 +2223,13 @@ export default function Home() {
                 >
                   Retour à la liste
                 </button>
-
-                <span className="rounded-lg border border-orange-500 bg-orange-500/10 px-4 py-2 text-sm text-orange-300">
-                  Enregistrement automatique
-                </span>
               </div>
             </div>
 
-            <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
+            <div className="mb-6 grid grid-cols-1 gap-5 lg:grid-cols-4">
               <button
                 onClick={() => setProjectPanel("fiche")}
-                className={`min-h-[58px] rounded-xl border-2 border-orange-400 px-4 text-lg font-semibold transition ${
+                className={`min-h-[54px] rounded-xl border border-orange-400 px-4 text-base font-semibold transition ${
                   projectPanel === "fiche"
                     ? "bg-orange-500 text-black"
                     : "bg-transparent text-orange-400 hover:bg-orange-400/10"
@@ -2249,7 +2240,7 @@ export default function Home() {
 
               <button
                 onClick={() => setProjectPanel("soumission")}
-                className={`min-h-[58px] rounded-xl border-2 border-orange-400 px-4 text-lg font-semibold transition ${
+                className={`min-h-[54px] rounded-xl border border-orange-400 px-4 text-base font-semibold transition ${
                   projectPanel === "soumission"
                     ? "bg-orange-500 text-black"
                     : "bg-transparent text-orange-400 hover:bg-orange-400/10"
@@ -2260,7 +2251,7 @@ export default function Home() {
 
               <button
                 onClick={() => setProjectPanel("demandePlan")}
-                className={`min-h-[58px] rounded-xl border-2 border-orange-400 px-4 text-lg font-semibold transition ${
+                className={`min-h-[54px] rounded-xl border border-orange-400 px-4 text-base font-semibold transition ${
                   projectPanel === "demandePlan"
                     ? "bg-orange-500 text-black"
                     : "bg-transparent text-orange-400 hover:bg-orange-400/10"
@@ -2271,7 +2262,7 @@ export default function Home() {
 
               <button
                 onClick={() => setProjectPanel("facturation")}
-                className={`min-h-[58px] rounded-xl border-2 border-orange-400 px-4 text-lg font-semibold transition ${
+                className={`min-h-[54px] rounded-xl border border-orange-400 px-4 text-base font-semibold transition ${
                   projectPanel === "facturation"
                     ? "bg-orange-500 text-black"
                     : "bg-transparent text-orange-400 hover:bg-orange-400/10"
@@ -2283,7 +2274,7 @@ export default function Home() {
 
             {projectPanel === "soumission" ? (
               <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-                <div className="rounded-2xl border border-slate-200 bg-white/95 p-5 text-slate-950 shadow-2xl backdrop-blur-sm">
+                <div className="rounded-2xl border border-white/10 bg-black/35 p-5 shadow-2xl backdrop-blur-sm">
                   <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <h2 className="text-2xl font-semibold text-orange-400">
                       Soumission
@@ -2294,7 +2285,7 @@ export default function Home() {
                         value={newQuoteName}
                         onChange={(e) => setNewQuoteName(e.target.value)}
                         placeholder={`${projectForm.numeroProjet}_PLAN`}
-                        className="rounded-lg border border-slate-200 bg-slate-100 px-4 py-2 text-slate-950 outline-none placeholder:text-slate-500"
+                        className="rounded-lg border border-white/10 bg-white/10 px-4 py-2 text-slate-950 outline-none placeholder:text-zinc-400"
                       />
                       <button
                         onClick={createQuote}
@@ -2307,7 +2298,7 @@ export default function Home() {
 
                   <div className="mb-5 flex flex-wrap gap-2">
                     {projectForm.soumissions.length === 0 ? (
-                      <p className="text-sm text-slate-500">
+                      <p className="text-sm text-zinc-400">
                         Aucune soumission pour ce projet.
                       </p>
                     ) : (
@@ -2318,7 +2309,7 @@ export default function Home() {
                           className={`rounded-lg border px-4 py-2 text-left text-sm transition ${
                             quote.id === activeQuoteId
                               ? "border-orange-400 bg-orange-500 text-black"
-                              : "border-slate-200 bg-slate-50 text-slate-950 hover:bg-slate-100"
+                              : "border-white/10 bg-white/5 text-slate-950 hover:bg-white/10"
                           }`}
                         >
                           <div>{quote.name}</div>
@@ -2345,7 +2336,7 @@ export default function Home() {
                               e.target.value as QuoteStatus
                             )
                           }
-                          className="rounded-lg border border-slate-200 bg-slate-100 px-4 py-2 text-slate-950 outline-none"
+                          className="rounded-lg border border-white/10 bg-white/10 px-4 py-2 text-slate-950 outline-none"
                         >
                           {QUOTE_STATUSES.map((status) => (
                             <option
@@ -2361,7 +2352,7 @@ export default function Home() {
                         <button
                           onClick={generateQuotePdf}
                           disabled={isGeneratingPdf}
-                          className="rounded-lg bg-orange-500 px-4 py-2 font-medium text-black transition hover:bg-orange-400 disabled:opacity-50"
+                          className="rounded-lg bg-white px-4 py-2 font-medium text-black transition hover:bg-zinc-200 disabled:opacity-50"
                         >
                           {isGeneratingPdf ? "Génération..." : "Générer PDF"}
                         </button>
@@ -2374,7 +2365,7 @@ export default function Home() {
                             )}
                             target="_blank"
                             rel="noreferrer"
-                            className="rounded-lg border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-950 transition hover:bg-slate-200"
+                            className="rounded-lg border border-white/15 bg-white/10 px-4 py-2 text-sm text-slate-950 transition hover:bg-white/20"
                           >
                             Ouvrir PDF généré
                           </a>
@@ -2547,14 +2538,14 @@ export default function Home() {
                       </div>
                     </>
                   ) : (
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 text-slate-600">
+                    <div className="rounded-xl border border-white/10 bg-white/5 p-6 text-zinc-300">
                       Clique sur <strong>+ Nouvelle soumission</strong> pour
                       commencer.
                     </div>
                   )}
                 </div>
 
-                <div className="rounded-2xl border border-slate-200 bg-white/95 p-5 text-slate-950 shadow-2xl backdrop-blur-sm">
+                <div className="rounded-2xl border border-white/10 bg-black/35 p-5 shadow-2xl backdrop-blur-sm">
                   <h2 className="mb-4 text-xl font-semibold text-orange-400">
                     Banque d’items
                   </h2>
@@ -2564,13 +2555,13 @@ export default function Home() {
                       value={newItemName}
                       onChange={(e) => setNewItemName(e.target.value)}
                       placeholder="Nom de l’item"
-                      className="w-full rounded-lg border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
+                      className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none placeholder:text-zinc-400"
                     />
                     <input
                       value={newItemPrice}
                       onChange={(e) => setNewItemPrice(e.target.value)}
                       placeholder="Prix"
-                      className="w-full rounded-lg border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
+                      className="w-full rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none placeholder:text-zinc-400"
                     />
                     <button
                       onClick={addItemToBank}
@@ -2584,12 +2575,12 @@ export default function Home() {
                     {itemsBank.map((item) => (
                       <div
                         key={item.id}
-                        className="rounded-lg border border-slate-200 bg-slate-50 p-3"
+                        className="rounded-lg border border-white/10 bg-white/5 p-3"
                       >
                         <div className="flex items-center justify-between gap-3">
                           <div>
                             <p className="font-medium">{item.name}</p>
-                            <p className="text-sm text-slate-600">
+                            <p className="text-sm text-zinc-300">
                               {money(item.price)}
                             </p>
                           </div>
@@ -2597,7 +2588,7 @@ export default function Home() {
                           <div className="flex gap-2">
                             <button
                               onClick={() => addLineToQuote(item)}
-                              className="rounded-lg border border-orange-400 px-3 py-2 text-sm text-orange-600 transition hover:bg-orange-400/10"
+                              className="rounded-lg border border-orange-400 px-3 py-2 text-sm text-orange-300 transition hover:bg-orange-400/10"
                             >
                               Ajouter
                             </button>
@@ -2615,35 +2606,35 @@ export default function Home() {
                 </div>
               </div>
             ) : projectPanel === "facturation" ? (
-              <div className="rounded-2xl border border-slate-200 bg-white/95 p-5 text-slate-950 shadow-2xl backdrop-blur-sm">
+              <div className="rounded-2xl border border-white/10 bg-black/35 p-5 shadow-2xl backdrop-blur-sm">
                 <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                   <div>
                     <h2 className="text-2xl font-semibold text-orange-400">Bordereau de facturation</h2>
-                    <p className="mt-1 text-sm text-slate-600">
+                    <p className="mt-1 text-sm text-zinc-300">
                       Les items proviennent de la soumission active du projet.
                     </p>
                   </div>
 
                   {activeBillingQuote && (
-                    <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-                      Soumission active : <span className="font-semibold text-slate-950">{activeBillingQuote.name}</span>
+                    <div className="rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-sm text-zinc-200">
+                      Soumission active : <span className="font-semibold text-white">{activeBillingQuote.name}</span>
                     </div>
                   )}
                 </div>
 
                 {!activeBillingQuote ? (
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-6 text-slate-600">
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-6 text-zinc-300">
                     Aucune soumission disponible. Crée une soumission active avant de facturer.
                   </div>
                 ) : (
                   <>
-                    <div className="mb-5 flex flex-wrap items-end gap-3 rounded-xl border border-orange-300 bg-orange-50 p-4">
+                    <div className="mb-5 flex flex-wrap items-end gap-3 rounded-xl border border-orange-400/30 bg-black/20 p-4">
                       <div>
-                        <label className="mb-2 block text-sm text-slate-700">Mois</label>
+                        <label className="mb-2 block text-sm text-zinc-200">Mois</label>
                         <select
                           value={newBillingMonth}
                           onChange={(e) => setNewBillingMonth(e.target.value)}
-                          className="rounded-lg border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none"
+                          className="rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none"
                         >
                           {Array.from({ length: 12 }, (_, index) => index + 1).map((month) => (
                             <option key={month} value={month} className="text-black">
@@ -2654,11 +2645,11 @@ export default function Home() {
                       </div>
 
                       <div>
-                        <label className="mb-2 block text-sm text-slate-700">Année</label>
+                        <label className="mb-2 block text-sm text-zinc-200">Année</label>
                         <input
                           value={newBillingYear}
                           onChange={(e) => setNewBillingYear(e.target.value)}
-                          className="w-28 rounded-lg border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none"
+                          className="w-28 rounded-lg border border-white/10 bg-white/10 px-4 py-3 text-slate-950 outline-none"
                         />
                       </div>
 
@@ -2672,7 +2663,7 @@ export default function Home() {
                       {invoicePdfError && <span className="text-sm text-red-400">{invoicePdfError}</span>}
                     </div>
 
-                    <div className="overflow-x-auto rounded-xl border border-slate-200">
+                    <div className="overflow-x-auto rounded-xl border border-white/10">
                       <table className="min-w-[1400px] w-full text-sm">
                         <thead className="bg-orange-500 text-black">
                           <tr>
@@ -2696,7 +2687,7 @@ export default function Home() {
                         <tbody>
                           {activeBillingQuote.lines.length === 0 ? (
                             <tr>
-                              <td colSpan={8 + (activeBillingBoard?.months.length ?? 0)} className="p-6 text-center text-slate-600">
+                              <td colSpan={8 + (activeBillingBoard?.months.length ?? 0)} className="p-6 text-center text-zinc-300">
                                 Aucun item dans la soumission active.
                               </td>
                             </tr>
@@ -2705,15 +2696,15 @@ export default function Home() {
                               const realQtyTotal = getRealQuantityTotal(line.id);
                               const realMoneyTotal = realQtyTotal * line.price;
                               return (
-                                <tr key={line.id} className="border-t border-slate-200 bg-slate-50">
-                                  <td className="p-3 text-slate-950">{index + 1}</td>
-                                  <td className="p-3 text-slate-950">{line.name}</td>
-                                  <td className="p-3 text-slate-700">Unité</td>
-                                  <td className="p-3 text-slate-700">{money(line.price)}</td>
-                                  <td className="p-3 text-slate-700">{line.quantity}</td>
-                                  <td className="p-3 text-slate-700">{money(line.price * line.quantity)}</td>
-                                  <td className="p-3 text-slate-700">{realQtyTotal}</td>
-                                  <td className="p-3 text-slate-700">{money(realMoneyTotal)}</td>
+                                <tr key={line.id} className="border-t border-white/10 bg-black/15">
+                                  <td className="p-3 text-white">{index + 1}</td>
+                                  <td className="p-3 text-white">{line.name}</td>
+                                  <td className="p-3 text-zinc-200">Unité</td>
+                                  <td className="p-3 text-zinc-200">{money(line.price)}</td>
+                                  <td className="p-3 text-zinc-200">{line.quantity}</td>
+                                  <td className="p-3 text-zinc-200">{money(line.price * line.quantity)}</td>
+                                  <td className="p-3 text-zinc-200">{realQtyTotal}</td>
+                                  <td className="p-3 text-zinc-200">{money(realMoneyTotal)}</td>
                                   {(activeBillingBoard?.months ?? []).map((month) => {
                                     const monthQty = getMonthLineQuantity(month, line.id);
                                     return (
@@ -2726,9 +2717,9 @@ export default function Home() {
                                             onChange={(e) =>
                                               updateBillingMonthQuantity(month.id, line.id, Number(e.target.value))
                                             }
-                                            className="w-20 rounded border border-slate-200 bg-slate-100 px-2 py-1 text-slate-950 outline-none"
+                                            className="w-20 rounded border border-white/10 bg-white/10 px-2 py-1 text-slate-950 outline-none"
                                           />
-                                          <span className="text-slate-700">{money(monthQty * line.price)}</span>
+                                          <span className="text-zinc-200">{money(monthQty * line.price)}</span>
                                         </div>
                                       </td>
                                     );
@@ -2741,15 +2732,15 @@ export default function Home() {
 
                         {activeBillingQuote.lines.length > 0 && (
                           <tfoot>
-                            <tr className="border-t-2 border-orange-400 bg-slate-100 font-semibold">
-                              <td colSpan={5} className="p-3 text-right text-slate-950">TOTAL</td>
-                              <td className="p-3 text-slate-950">
+                            <tr className="border-t-2 border-orange-400 bg-black/40 font-semibold">
+                              <td colSpan={5} className="p-3 text-right text-white">TOTAL</td>
+                              <td className="p-3 text-white">
                                 {money(activeBillingQuote.lines.reduce((total, line) => total + line.price * line.quantity, 0))}
                               </td>
-                              <td className="p-3 text-slate-950">
+                              <td className="p-3 text-white">
                                 {activeBillingQuote.lines.reduce((total, line) => total + getRealQuantityTotal(line.id), 0)}
                               </td>
-                              <td className="p-3 text-slate-950">
+                              <td className="p-3 text-white">
                                 {money(activeBillingQuote.lines.reduce((total, line) => total + getRealQuantityTotal(line.id) * line.price, 0))}
                               </td>
                               {(activeBillingBoard?.months ?? []).map((month) => {
@@ -2758,7 +2749,7 @@ export default function Home() {
                                   0
                                 );
                                 return (
-                                  <td key={`total-${month.id}`} className="p-3 text-slate-950">
+                                  <td key={`total-${month.id}`} className="p-3 text-white">
                                     {money(monthTotal)}
                                   </td>
                                 );
@@ -2771,11 +2762,11 @@ export default function Home() {
 
                     <div className="mt-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
                       {(activeBillingBoard?.months ?? []).map((month) => (
-                        <div key={month.id} className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                        <div key={month.id} className="rounded-xl border border-white/10 bg-white/5 p-4">
                           <div className="flex flex-wrap items-center justify-between gap-3">
                             <div>
                               <p className="font-semibold text-orange-400">Facture - {month.label}</p>
-                              <p className="text-sm text-slate-600">
+                              <p className="text-sm text-zinc-300">
                                 Total du mois : {money(activeBillingQuote.lines.reduce((total, line) => total + getMonthLineQuantity(month, line.id) * line.price, 0))}
                               </p>
                             </div>
@@ -2784,14 +2775,14 @@ export default function Home() {
                               <button
                                 onClick={() => generateInvoicePdf(month)}
                                 disabled={isGeneratingInvoicePdf}
-                                className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-medium text-black hover:bg-orange-400 disabled:opacity-50"
+                                className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-black hover:bg-zinc-200 disabled:opacity-50"
                               >
                                 {isGeneratingInvoicePdf ? "Génération..." : "Générer PDF facture"}
                               </button>
 
                               <button
                                 onClick={() => sendInvoiceEmail(month)}
-                                className="rounded-lg border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-950 hover:bg-slate-200"
+                                className="rounded-lg border border-white/15 bg-white/10 px-4 py-2 text-sm text-slate-950 hover:bg-white/20"
                               >
                                 Envoyer facture
                               </button>
@@ -2801,7 +2792,7 @@ export default function Home() {
                                   href={getPrivateBlobOpenUrl(month.invoice.pathname, month.invoice.url)}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="rounded-lg border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-950 hover:bg-slate-200"
+                                  className="rounded-lg border border-white/15 bg-white/10 px-4 py-2 text-sm text-slate-950 hover:bg-white/20"
                                 >
                                   Ouvrir {month.invoice.invoiceNumber}
                                 </a>
@@ -2815,13 +2806,13 @@ export default function Home() {
                 )}
               </div>
             ) : projectPanel === "demandePlan" ? (
-              <div className="rounded-2xl border border-slate-200 bg-white/95 p-5 text-slate-950 shadow-2xl backdrop-blur-sm">
+              <div className="rounded-2xl border border-white/10 bg-black/35 p-5 shadow-2xl backdrop-blur-sm">
                 <div className="mb-5 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
                   <div>
                     <h2 className="text-2xl font-semibold text-orange-400">
                       Demandes de plan
                     </h2>
-                    <p className="mt-1 text-sm text-slate-600">
+                    <p className="mt-1 text-sm text-zinc-300">
                       Liste des plans demandés pour le projet {projectForm.numeroProjet}.
                     </p>
                   </div>
@@ -2842,11 +2833,7 @@ export default function Home() {
                         }
                         copyPlanAsNewPlan(selectedPlan);
                       }}
-                      className={`rounded-lg border px-4 py-2 text-sm font-semibold transition ${
-                        selectedPlan
-                          ? "border-orange-500 bg-white text-orange-600 hover:bg-orange-50"
-                          : "cursor-not-allowed border-slate-300 bg-slate-100 text-slate-400"
-                      }`}
+                      className="rounded-lg border border-blue-400/60 bg-blue-400/10 px-4 py-2 text-sm font-medium text-blue-200 transition hover:bg-blue-400/20"
                     >
                       Copier en nouveau plan
                     </button>
@@ -2859,18 +2846,14 @@ export default function Home() {
                         }
                         copyPlanAsRevision(selectedPlan);
                       }}
-                      className={`rounded-lg border px-4 py-2 text-sm font-semibold transition ${
-                        selectedPlan
-                          ? "border-orange-500 bg-white text-orange-600 hover:bg-orange-50"
-                          : "cursor-not-allowed border-slate-300 bg-slate-100 text-slate-400"
-                      }`}
+                      className="rounded-lg border border-green-400/60 bg-green-400/10 px-4 py-2 text-sm font-medium text-green-200 transition hover:bg-green-400/20"
                     >
                       Copier en nouvelle révision
                     </button>
                   </div>
                 </div>
 
-                <div className="overflow-x-auto rounded-xl border border-slate-200">
+                <div className="overflow-x-auto rounded-xl border border-white/10">
                   <table className="min-w-[1000px] w-full text-sm">
                     <thead className="bg-orange-500 text-black">
                       <tr>
@@ -2885,7 +2868,7 @@ export default function Home() {
                     <tbody>
                       {projectForm.planRequests.length === 0 ? (
                         <tr>
-                          <td colSpan={5} className="p-6 text-center text-slate-600">
+                          <td colSpan={5} className="p-6 text-center text-zinc-300">
                             Aucune demande de plan pour le moment.
                           </td>
                         </tr>
@@ -2897,7 +2880,7 @@ export default function Home() {
                               : b.planNumber - a.planNumber
                           )
                           .map((plan) => (
-                            <tr key={plan.id} className="border-t border-slate-200 bg-slate-50">
+                            <tr key={plan.id} className="border-t border-white/10 bg-black/15">
                               <td className="p-3 text-center">
                                 <input
                                   type="radio"
@@ -2908,19 +2891,22 @@ export default function Home() {
                               </td>
 
                               <td className="p-3">
-                                <div
-                                  title={generatePlanFileName(plan)}
-                                  className="w-full min-w-[420px] truncate rounded border border-slate-200 bg-slate-100 px-3 py-2 font-medium text-slate-950"
-                                >
-                                  {generatePlanFileName(plan)}
-                                </div>
-                                <p className="mt-1 text-xs text-slate-500">{plan.code}</p>
+                                <input
+                                  value={plan.descriptionPlan}
+                                  onChange={(e) =>
+                                    updatePlanRequest(plan.id, {
+                                      descriptionPlan: e.target.value,
+                                    })
+                                  }
+                                  className="w-full min-w-[420px] rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
+                                />
+                                <p className="mt-1 text-xs text-zinc-400">{plan.code}</p>
                               </td>
 
                               <td className="p-3">
                                 <button
                                   onClick={() => openPlanDemand(plan)}
-                                  className="rounded border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs text-slate-950 hover:bg-slate-200"
+                                  className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-slate-950 hover:bg-white/20"
                                 >
                                   Demande
                                 </button>
@@ -2935,7 +2921,7 @@ export default function Home() {
                                         statut: e.target.value,
                                       })
                                     }
-                                    className="rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
+                                    className="rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                                   >
                                     <option value="" className="text-black">--</option>
                                     {["commandé", "en dessin", "pause", "a vérifier", "a corriger", "envoyé", "a réviser", "révisé", "en révision"].map((status) => (
@@ -2965,7 +2951,7 @@ export default function Home() {
                                       dessinateurIngenieur: e.target.value,
                                     })
                                   }
-                                  className="rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
+                                  className="rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                                 >
                                   <option value="" className="text-black">--</option>
                                   <option value="Pierre-Luc" className="text-black">Pierre-Luc</option>
@@ -2981,89 +2967,89 @@ export default function Home() {
                 </div>
               </div>
             ) : projectPanel === "planDetail" && activePlan ? (
-              <div className="rounded-2xl border border-slate-200 bg-white/95 p-5 text-slate-950 shadow-2xl backdrop-blur-sm">
+              <div className="rounded-2xl border border-white/10 bg-black/35 p-5 shadow-2xl backdrop-blur-sm">
                 <div className="mb-5 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
                   <div>
                     <button
                       onClick={() => setProjectPanel("demandePlan")}
-                      className="mb-3 rounded-lg border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-950 transition hover:bg-slate-100"
+                      className="mb-3 rounded-lg border border-white/15 bg-white/5 px-4 py-2 text-sm text-slate-950 transition hover:bg-white/10"
                     >
                       ← Retour aux demandes
                     </button>
                     <h2 className="text-2xl font-semibold text-orange-400">
                       Demande de plan
                     </h2>
-                    <p className="mt-1 text-sm text-slate-600">
+                    <p className="mt-1 text-sm text-zinc-300">
                       {activePlan.code}
                     </p>
                   </div>
 
-                  <div className="rounded-xl border border-orange-300 bg-orange-50 p-4 text-right">
-                    <p className="text-sm text-slate-600">Nom du fichier plan généré</p>
-                    <p className="mt-2 max-w-[700px] break-all text-sm font-semibold text-orange-600">
+                  <div className="rounded-xl border border-orange-400/30 bg-black/20 p-4 text-right">
+                    <p className="text-sm text-zinc-300">Nom du fichier plan généré</p>
+                    <p className="mt-2 max-w-[700px] break-all text-sm font-semibold text-orange-300">
                       {generatePlanFileName(activePlan)}
                     </p>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-1 gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+                  <div className="rounded-xl border border-white/10 bg-white/5 p-5">
                     <h3 className="mb-4 text-lg font-semibold text-orange-400">
                       Informations
                     </h3>
 
                     <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-3">
                       <div>
-                        <label className="mb-2 block text-sm text-slate-600">Projet</label>
+                        <label className="mb-2 block text-sm text-zinc-300">Projet</label>
                         <input
                           value={projectForm.numeroProjet}
                           readOnly
-                          className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         />
                       </div>
                       <div>
-                        <label className="mb-2 block text-sm text-slate-600">Plan</label>
+                        <label className="mb-2 block text-sm text-zinc-300">Plan</label>
                         <input
                           value={activePlan.planNumber}
                           readOnly
-                          className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         />
                       </div>
                       <div>
-                        <label className="mb-2 block text-sm text-slate-600">Version</label>
+                        <label className="mb-2 block text-sm text-zinc-300">Version</label>
                         <input
                           value={activePlan.revisionNumber}
                           readOnly
-                          className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         />
                       </div>
                     </div>
 
                     <div className="mb-4">
-                      <label className="mb-2 block text-sm text-slate-600">Client</label>
+                      <label className="mb-2 block text-sm text-zinc-300">Client</label>
                       <input
                         value={projectForm.client}
                         readOnly
-                        className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
+                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                       />
                     </div>
 
                     <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                       <div>
-                        <label className="mb-2 block text-sm text-slate-600">Plan requis le</label>
+                        <label className="mb-2 block text-sm text-zinc-300">Plan requis le</label>
                         <input
                           type="date"
                           value={activePlan.planRequisLe}
                           onChange={(e) => updateActivePlan({ planRequisLe: e.target.value })}
-                          className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         />
                       </div>
                       <div>
-                        <label className="mb-2 block text-sm text-slate-600">Statut</label>
+                        <label className="mb-2 block text-sm text-zinc-300">Statut</label>
                         <select
                           value={activePlan.statut || ""}
                           onChange={(e) => updateActivePlan({ statut: e.target.value })}
-                          className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         >
                           <option value="" className="text-black">--</option>
                           {PLAN_STATUSES.map((status) => (
@@ -3075,19 +3061,19 @@ export default function Home() {
 
                     <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                       <div>
-                        <label className="mb-2 block text-sm text-slate-600">Ville</label>
+                        <label className="mb-2 block text-sm text-zinc-300">Ville</label>
                         <input
                           value={activePlan.ville}
                           onChange={(e) => updateActivePlan({ ville: e.target.value })}
-                          className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         />
                       </div>
                       <div>
-                        <label className="mb-2 block text-sm text-slate-600">Dessinateur</label>
+                        <label className="mb-2 block text-sm text-zinc-300">Dessinateur</label>
                         <select
                           value={activePlan.dessinateurIngenieur || ""}
                           onChange={(e) => updateActivePlan({ dessinateurIngenieur: e.target.value })}
-                          className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         >
                           {DESSINATEURS_PLAN.map((name) => (
                             <option key={name || "empty"} value={name} className="text-black">
@@ -3100,11 +3086,11 @@ export default function Home() {
 
                     <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-[0.7fr_1.3fr]">
                       <div>
-                        <label className="mb-2 block text-sm text-slate-600">Tronçon</label>
+                        <label className="mb-2 block text-sm text-zinc-300">Tronçon</label>
                         <select
                           value={activePlan.tronconType}
                           onChange={(e) => updateActivePlan({ tronconType: e.target.value })}
-                          className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         >
                           {TRONCON_TYPES.map((type) => (
                             <option key={type || "empty"} value={type} className="text-black">
@@ -3114,30 +3100,30 @@ export default function Home() {
                         </select>
                       </div>
                       <div>
-                        <label className="mb-2 block text-sm text-slate-600">Nom du tronçon</label>
+                        <label className="mb-2 block text-sm text-zinc-300">Nom du tronçon</label>
                         <input
                           value={activePlan.tronconNom}
                           onChange={(e) => updateActivePlan({ tronconNom: e.target.value })}
-                          className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         />
                       </div>
                     </div>
 
                     <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-2">
                       <div>
-                        <label className="mb-2 block text-sm text-slate-600">Limite de vitesse</label>
+                        <label className="mb-2 block text-sm text-zinc-300">Limite de vitesse</label>
                         <input
                           value={activePlan.limiteVitesse}
                           onChange={(e) => updateActivePlan({ limiteVitesse: e.target.value })}
-                          className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         />
                       </div>
                       <div>
-                        <label className="mb-2 block text-sm text-slate-600">Direction</label>
+                        <label className="mb-2 block text-sm text-zinc-300">Direction</label>
                         <select
                           value={activePlan.direction}
                           onChange={(e) => updateActivePlan({ direction: e.target.value })}
-                          className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         >
                           {DIRECTIONS.map((direction) => (
                             <option key={direction || "empty"} value={direction} className="text-black">
@@ -3149,29 +3135,29 @@ export default function Home() {
                     </div>
 
                     <div className="mb-4">
-                      <label className="mb-2 block text-sm text-slate-600">Nature des travaux</label>
+                      <label className="mb-2 block text-sm text-zinc-300">Nature des travaux</label>
                       <input
                         value={activePlan.natureTravaux}
                         onChange={(e) => updateActivePlan({ natureTravaux: e.target.value })}
-                        className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
+                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                       />
                     </div>
 
                     <div className="mb-4 grid grid-cols-1 gap-4 md:grid-cols-3">
                       <div>
-                        <label className="mb-2 block text-sm text-slate-600">Durée des travaux</label>
+                        <label className="mb-2 block text-sm text-zinc-300">Durée des travaux</label>
                         <input
                           value={activePlan.dureeTravaux}
                           onChange={(e) => updateActivePlan({ dureeTravaux: e.target.value })}
-                          className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         />
                       </div>
                       <div>
-                        <label className="mb-2 block text-sm text-slate-600">Référence</label>
+                        <label className="mb-2 block text-sm text-zinc-300">Référence</label>
                         <select
                           value={activePlan.referenceType}
                           onChange={(e) => updateActivePlan({ referenceType: e.target.value })}
-                          className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         >
                           {REFERENCE_TYPES.map((type) => (
                             <option key={type || "empty"} value={type} className="text-black">
@@ -3181,22 +3167,22 @@ export default function Home() {
                         </select>
                       </div>
                       <div>
-                        <label className="mb-2 block text-sm text-slate-600">No / texte</label>
+                        <label className="mb-2 block text-sm text-zinc-300">No / texte</label>
                         <input
                           value={activePlan.referenceValue}
                           onChange={(e) => updateActivePlan({ referenceValue: e.target.value })}
-                          className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         />
                       </div>
                     </div>
 
                     <div className="mb-4">
-                      <label className="mb-2 block text-sm text-slate-600">Fermeture</label>
+                      <label className="mb-2 block text-sm text-zinc-300">Fermeture</label>
                       <div className="flex gap-2">
                         <select
                           value={activePlan.fermeture}
                           onChange={(e) => updateActivePlan({ fermeture: e.target.value })}
-                          className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                         >
                           <option value="" className="text-black">--</option>
                           {fermetureOptions.map((option) => (
@@ -3211,7 +3197,7 @@ export default function Home() {
                           value={newFermetureOption}
                           onChange={(e) => setNewFermetureOption(e.target.value)}
                           placeholder="Ajouter une option de fermeture"
-                          className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none placeholder:text-slate-500"
+                          className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none placeholder:text-zinc-400"
                         />
                         <button
                           onClick={addFermetureOption}
@@ -3223,59 +3209,59 @@ export default function Home() {
                     </div>
 
                     <div className="mb-4">
-                      <label className="mb-2 block text-sm text-slate-600">Zone des travaux</label>
+                      <label className="mb-2 block text-sm text-zinc-300">Zone des travaux</label>
                       <textarea
                         value={activePlan.zoneTravaux}
                         onChange={(e) => updateActivePlan({ zoneTravaux: e.target.value })}
                         rows={3}
-                        className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
+                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                       />
                     </div>
 
                     <div className="mb-4">
-                      <label className="mb-2 block text-sm text-slate-600">Détour(s)</label>
+                      <label className="mb-2 block text-sm text-zinc-300">Détour(s)</label>
                       <textarea
                         value={activePlan.detours}
                         onChange={(e) => updateActivePlan({ detours: e.target.value })}
                         rows={3}
-                        className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
+                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                       />
                     </div>
 
                     <div>
-                      <label className="mb-2 block text-sm text-slate-600">Notes</label>
+                      <label className="mb-2 block text-sm text-zinc-300">Notes</label>
                       <textarea
                         value={activePlan.notes}
                         onChange={(e) => updateActivePlan({ notes: e.target.value })}
                         rows={6}
-                        className="w-full rounded border border-slate-200 bg-slate-100 px-3 py-2 text-slate-950 outline-none"
+                        className="w-full rounded border border-white/10 bg-white/10 px-3 py-2 text-slate-950 outline-none"
                       />
                     </div>
                   </div>
 
                   <div className="space-y-5">
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+                    <div className="rounded-xl border border-white/10 bg-white/5 p-5">
                       <h3 className="mb-4 text-lg font-semibold text-orange-400">Documents reliés</h3>
 
                       {[
                         ["Liste matériel", "materielPdf", activePlan.materielPdf],
                         ["Document supplémentaire", "supplementairePdf", activePlan.supplementairePdf],
                       ].map(([label, field, attachment]) => (
-                        <div key={String(field)} className="mb-4 rounded-lg border border-slate-200 bg-orange-50 p-3">
-                          <p className="mb-2 text-sm font-medium text-slate-700">{String(label)}</p>
+                        <div key={String(field)} className="mb-4 rounded-lg border border-white/10 bg-black/20 p-3">
+                          <p className="mb-2 text-sm font-medium text-zinc-200">{String(label)}</p>
                           {attachment ? (
                             <div className="flex flex-wrap items-center justify-between gap-2">
-                              <span className="text-sm text-slate-950">{(attachment as PlanAttachment).name}</span>
+                              <span className="text-sm text-white">{(attachment as PlanAttachment).name}</span>
                               <div className="flex gap-2">
                                 <a
                                   href={getPrivateBlobOpenUrl((attachment as PlanAttachment).pathname, (attachment as PlanAttachment).url)}
                                   target="_blank"
                                   rel="noreferrer"
-                                  className="rounded border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs text-slate-950 hover:bg-slate-200"
+                                  className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-slate-950 hover:bg-white/20"
                                 >
                                   Ouvrir
                                 </a>
-                                <label className="cursor-pointer rounded border border-orange-400/50 bg-orange-400/10 px-3 py-1.5 text-xs text-orange-600 hover:bg-orange-400/20">
+                                <label className="cursor-pointer rounded border border-orange-400/50 bg-orange-400/10 px-3 py-1.5 text-xs text-orange-200 hover:bg-orange-400/20">
                                   Écraser
                                   <input
                                     type="file"
@@ -3293,7 +3279,7 @@ export default function Home() {
                               </div>
                             </div>
                           ) : (
-                            <label className="inline-block cursor-pointer rounded border border-orange-400/50 bg-orange-400/10 px-3 py-2 text-sm text-orange-600 hover:bg-orange-400/20">
+                            <label className="inline-block cursor-pointer rounded border border-orange-400/50 bg-orange-400/10 px-3 py-2 text-sm text-orange-200 hover:bg-orange-400/20">
                               Importer un PDF
                               <input
                                 type="file"
@@ -3307,30 +3293,30 @@ export default function Home() {
                       ))}
                     </div>
 
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+                    <div className="rounded-xl border border-white/10 bg-white/5 p-5">
                       <h3 className="mb-4 text-lg font-semibold text-orange-400">Pour dessinateur</h3>
-                      <label className="mb-2 block text-sm text-slate-600">Nom du fichier plan (AutoCAD)</label>
+                      <label className="mb-2 block text-sm text-zinc-300">Nom du fichier plan (AutoCAD)</label>
                       <input
                         value={generatePlanFileName(activePlan)}
                         readOnly
                         className="mb-4 w-full rounded border border-green-500 bg-green-500/10 px-3 py-2 text-green-100 outline-none"
                       />
 
-                      <div className="rounded-lg border border-slate-200 bg-orange-50 p-3">
-                        <p className="mb-2 text-sm font-medium text-slate-700">Fichier / document pour dessinateur</p>
+                      <div className="rounded-lg border border-white/10 bg-black/20 p-3">
+                        <p className="mb-2 text-sm font-medium text-zinc-200">Fichier / document pour dessinateur</p>
                         {activePlan.dessinateurPdf ? (
                           <div className="flex flex-wrap items-center justify-between gap-2">
-                            <span className="text-sm text-slate-950">{activePlan.dessinateurPdf.name}</span>
+                            <span className="text-sm text-white">{activePlan.dessinateurPdf.name}</span>
                             <div className="flex gap-2">
                               <a
                                 href={getPrivateBlobOpenUrl(activePlan.dessinateurPdf.pathname, activePlan.dessinateurPdf.url)}
                                 target="_blank"
                                 rel="noreferrer"
-                                className="rounded border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs text-slate-950 hover:bg-slate-200"
+                                className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-slate-950 hover:bg-white/20"
                               >
                                 Ouvrir
                               </a>
-                              <label className="cursor-pointer rounded border border-orange-400/50 bg-orange-400/10 px-3 py-1.5 text-xs text-orange-600 hover:bg-orange-400/20">
+                              <label className="cursor-pointer rounded border border-orange-400/50 bg-orange-400/10 px-3 py-1.5 text-xs text-orange-200 hover:bg-orange-400/20">
                                 Écraser
                                 <input
                                   type="file"
@@ -3348,7 +3334,7 @@ export default function Home() {
                             </div>
                           </div>
                         ) : (
-                          <label className="inline-block cursor-pointer rounded border border-orange-400/50 bg-orange-400/10 px-3 py-2 text-sm text-orange-600 hover:bg-orange-400/20">
+                          <label className="inline-block cursor-pointer rounded border border-orange-400/50 bg-orange-400/10 px-3 py-2 text-sm text-orange-200 hover:bg-orange-400/20">
                             Importer un PDF
                             <input
                               type="file"
@@ -3361,26 +3347,26 @@ export default function Home() {
                       </div>
                     </div>
 
-                    <div className="rounded-xl border border-slate-200 bg-slate-50 p-5">
+                    <div className="rounded-xl border border-white/10 bg-white/5 p-5">
                       <h3 className="mb-4 text-lg font-semibold text-orange-400">Documents</h3>
                       {[0, 1, 2, 3].map((index) => {
                         const doc = activePlan.documents[index];
                         return (
-                          <div key={index} className="mb-3 rounded-lg border border-slate-200 bg-orange-50 p-3">
+                          <div key={index} className="mb-3 rounded-lg border border-white/10 bg-black/20 p-3">
                             <div className="flex flex-wrap items-center justify-between gap-2">
-                              <p className="text-sm font-medium text-slate-700">Document {index + 1}</p>
+                              <p className="text-sm font-medium text-zinc-200">Document {index + 1}</p>
                               {doc ? (
                                 <div className="flex flex-wrap items-center gap-2">
-                                  <span className="text-sm text-slate-950">{doc.name}</span>
+                                  <span className="text-sm text-white">{doc.name}</span>
                                   <a
                                     href={getPrivateBlobOpenUrl(doc.pathname, doc.url)}
                                     target="_blank"
                                     rel="noreferrer"
-                                    className="rounded border border-slate-200 bg-slate-100 px-3 py-1.5 text-xs text-slate-950 hover:bg-slate-200"
+                                    className="rounded border border-white/15 bg-white/10 px-3 py-1.5 text-xs text-slate-950 hover:bg-white/20"
                                   >
                                     Ouvrir
                                   </a>
-                                  <label className="cursor-pointer rounded border border-orange-400/50 bg-orange-400/10 px-3 py-1.5 text-xs text-orange-600 hover:bg-orange-400/20">
+                                  <label className="cursor-pointer rounded border border-orange-400/50 bg-orange-400/10 px-3 py-1.5 text-xs text-orange-200 hover:bg-orange-400/20">
                                     Écraser
                                     <input
                                       type="file"
@@ -3397,7 +3383,7 @@ export default function Home() {
                                   </button>
                                 </div>
                               ) : (
-                                <label className="cursor-pointer rounded border border-orange-400/50 bg-orange-400/10 px-3 py-2 text-sm text-orange-600 hover:bg-orange-400/20">
+                                <label className="cursor-pointer rounded border border-orange-400/50 bg-orange-400/10 px-3 py-2 text-sm text-orange-200 hover:bg-orange-400/20">
                                   Importer un PDF
                                   <input
                                     type="file"
@@ -3416,7 +3402,7 @@ export default function Home() {
                     <div className="mt-4 flex flex-wrap gap-2">
                       <button
                         onClick={() => sendPlanEmail(activePlan)}
-                        className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-medium text-black hover:bg-orange-400"
+                        className="rounded-lg bg-white px-4 py-2 text-sm font-medium text-black hover:bg-zinc-200"
                       >
                         Envoyer plan
                       </button>
@@ -3425,56 +3411,56 @@ export default function Home() {
                 </div>
               </div>
             ) : (
-              <div className="rounded-2xl border border-white/10 bg-black/25 p-4 shadow-2xl backdrop-blur-sm">
-                <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1.05fr_0.95fr]">
-                  <div className="rounded-2xl border border-slate-200 bg-white/90 p-4 text-slate-950 shadow-xl">
+              <div className="rounded-2xl border border-white/10 bg-black/30 p-5 shadow-2xl backdrop-blur-sm">
+                <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
+                  <div className="rounded-xl border border-white/10 bg-slate-100/80 p-5">
                     <h2 className="mb-5 text-xl font-semibold text-slate-900">
                       Informations projet
                     </h2>
 
                     <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
                       <div>
-                        <label className="mb-1 block text-xs font-medium text-slate-600">
+                        <label className="mb-2 block text-sm text-slate-700">
                           Numéro de projet
                         </label>
                         <input
                           value={projectForm.numeroProjet}
                           readOnly
-                          className="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-950 outline-none focus:border-orange-400"
+                          className="w-full border-b-2 border-slate-300 bg-transparent px-2 py-2 text-slate-950 outline-none"
                         />
                       </div>
 
                       <div>
-                        <label className="mb-1 block text-xs font-medium text-slate-600">
+                        <label className="mb-2 block text-sm text-slate-700">
                           Numéro client
                         </label>
                         <input
                           value={projectForm.numeroClient}
                           onChange={(e) =>
-                            setProjectForm({
+                            persistProjectForm({
                               ...projectForm,
                               numeroClient: e.target.value,
                             })
                           }
                           placeholder="Ex. no interne client"
-                          className="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-950 outline-none placeholder:text-slate-500 focus:border-orange-400"
+                          className="w-full border-b-2 border-slate-300 bg-transparent px-2 py-2 text-slate-950 outline-none placeholder:text-slate-500"
                         />
                       </div>
                     </div>
 
-                    <div className="mt-3">
-                      <label className="mb-1 block text-xs font-medium text-slate-600">
+                    <div className="mt-5">
+                      <label className="mb-2 block text-sm text-slate-700">
                         Statut
                       </label>
                       <select
                         value={projectForm.statut}
                         onChange={(e) =>
-                          setProjectForm({
+                          persistProjectForm({
                             ...projectForm,
                             statut: e.target.value as StatusType,
                           })
                         }
-                        className="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-950 outline-none focus:border-orange-400"
+                        className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none"
                       >
                         {ALL_STATUSES.map((status) => (
                           <option
@@ -3488,19 +3474,19 @@ export default function Home() {
                       </select>
                     </div>
 
-                    <div className="mt-3">
-                      <label className="mb-1 block text-xs font-medium text-slate-600">
+                    <div className="mt-5">
+                      <label className="mb-2 block text-sm text-slate-700">
                         Chargé de projet
                       </label>
                       <select
                         value={projectForm.charge}
                         onChange={(e) =>
-                          setProjectForm({
+                          persistProjectForm({
                             ...projectForm,
                             charge: e.target.value,
                           })
                         }
-                        className="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-950 outline-none focus:border-orange-400"
+                        className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none"
                       >
                         <option value="">Sélectionner un chargé</option>
                         <option value="Pierre-Luc">Pierre-Luc</option>
@@ -3508,57 +3494,57 @@ export default function Home() {
                       </select>
                     </div>
 
-                    <div className="mt-3">
-                      <label className="mb-1 block text-xs font-medium text-slate-600">
+                    <div className="mt-5">
+                      <label className="mb-2 block text-sm text-slate-700">
                         Ville
                       </label>
                       <input
                         value={projectForm.ville}
                         onChange={(e) =>
-                          setProjectForm({
+                          persistProjectForm({
                             ...projectForm,
                             ville: e.target.value,
                           })
                         }
-                        className="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-950 outline-none focus:border-orange-400"
+                        className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none"
                       />
                     </div>
 
-                    <div className="mt-3">
-                      <label className="mb-1 block text-xs font-medium text-slate-600">
+                    <div className="mt-5">
+                      <label className="mb-2 block text-sm text-slate-700">
                         Endroit
                       </label>
                       <input
                         value={projectForm.endroit}
                         onChange={(e) =>
-                          setProjectForm({
+                          persistProjectForm({
                             ...projectForm,
                             endroit: e.target.value,
                           })
                         }
-                        className="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-950 outline-none focus:border-orange-400"
+                        className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none"
                       />
                     </div>
 
-                    <div className="mt-3">
-                      <label className="mb-1 block text-xs font-medium text-slate-600">
+                    <div className="mt-5">
+                      <label className="mb-2 block text-sm text-slate-700">
                         Description
                       </label>
                       <textarea
                         value={projectForm.description}
                         onChange={(e) =>
-                          setProjectForm({
+                          persistProjectForm({
                             ...projectForm,
                             description: e.target.value,
                           })
                         }
-                        rows={3}
-                        className="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-950 outline-none focus:border-orange-400"
+                        rows={4}
+                        className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none"
                       />
                     </div>
                   </div>
 
-                  <div className="rounded-2xl border border-slate-200 bg-white/90 p-4 text-slate-950 shadow-xl">
+                  <div className="rounded-xl border border-white/10 bg-slate-100/80 p-5">
                     <div className="mb-5">
                       <h2 className="text-xl font-semibold text-slate-900">
                         Client et contacts
@@ -3566,19 +3552,19 @@ export default function Home() {
                     </div>
 
                     <div>
-                      <label className="mb-1 block text-xs font-medium text-slate-600">
+                      <label className="mb-2 block text-sm text-slate-700">
                         Client
                       </label>
                       <select
                         value={projectForm.client}
                         onChange={(e) =>
-                          setProjectForm({
+                          persistProjectForm({
                             ...projectForm,
                             client: e.target.value,
                             contactId: "",
                           })
                         }
-                        className="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-950 outline-none focus:border-orange-400"
+                        className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none"
                       >
                         <option value="" className="text-slate-950">
                           Sélectionner un client
@@ -3595,19 +3581,19 @@ export default function Home() {
                       </select>
                     </div>
 
-                    <div className="mt-3">
-                      <label className="mb-1 block text-xs font-medium text-slate-600">
+                    <div className="mt-5">
+                      <label className="mb-2 block text-sm text-slate-700">
                         Contact
                       </label>
                       <select
                         value={projectForm.contactId}
                         onChange={(e) =>
-                          setProjectForm({
+                          persistProjectForm({
                             ...projectForm,
                             contactId: e.target.value,
                           })
                         }
-                        className="w-full rounded-lg border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-950 outline-none focus:border-orange-400"
+                        className="w-full border-b-2 border-slate-300 bg-slate-100 px-2 py-2 text-slate-950 outline-none"
                       >
                         <option value="" className="text-black">
                           Sélectionner un contact
@@ -3626,7 +3612,7 @@ export default function Home() {
 
                     <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2">
                       <div>
-                        <label className="mb-1 block text-xs font-medium text-slate-600">
+                        <label className="mb-2 block text-sm text-slate-700">
                           Téléphone
                         </label>
                         <input
@@ -3638,7 +3624,7 @@ export default function Home() {
                       </div>
 
                       <div>
-                        <label className="mb-1 block text-xs font-medium text-slate-600">
+                        <label className="mb-2 block text-sm text-slate-700">
                           Courriel
                         </label>
                         <input
@@ -3652,13 +3638,13 @@ export default function Home() {
 
                     <div className="mt-8 grid grid-cols-1 gap-5 md:grid-cols-2">
                       <div>
-                        <label className="mb-1 block text-xs font-medium text-slate-600">
+                        <label className="mb-2 block text-sm text-slate-700">
                           Courriel facturation
                         </label>
                         <input
                           value={projectForm.billingEmail}
                           onChange={(e) =>
-                            setProjectForm({
+                            persistProjectForm({
                               ...projectForm,
                               billingEmail: e.target.value,
                             })
@@ -3669,13 +3655,13 @@ export default function Home() {
                       </div>
 
                       <div>
-                        <label className="mb-1 block text-xs font-medium text-slate-600">
+                        <label className="mb-2 block text-sm text-slate-700">
                           Courriel plan
                         </label>
                         <input
                           value={projectForm.planEmail}
                           onChange={(e) =>
-                            setProjectForm({
+                            persistProjectForm({
                               ...projectForm,
                               planEmail: e.target.value,
                             })
@@ -3699,7 +3685,7 @@ export default function Home() {
                       <input
                         value={projectForm.poNumber}
                         onChange={(e) =>
-                          setProjectForm({
+                          persistProjectForm({
                             ...projectForm,
                             poNumber: e.target.value,
                           })
@@ -3958,49 +3944,49 @@ export default function Home() {
   }
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-slate-950 text-white">
-      <div
-        className="absolute inset-0 bg-cover bg-center"
-        style={{ backgroundImage: "url('/eric-dashboard-bg.png')" }}
-      />
-      <div className="absolute inset-0 bg-black/65" />
+    <main className="relative min-h-screen bg-slate-50 text-slate-900">
+      <div className="absolute inset-0 bg-[url('/eric-dashboard-bg.png')] bg-cover bg-center opacity-20" />
+      <div className="absolute inset-0 bg-gradient-to-br from-white via-slate-50 to-orange-50 opacity-95" />
 
-      <div className="relative z-10 min-h-screen px-6 py-5 md:px-8 xl:px-10">
+      <div className="relative z-10 min-h-screen px-6 py-6 md:px-8 xl:px-10">
         <div className="mx-auto w-full max-w-[1700px]">
-          <div className="mb-3 rounded-2xl border border-white/10 bg-black/45 px-4 py-3 shadow-2xl backdrop-blur-sm">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+          <div className="mb-8 rounded-[2rem] border border-slate-200 bg-white/95 p-8 shadow-xl shadow-slate-300/40">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
               <div>
-                <p className="text-xs uppercase tracking-[0.35em] text-orange-400">ERIC</p>
-                <h1 className="mt-0.5 text-2xl font-semibold text-white">
+                <p className="text-sm uppercase tracking-[0.3em] text-orange-500">ERIC</p>
+                <h1 className="mt-3 text-3xl font-semibold text-slate-950">
                   Tableau de bord projet
                 </h1>
               </div>
 
-              <div className="flex flex-wrap items-center gap-3">
-                <div className="rounded-xl border border-orange-500/35 bg-black/35 px-4 py-2">
-                  <p className="text-[10px] uppercase tracking-[0.3em] text-orange-400">Section</p>
-                  <p className="text-sm font-semibold text-white">
-                    {activeSection === "projets" ? "Projets" : activeSection === "plans" ? "Plans" : activeSection === "clients" ? "Clients" : "Facturation"}
-                  </p>
-                </div>
-                <button
-                  onClick={() => setShowModal(true)}
-                  className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-semibold text-white shadow-md shadow-orange-900/30 transition hover:bg-orange-400"
-                >
-                  + Nouveau projet
-                </button>
-                <p className="text-sm text-slate-200">{loggedInUser}</p>
+              <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center">
+                <p className="text-sm text-slate-600">{loggedInUser}</p>
                 <button
                   onClick={handleLogout}
-                  className="rounded-lg border border-white/15 bg-white/10 px-4 py-2 text-sm font-semibold text-white transition hover:bg-white/20"
+                  className="rounded-full bg-orange-500 px-5 py-3 text-sm font-semibold text-white shadow-md shadow-orange-200/50 transition hover:bg-orange-400"
                 >
                   Déconnexion
                 </button>
               </div>
             </div>
+
+            <div className="mt-6 rounded-[2rem] border border-slate-200 bg-white/95 p-6 shadow-sm sm:flex sm:items-center sm:justify-between">
+              <div>
+                <p className="text-sm uppercase tracking-[0.3em] text-orange-500">ERIC</p>
+                <h2 className="mt-3 text-2xl font-semibold text-slate-950">
+                  Projets
+                </h2>
+              </div>
+              <button
+                onClick={() => setShowModal(true)}
+                className="rounded-full bg-orange-500 px-5 py-3 text-sm font-semibold text-white shadow-md shadow-orange-200/50 transition hover:bg-orange-400"
+              >
+                + Nouveau projet
+              </button>
+            </div>
           </div>
 
-          <div className="mb-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div className="mb-6 flex flex-wrap gap-3">
             {[
               ["projets", "Projets"],
               ["plans", "Plans"],
@@ -4010,10 +3996,10 @@ export default function Home() {
               <button
                 key={key}
                 onClick={() => changeSection(key as ActiveSection)}
-                className={`rounded-xl border-2 px-5 py-3 text-sm font-semibold transition ${
+                className={`rounded-full px-5 py-3 text-sm font-semibold transition ${
                   activeSection === key
-                    ? "border-orange-400 bg-orange-500 text-black shadow-lg shadow-orange-950/40"
-                    : "border-orange-400 bg-black/25 text-orange-400 hover:bg-orange-400/10"
+                    ? "bg-orange-500 text-white shadow-lg shadow-orange-200/50"
+                    : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-orange-50"
                 }`}
               >
                 {label}
@@ -4022,47 +4008,77 @@ export default function Home() {
           </div>
 
           {activeSection === "projets" && (
-            <div className="space-y-3">
-              <div className="rounded-2xl border border-slate-200 bg-white/95 px-4 py-3 text-slate-950 shadow-2xl shadow-black/30">
-                <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-                  <div className="flex min-w-0 flex-1 items-center gap-3">
-                    <h2 className="shrink-0 text-lg font-semibold text-slate-950">Projets</h2>
-                    <input
-                      value={searchNumero}
-                      onChange={(e) => setSearchNumero(e.target.value)}
-                      placeholder="Recherche: numéro, client, ville ou description"
-                      className="w-full rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-950 outline-none placeholder:text-slate-500 focus:border-orange-400"
-                    />
+            <div className="space-y-6">
+              <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="mb-6">
+                  <h2 className="text-xl font-semibold text-slate-950">Projets</h2>
+                  <p className="mt-2 text-sm text-slate-600">
+                    Une interface épurée où la liste prend le dessus, avec une recherche discrète.
+                  </p>
+                </div>
+
+                <div className="grid gap-4 lg:grid-cols-[1.4fr_0.6fr]">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="mb-2 block text-sm font-medium text-slate-700">
+                        Recherche
+                      </label>
+                      <input
+                        value={searchNumero}
+                        onChange={(e) => setSearchNumero(e.target.value)}
+                        placeholder="Numéro, client ou ville"
+                        className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
+                      />
+                    </div>
+
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div>
+                        <label className="mb-2 block text-sm font-medium text-slate-700">
+                          Chargé de projets
+                        </label>
+                        <select
+                          value={chargeFilter}
+                          onChange={(e) => setChargeFilter(e.target.value as "tous" | "mes-projets")}
+                          className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none"
+                        >
+                          <option value="tous" className="text-slate-950">
+                            Tous les projets
+                          </option>
+                          <option value="mes-projets" className="text-slate-950">
+                            Mes projets
+                          </option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="mb-2 block text-sm font-medium text-slate-700">
+                          Statuts affichés
+                        </label>
+                        <div className="rounded-3xl border border-slate-200 bg-slate-100 p-4">
+                          <div className="grid grid-cols-2 gap-2 text-sm text-slate-700">
+                            {ALL_STATUSES.map((status) => (
+                              <label
+                                key={status}
+                                className="flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2"
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={statusFilters.includes(status)}
+                                  onChange={() => toggleStatusFilter(status)}
+                                  className="h-4 w-4 rounded border-slate-300 text-orange-500"
+                                />
+                                {status}
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center gap-2">
-                    <select
-                      value={chargeFilter}
-                      onChange={(e) => setChargeFilter(e.target.value as "tous" | "mes-projets")}
-                      className="rounded-full border border-slate-200 bg-slate-100 px-3 py-2 text-sm text-slate-950 outline-none"
-                    >
-                      <option value="tous" className="text-slate-950">Tous les projets</option>
-                      <option value="mes-projets" className="text-slate-950">Mes projets</option>
-                    </select>
-
-                    {ALL_STATUSES.map((status) => (
-                      <button
-                        key={status}
-                        onClick={() => toggleStatusFilter(status)}
-                        className={`rounded-full border px-3 py-1.5 text-xs font-semibold transition ${
-                          statusFilters.includes(status)
-                            ? "border-orange-300 bg-orange-50 text-orange-700"
-                            : "border-slate-200 bg-slate-100 text-slate-400"
-                        }`}
-                      >
-                        {status}
-                      </button>
-                    ))}
-                  </div>
                 </div>
               </div>
 
-              <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white/95 shadow-2xl shadow-black/30">
+              <div className="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-sm">
                 <table className="min-w-full text-sm">
                   <thead className="bg-orange-100 text-slate-900">
                     <tr>
@@ -4125,10 +4141,10 @@ export default function Home() {
 
           {activeSection === "plans" && (
             <div className="space-y-6">
-              <div className="rounded-2xl border border-white/10 bg-black/35 p-4 shadow-2xl backdrop-blur-sm">
-                <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div>
-                    <h2 className="text-xl font-semibold text-white">Liste de plans</h2>
+                    <h2 className="text-xl font-semibold text-slate-950">Liste de plans</h2>
                   </div>
 
                   <label className="flex items-center gap-2 rounded-full border border-slate-200 bg-slate-100 px-4 py-3 text-sm text-slate-700">
@@ -4151,7 +4167,7 @@ export default function Home() {
                       value={planSearchNumber}
                       onChange={(e) => setPlanSearchNumber(e.target.value)}
                       placeholder="Ex. 26-0001, P001"
-                      className="w-full rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-950 outline-none placeholder:text-slate-500"
+                      className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
                     />
                   </div>
 
@@ -4163,7 +4179,7 @@ export default function Home() {
                       value={planSearchVille}
                       onChange={(e) => setPlanSearchVille(e.target.value)}
                       placeholder="Ville"
-                      className="w-full rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-950 outline-none placeholder:text-slate-500"
+                      className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
                     />
                   </div>
 
@@ -4175,7 +4191,7 @@ export default function Home() {
                       value={planSearchClient}
                       onChange={(e) => setPlanSearchClient(e.target.value)}
                       placeholder="Client"
-                      className="w-full rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-950 outline-none placeholder:text-slate-500"
+                      className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
                     />
                   </div>
 
@@ -4187,7 +4203,7 @@ export default function Home() {
                       value={planSearchDescription}
                       onChange={(e) => setPlanSearchDescription(e.target.value)}
                       placeholder="Description plan"
-                      className="w-full rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-950 outline-none placeholder:text-slate-500"
+                      className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
                     />
                   </div>
 
@@ -4199,7 +4215,7 @@ export default function Home() {
                       value={planSearchDessinateur}
                       onChange={(e) => setPlanSearchDessinateur(e.target.value)}
                       placeholder="Dessinateur"
-                      className="w-full rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-950 outline-none placeholder:text-slate-500"
+                      className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
                     />
                   </div>
                 </div>
@@ -4264,8 +4280,8 @@ export default function Home() {
                           <td className="p-4 text-slate-700">{plan.ville || project.ville}</td>
                           <td className="p-4 text-slate-700">{project.client}</td>
                           <td className="p-4 text-slate-700">
-                            <div className="max-w-[520px] truncate" title={generatePlanFileName(plan)}>
-                              {generatePlanFileName(plan)}
+                            <div className="max-w-[520px] truncate" title={plan.descriptionPlan}>
+                              {plan.descriptionPlan}
                             </div>
                             <p className="mt-1 text-xs text-slate-400">{plan.code}</p>
                           </td>
@@ -4293,8 +4309,8 @@ export default function Home() {
 
           {activeSection === "clients" && (
             <div className="space-y-6">
-              <div className="rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-2xl shadow-black/30">
-                <div className="mb-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="rounded-[2rem] border border-slate-200 bg-white p-6 shadow-sm">
+                <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
                   <div>
                     <h2 className="text-xl font-semibold text-slate-950">Clients / Contacts</h2>
                     <p className="mt-2 text-sm text-slate-600">
@@ -4319,7 +4335,7 @@ export default function Home() {
                       value={clientListSearch}
                       onChange={(e) => setClientListSearch(e.target.value)}
                       placeholder="Nom du client"
-                      className="w-full rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-950 outline-none placeholder:text-slate-500"
+                      className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
                     />
                   </div>
 
@@ -4331,7 +4347,7 @@ export default function Home() {
                       value={contactListSearch}
                       onChange={(e) => setContactListSearch(e.target.value)}
                       placeholder="Nom, téléphone ou courriel"
-                      className="w-full rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-950 outline-none placeholder:text-slate-500"
+                      className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none placeholder:text-slate-500"
                     />
                   </div>
 
@@ -4346,7 +4362,7 @@ export default function Home() {
                           e.target.value as "Tous" | ClientStatus
                         )
                       }
-                      className="w-full rounded-full border border-slate-200 bg-slate-100 px-4 py-2 text-sm text-slate-950 outline-none"
+                      className="w-full rounded-3xl border border-slate-200 bg-slate-100 px-4 py-3 text-slate-950 outline-none"
                     >
                       <option value="Tous" className="text-slate-950">
                         Tous
